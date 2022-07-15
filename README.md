@@ -16,7 +16,7 @@ The following tasks are available:
 
 new       Create new blog article
 quickblog Render blog
-watch     Watch posts and templates and call render on file changes
+watch     Watch posts and templates and render file changes
 publish   Publish blog
 clean     Remove .work and public directory
 ```

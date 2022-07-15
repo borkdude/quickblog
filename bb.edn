@@ -22,7 +22,7 @@
   quickblog {:doc "Render blog"
              :task (qb/quickblog opts)}
 
-  watch  {:doc "Watch posts and templates and call render on file changes"
+  watch  {:doc "Watch posts and templates and render file changes"
           :task (qb/watch opts)}
 
   publish {:doc "Publish blog"
