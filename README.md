@@ -6,7 +6,7 @@ See [API.md](API.md) on how to use this.
 
 Compatible with [babashka](#babashka) and [Clojure](#clojure).
 
-Includes watch-mode. See it in action [here](https://twitter.com/borkdude/status/1547912740156583936).
+Includes hot-reload. See it in action [here](https://twitter.com/borkdude/status/1547912740156583936).
 
 ## Quickstart
 
