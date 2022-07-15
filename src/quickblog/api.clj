@@ -32,8 +32,6 @@
 (defn- html-file [file]
   (str/replace file ".md" ".html"))
 
-(def ^:private discuss-fallback "https://github.com/borkdude/blog/discussions/categories/posts")
-
 (defn- markdown->html [file]
   (let [_ (println "Processing markdown for file:" (str file))
         markdown (slurp file)
@@ -61,11 +59,12 @@
   (ensure-template "templates/base.html")
   (slurp "templates/base.html"))
 
-(defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir] :as opts}]
+(defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir
+                          discuss-link] :as opts}]
   (fs/create-dirs cache-dir)
   (fs/create-dirs out-dir)
   (doseq [{:keys [file title date legacy discuss]
-           :or {discuss discuss-fallback}}
+           :or {discuss discuss-link}}
           posts]
     (let [base-html (base-html)
           cache-file (fs/file cache-dir (html-file file))
@@ -108,12 +107,11 @@
              title]
             " - "
             date]])]])
-
 ;;;; Generate index page with last 3 posts
 
-(defn- index [{:keys [posts]}]
+(defn- index [{:keys [posts discuss-link]}]
   (for [{:keys [file title date preview discuss]
-         :or {discuss discuss-fallback}} (take 3 posts)
+         :or {discuss discuss-link}} (take 3 posts)
         :when (not preview)]
     [:div
      [:h1 [:a {:href (str/replace file ".md" ".html")}
@@ -178,7 +176,8 @@
   [{:keys [blog-title
            cache-dir
            out-dir
-           posts-dir]
+           posts-dir
+           discuss-link]
     :or {cache-dir (:cache-dir default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)}
@@ -187,7 +186,8 @@
   (let [opts (assoc opts
                     :out-dir out-dir
                     :cache-dir cache-dir
-                    :posts-dir posts-dir)
+                    :posts-dir posts-dir
+                    :discuss-link discuss-link)
         posts (sort-by :date (comp - compare)
                        (edn/read-string (format "[%s]"
                                                 (slurp "posts.edn"))))
@@ -212,6 +212,7 @@
                       (fn [post]
                         (some (:categories post) ["clojure" "clojurescript"]))
                       posts)))))
+
 
 (defn quickblog
   "Alias for `render`"
