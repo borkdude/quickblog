@@ -4,6 +4,8 @@ The blog code powering my [blog](https://blog.michielborkent.nl/).
 
 See [API.md](API.md) on how to use this.
 
+Compatible with [babashka](#babashka) and [Clojure](#clojure).
+
 ## Quickstart
 
 ### Babashka
