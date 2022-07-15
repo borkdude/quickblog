@@ -1,0 +1,33 @@
+{:deps {org.babashka/cli {:mvn/version "0.3.31"}
+        io.github.borkdude/quickblog {:local/root "."} #_{:git/sha "039b2213eacf642ff9f0019a2c46621300e7ea6b"}
+        }
+ :paths ["."]
+
+ :tasks
+
+ {:init (def opts (merge {:blog-title "REPL adventures"
+                          :out-dir "public"
+                          :blog-root "https://blog.michielborkent.nl/"}
+                         (cli/parse-opts *command-line-args*)))
+
+  :requires ([babashka.fs :as fs]
+             [quickblog.api :as r]
+             [babashka.cli :as cli])
+
+  new {:doc "Create new blog article"
+       :task (r/new opts)}
+
+  render {:doc "Render blog"
+          :task (r/quickblog opts)}
+
+  watch  {:doc "Watch posts and templates and call render on file changes"
+          :task (r/watch opts)}
+
+  publish {:doc "Publish to blog.michielborkent.nl"
+           :depends [render]
+           :task (shell "rsync -a --delete public/ borkdude@michielborkent.nl:~/devblog")}
+
+  clean {:doc "Remove .work and public directory"
+         :task (do (fs/delete-tree ".work")
+                   (fs/delete-tree "public"))}
+  }}
