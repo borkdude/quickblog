@@ -7,4 +7,6 @@
         markdown-clj/markdown-clj {:mvn/version "1.11.2"}
         org.babashka/http-server {:mvn/version "0.1.11"}
         babashka/babashka.pods {:git/url "https://github.com/babashka/pods"
-                                :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}}}
+                                :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}}
+ :quickblog {:deps {org.babashka/cli {:mvn/version "0.3.31"}}
+             :main-opts ["-m" "babashka.cli.exec" "quickblog.api"]}}
