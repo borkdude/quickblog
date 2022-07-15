@@ -211,8 +211,8 @@
 (defn new
   "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
   [{:keys [file title]}]
-  (assert file "Must give title")
-  (assert title "Must give filename")
+  (assert file "Missing required argument: --file POST_FILENAME")
+  (assert title "Missing required argument: --title POST_TITLE")
   (let [post-file (fs/file "posts" file)]
     (when-not (fs/exists? post-file)
       (fs/create-dirs "posts")
