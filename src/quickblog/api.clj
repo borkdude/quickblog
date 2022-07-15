@@ -166,7 +166,7 @@
             [:-cdata (get @bodies file)]]])])
       xml/indent-str))
 
-(defn quickblog
+(defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
   [{:keys [blog-title
            out-dir]
@@ -198,6 +198,11 @@
                       (fn [post]
                         (some (:categories post) ["clojure" "clojurescript"]))
                       posts)))))
+
+(defn quickblog
+  "Alias for `render`"
+  [opts]
+  (render opts))
 
 (defn- now []
   (.format (java.time.LocalDate/now)
@@ -235,7 +240,7 @@
     :or {watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
   (let [opts (assoc opts :watch watch-script)]
-    (quickblog opts)
+    (render opts)
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/filewatcher "0.0.1")
@@ -243,15 +248,15 @@
         (watch "posts.edn"
                (fn [_]
                  (println "Re-rendering")
-                 (quickblog opts)))
+                 (render opts)))
 
         (watch "posts"
                (fn [_]
                  (println "Re-rendering")
-                 (quickblog opts)))
+                 (render opts)))
 
         (watch "templates"
                (fn [_]
                  (println "Re-rendering")
-                 (quickblog opts))))))
+                 (render opts))))))
   @(promise))
