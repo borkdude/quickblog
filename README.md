@@ -69,3 +69,4 @@ Feel free to send PRs for improvements.
 My wishlist:
 
 - Category links
+- There might be a few things hardcoded that still need to be made configurable.
