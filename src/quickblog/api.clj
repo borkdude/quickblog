@@ -179,7 +179,8 @@
                                                 (slurp "posts.edn"))))
         opts (assoc opts :posts posts)
         asset-dir (fs/create-dirs (fs/file out-dir "assets"))]
-    (fs/copy-tree "assets" asset-dir {:replace-existing true})
+    (when (fs/exists? "assets")
+      (fs/copy-tree "assets" asset-dir {:replace-existing true}))
     (doseq [file (fs/glob "templates" "*.{css,svg}")]
       (fs/copy file out-dir {:replace-existing true}))
     (fs/create-dirs (fs/file ".work"))
