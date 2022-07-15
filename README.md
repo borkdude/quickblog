@@ -72,3 +72,4 @@ My wishlist:
 
 - Category links
 - There might be a few things hardcoded that still need to be made configurable.
+- Upstream improvements to [markdown-clj](https://github.com/yogthos/markdown-clj)
