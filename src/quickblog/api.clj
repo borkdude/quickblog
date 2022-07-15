@@ -62,36 +62,42 @@
   (slurp "templates/base.html"))
 
 (defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir] :as opts}]
-  (doseq [{:keys [file title date legacy discuss]
-           :or {discuss discuss-fallback}}
-          posts]
-    (let [base-html (base-html)
-          cache-file (fs/file cache-dir (html-file file))
-          markdown-file (fs/file posts-dir file)
-          stale? (seq (fs/modified-since cache-file markdown-file))
-          body (if stale?
-                 (let [body (markdown->html markdown-file)]
-                   (spit cache-file body)
-                   body)
-                 (slurp cache-file))
-          _ (swap! bodies assoc file body)
-          body (selmer/render post-template (->map body title date discuss))
-          html (selmer/render base-html
-                              (assoc opts
-                                     :title title
-                                     :body body))
-          html-file (str/replace file ".md" ".html")]
-      (spit (fs/file out-dir html-file) html)
-      (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
-                                (str/replace file ".md" ""))]
-        (when legacy
-          (fs/create-dirs legacy-dir)
-          (let [redirect-html (selmer/render"
+  (let [cache-dir (or cache-dir (:cache-dir default-opts))
+        out-dir (or out-dir (:out-dir default-opts))
+        posts-dir (or posts-dir (:posts-dir default-opts))]
+    (fs/create-dirs cache-dir)
+    (fs/create-dirs out-dir)
+    (fs/create-dirs posts-dir)
+    (doseq [{:keys [file title date legacy discuss]
+             :or {discuss discuss-fallback}}
+            posts]
+      (let [base-html (base-html)
+            cache-file (fs/file cache-dir (html-file file))
+            markdown-file (fs/file posts-dir file)
+            stale? (seq (fs/modified-since cache-file markdown-file))
+            body (if stale?
+                   (let [body (markdown->html markdown-file)]
+                     (spit cache-file body)
+                     body)
+                   (slurp cache-file))
+            _ (swap! bodies assoc file body)
+            body (selmer/render post-template (->map body title date discuss))
+            html (selmer/render base-html
+                                (assoc opts
+                                       :title title
+                                       :body body))
+            html-file (str/replace file ".md" ".html")]
+        (spit (fs/file out-dir html-file) html)
+        (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
+                                  (str/replace file ".md" ""))]
+          (when legacy
+            (fs/create-dirs legacy-dir)
+            (let [redirect-html (selmer/render"
 <html><head>
 <meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
 </head></html>"
-                                            {:new_url html-file})]
-            (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
+                                              {:new_url html-file})]
+              (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html))))))))
 
 ;;;; Generate archive page
 
