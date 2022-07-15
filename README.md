@@ -23,7 +23,7 @@ clean   Remove .work and public directory
 
 To create a new blog post:
 
-```
+``` clojure
 $ bb new :file "test.md" :title "Test"
 ```
 
@@ -38,7 +38,7 @@ $ bb watch
 Quickblog can be used in Clojure with the exact same API as the bb tasks.
 Default options can be configured in `:exec-args`.
 
-```
+``` clojure
 :quickblog {:deps {io.github.borkdude/quickblog
                    {:git/sha "b69c11f4292702f78a8ac0a9f32379603bebf2af"}
                    org.babashka/cli {:mvn/version "0.3.31"}}
