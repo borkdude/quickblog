@@ -32,4 +32,7 @@
   clean {:doc "Remove .work and public directory"
          :task (do (fs/delete-tree ".work")
                    (fs/delete-tree "public"))}
+
+  quickdoc {:doc "Re-generate API.md"
+            :task (shell "bb --config quickdoc.edn quickdoc")}
   }}
