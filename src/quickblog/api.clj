@@ -200,9 +200,8 @@
                       posts)))))
 
 (defn- now []
-  (pr-str
-   (.format (java.time.LocalDate/now)
-            (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd"))))
+  (.format (java.time.LocalDate/now)
+           (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd")))
 
 (defn new
   "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
@@ -211,13 +210,14 @@
   (assert title "Must give filename")
   (let [post-file (fs/file "posts" file)]
     (when-not (fs/exists? post-file)
+      (fs/create-dirs "posts")
       (spit (fs/file "posts" file) "TODO: write blog post")
       (spit (fs/file "posts.edn")
-            (selmer/render post-template
-                           {:title (pr-str title)
-                            :file (pr-str file)
+            (with-out-str ((requiring-resolve 'clojure.pprint/pprint)
+                           {:title title
+                            :file file
                             :date (now)
-                            :categories #{"clojure"}})
+                            :categories #{"clojure"}}))
             :append true))))
 
 (defn serve
