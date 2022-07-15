@@ -1,5 +1,7 @@
 {:deps {org.babashka/cli {:mvn/version "0.3.31"}
-        io.github.borkdude/quickblog {:local/root "."} #_{:git/sha "039b2213eacf642ff9f0019a2c46621300e7ea6b"}
+        io.github.borkdude/quickblog {:local/root "."}
+        #_"You use:"
+        #_{:git/sha "039b2213eacf642ff9f0019a2c46621300e7ea6b"}
         }
  :paths ["."]
 
