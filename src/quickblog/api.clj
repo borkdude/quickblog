@@ -14,6 +14,11 @@
   (zipmap (map keyword ks)
           ks))
 
+(def ^:private default-opts
+  {:cache-dir ".work"
+   :out-dir "public"
+   :posts-dir "posts"})
+
 (def ^:private post-template
   "<h1>{{title}}</h1>
 {{body | safe }}
@@ -56,13 +61,13 @@
   (ensure-template "templates/base.html")
   (slurp "templates/base.html"))
 
-(defn- gen-posts [{:keys [posts out-dir] :as opts}]
+(defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir] :as opts}]
   (doseq [{:keys [file title date legacy discuss]
            :or {discuss discuss-fallback}}
           posts]
     (let [base-html (base-html)
-          cache-file (fs/file ".work" (html-file file))
-          markdown-file (fs/file "posts" file)
+          cache-file (fs/file cache-dir (html-file file))
+          markdown-file (fs/file posts-dir file)
           stale? (seq (fs/modified-since cache-file markdown-file))
           body (if stale?
                  (let [body (markdown->html markdown-file)]
@@ -169,8 +174,10 @@
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
   [{:keys [blog-title
+           cache-dir
            out-dir]
-    :or {out-dir "public"}
+    :or {cache-dir (:cache-dir default-opts)
+         out-dir (:out-dir default-opts)}
     :as opts}]
   (ensure-template "templates/style.css")
   (let [opts (assoc opts :out-dir out-dir)
@@ -183,7 +190,7 @@
       (fs/copy-tree "assets" asset-dir {:replace-existing true}))
     (doseq [file (fs/glob "templates" "*.{css,svg}")]
       (fs/copy file out-dir {:replace-existing true}))
-    (fs/create-dirs (fs/file ".work"))
+    (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (spit (fs/file out-dir "archive.html")
           (selmer/render (base-html)
@@ -210,13 +217,15 @@
 
 (defn new
   "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
-  [{:keys [file title]}]
-  (assert file "Must give title")
-  (assert title "Must give filename")
-  (let [post-file (fs/file "posts" file)]
+  [{:keys [file title
+           posts-dir]
+    :or {posts-dir (:posts-dir default-opts)}}]
+  (assert file "Missing required argument: --file POST_FILENAME")
+  (assert title "Missing required argument: --title POST_TITLE")
+  (let [post-file (fs/file posts-dir file)]
     (when-not (fs/exists? post-file)
-      (fs/create-dirs "posts")
-      (spit (fs/file "posts" file) "TODO: write blog post")
+      (fs/create-dirs posts-dir)
+      (spit (fs/file posts-dir file) "TODO: write blog post")
       (spit (fs/file "posts.edn")
             (with-out-str ((requiring-resolve 'clojure.pprint/pprint)
                            {:title title
@@ -227,17 +236,19 @@
 
 (defn serve
   "Runs file-server on `port`."
-  [{:keys [port]
-    :or {port 1888}}]
+  [{:keys [port out-dir]
+    :or {port 1888
+         out-dir (:out-dir default-opts)}}]
   (let [serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
-            :dir "public"})))
+            :dir out-dir})))
 
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
-  [{:keys [watch-script]
-    :or {watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
+  [{:keys [posts-dir watch-script]
+    :or {posts-dir (:posts-dir default-opts)
+         watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
   (let [opts (assoc opts :watch watch-script)]
     (render opts)
@@ -250,7 +261,7 @@
                  (println "Re-rendering")
                  (render opts)))
 
-        (watch "posts"
+        (watch posts-dir
                (fn [_]
                  (println "Re-rendering")
                  (render opts)))
