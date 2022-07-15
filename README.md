@@ -18,11 +18,11 @@ Copy the config from `bb.edn` in this project to your local `bb.edn`. Then run `
 $ bb tasks
 The following tasks are available:
 
-new     Create new blog article
-render  Render blog
-watch   Watch posts and templates and render file changes
-publish Publish blog
-clean   Remove .work and public directory
+new       Create new blog article
+quickblog Render blog
+watch     Watch posts and templates and render file changes
+publish   Publish blog
+clean     Remove .work and public directory
 ```
 
 To create a new blog post:
