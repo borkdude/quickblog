@@ -62,42 +62,38 @@
   (slurp "templates/base.html"))
 
 (defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir] :as opts}]
-  (let [cache-dir (or cache-dir (:cache-dir default-opts))
-        out-dir (or out-dir (:out-dir default-opts))
-        posts-dir (or posts-dir (:posts-dir default-opts))]
-    (fs/create-dirs cache-dir)
-    (fs/create-dirs out-dir)
-    (fs/create-dirs posts-dir)
-    (doseq [{:keys [file title date legacy discuss]
-             :or {discuss discuss-fallback}}
-            posts]
-      (let [base-html (base-html)
-            cache-file (fs/file cache-dir (html-file file))
-            markdown-file (fs/file posts-dir file)
-            stale? (seq (fs/modified-since cache-file markdown-file))
-            body (if stale?
-                   (let [body (markdown->html markdown-file)]
-                     (spit cache-file body)
-                     body)
-                   (slurp cache-file))
-            _ (swap! bodies assoc file body)
-            body (selmer/render post-template (->map body title date discuss))
-            html (selmer/render base-html
-                                (assoc opts
-                                       :title title
-                                       :body body))
-            html-file (str/replace file ".md" ".html")]
-        (spit (fs/file out-dir html-file) html)
-        (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
-                                  (str/replace file ".md" ""))]
-          (when legacy
-            (fs/create-dirs legacy-dir)
-            (let [redirect-html (selmer/render"
+  (fs/create-dirs cache-dir)
+  (fs/create-dirs out-dir)
+  (doseq [{:keys [file title date legacy discuss]
+           :or {discuss discuss-fallback}}
+          posts]
+    (let [base-html (base-html)
+          cache-file (fs/file cache-dir (html-file file))
+          markdown-file (fs/file posts-dir file)
+          stale? (seq (fs/modified-since cache-file markdown-file))
+          body (if stale?
+                 (let [body (markdown->html markdown-file)]
+                   (spit cache-file body)
+                   body)
+                 (slurp cache-file))
+          _ (swap! bodies assoc file body)
+          body (selmer/render post-template (->map body title date discuss))
+          html (selmer/render base-html
+                              (assoc opts
+                                     :title title
+                                     :body body))
+          html-file (str/replace file ".md" ".html")]
+      (spit (fs/file out-dir html-file) html)
+      (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
+                                (str/replace file ".md" ""))]
+        (when legacy
+          (fs/create-dirs legacy-dir)
+          (let [redirect-html (selmer/render"
 <html><head>
 <meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
 </head></html>"
-                                              {:new_url html-file})]
-              (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html))))))))
+                                            {:new_url html-file})]
+            (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
 ;;;; Generate archive page
 
@@ -181,12 +177,17 @@
   "Renders posts declared in `posts.edn` to `out-dir`."
   [{:keys [blog-title
            cache-dir
-           out-dir]
+           out-dir
+           posts-dir]
     :or {cache-dir (:cache-dir default-opts)
-         out-dir (:out-dir default-opts)}
+         out-dir (:out-dir default-opts)
+         posts-dir (:posts-dir default-opts)}
     :as opts}]
   (ensure-template "templates/style.css")
-  (let [opts (assoc opts :out-dir out-dir)
+  (let [opts (assoc opts
+                    :out-dir out-dir
+                    :cache-dir cache-dir
+                    :posts-dir posts-dir)
         posts (sort-by :date (comp - compare)
                        (edn/read-string (format "[%s]"
                                                 (slurp "posts.edn"))))
@@ -225,20 +226,22 @@
   "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
   [{:keys [file title
            posts-dir]
-    :or {posts-dir (:posts-dir default-opts)}}]
-  (assert file "Missing required argument: --file POST_FILENAME")
-  (assert title "Missing required argument: --title POST_TITLE")
-  (let [post-file (fs/file posts-dir file)]
-    (when-not (fs/exists? post-file)
-      (fs/create-dirs posts-dir)
-      (spit (fs/file posts-dir file) "TODO: write blog post")
-      (spit (fs/file "posts.edn")
-            (with-out-str ((requiring-resolve 'clojure.pprint/pprint)
-                           {:title title
-                            :file file
-                            :date (now)
-                            :categories #{"clojure"}}))
-            :append true))))
+    :or {posts-dir (:posts-dir default-opts)}
+    :as opts}]
+  (let [_opts (assoc opts :posts-dir posts-dir)]
+    (assert file "Missing required argument: --file POST_FILENAME")
+    (assert title "Missing required argument: --title POST_TITLE")
+    (let [post-file (fs/file posts-dir file)]
+      (when-not (fs/exists? post-file)
+        (fs/create-dirs posts-dir)
+        (spit (fs/file posts-dir file) "TODO: write blog post")
+        (spit (fs/file "posts.edn")
+              (with-out-str ((requiring-resolve 'clojure.pprint/pprint)
+                             {:title title
+                              :file file
+                              :date (now)
+                              :categories #{"clojure"}}))
+              :append true)))))
 
 (defn serve
   "Runs file-server on `port`."
@@ -256,7 +259,9 @@
     :or {posts-dir (:posts-dir default-opts)
          watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
-  (let [opts (assoc opts :watch watch-script)]
+  (let [opts (assoc opts
+                    :watch watch-script
+                    :posts-dir posts-dir)]
     (render opts)
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
