@@ -1,0 +1,10 @@
+{:paths ["src" "resources"]
+ :deps {rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}
+        hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
+        babashka/fs {:mvn/version "0.1.6"}
+        org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}
+        selmer/selmer {:mvn/version "1.12.53"}
+        markdown-clj/markdown-clj {:mvn/version "1.11.2"}
+        org.babashka/http-server {:mvn/version "0.1.11"}
+        babashka/babashka.pods {:git/url "https://github.com/babashka/pods"
+                                :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}}}

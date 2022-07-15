@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+    <meta charset="utf-8"/>
+    <link type="application/atom+xml" rel="alternate" href="atom.xml" title="REPL Adventures">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/components/prism-clojure.min.js"></script>
+    {{watch | safe }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/themes/prism.min.css">
+  </head>
+  <body>
+
+    <div class="site-header">
+      <div class="wrapper">
+        <div class="site-nav">
+          <a class="page-link" href="archive.html">Archive</a>
+          <a class="page-link" href="{{discuss-link}}">Discuss</a>
+          <a class="page-link" href="atom.xml">
+            Feed
+          </a>
+          <a class="page-link" href="https://twitter.com/borkdude">
+            Twitter
+          </a>
+          <a class="page-link" href="https://michielborkent.nl">About</a>
+        </div>
+        <div>
+          <h1 class="site-title">
+            <a class="page-link" href="index.html">REPL adventures</a>
+          </h1>
+          <p>A blog mostly about Clojure and ClojureScript.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrapper">
+
+      {{body | safe }}
+
+      {% if not skip-archive %}
+      <div style="margin-bottom: 20px; float: right;">
+        <a class="page-link" href="archive.html">Archive</a>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>
