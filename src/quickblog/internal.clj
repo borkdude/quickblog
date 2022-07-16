@@ -1,4 +1,5 @@
-(ns quickblog.lib
+(ns quickblog.internal
+  {:no-doc true}
   (:require
    [babashka.fs :as fs]))
 

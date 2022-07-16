@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
-   [quickblog.lib :as lib]
+   [quickblog.internal :as lib]
    [selmer.parser :as selmer]))
 
 (defmacro ^:private ->map [& ks]

@@ -19,14 +19,14 @@
   new {:doc "Create new blog article"
        :task (qb/new opts)}
 
-  quickblog {:doc "Render blog"
-             :task (qb/quickblog opts)}
+  render {:doc "Render blog"
+          :task (qb/render opts)}
 
   watch  {:doc "Watch posts and templates and render file changes"
           :task (qb/watch opts)}
 
   publish {:doc "Publish blog"
-           :depends [quickblog]
+           :depends [render]
            :task (shell "rsync -a --delete public/ user@yourdomain:~/blog")}
 
   clean {:doc "Remove .work and public directory"
