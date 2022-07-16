@@ -125,11 +125,13 @@
      [:p [:i "Published: " date]]]))
 
 (defn- spit-index
-  [{:keys [posts out-dir] :as opts}]
+  [{:keys [posts out-dir
+           blog-title] :as opts}]
   (spit
    (fs/file out-dir "index.html")
    (selmer/render (base-html opts)
                   (assoc opts
+                         :title blog-title
                          :body (hiccup/html {:escape-strings? false} (index {:posts posts}))))))
 
 ;;;; Generate atom feeds
