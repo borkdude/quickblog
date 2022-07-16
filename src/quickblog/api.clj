@@ -275,8 +275,8 @@
     (render opts)
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
-      (load-pod 'org.babashka/filewatcher "0.0.1")
-      (let [watch (requiring-resolve 'pod.babashka.filewatcher/watch)]
+      (load-pod 'org.babashka/fswatcher "0.0.3")
+      (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
         (watch "posts.edn"
                (fn [_]
                  (println "Re-rendering")
