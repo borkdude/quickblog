@@ -268,8 +268,9 @@
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
-  [{:keys [posts-dir watch-script]
+  [{:keys [posts-dir templates-dir watch-script]
     :or {posts-dir (:posts-dir default-opts)
+         templates-dir (:templates-dir default-opts)
          watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
   (let [opts (assoc opts
@@ -290,7 +291,7 @@
                  (println "Re-rendering")
                  (render opts)))
 
-        (watch "templates"
+        (watch templates-dir
                (fn [_]
                  (println "Re-rendering")
                  (render opts))))))
