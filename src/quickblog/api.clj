@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
+   [quickblog.lib :as lib]
    [selmer.parser :as selmer]))
 
 (defmacro ^:private ->map [& ks]
@@ -124,11 +125,13 @@
      [:p [:i "Published: " date]]]))
 
 (defn- spit-index
-  [{:keys [posts out-dir] :as opts}]
+  [{:keys [posts out-dir
+           blog-title] :as opts}]
   (spit
    (fs/file out-dir "index.html")
    (selmer/render (base-html opts)
                   (assoc opts
+                         :title blog-title
                          :body (hiccup/html {:escape-strings? false} (index {:posts posts}))))))
 
 ;;;; Generate atom feeds
@@ -201,11 +204,11 @@
                        (edn/read-string (format "[%s]"
                                                 (slurp "posts.edn"))))
         opts (assoc opts :posts posts)
-        asset-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+        asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
     (when (fs/exists? assets-dir)
-      (fs/copy-tree assets-dir asset-dir {:replace-existing true}))
+      (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
-      (fs/copy file out-dir {:replace-existing true}))
+      (lib/copy-modified file (fs/file out-dir (.getFileName file))))
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (spit (fs/file out-dir "archive.html")
@@ -265,8 +268,9 @@
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
-  [{:keys [posts-dir watch-script]
+  [{:keys [posts-dir templates-dir watch-script]
     :or {posts-dir (:posts-dir default-opts)
+         templates-dir (:templates-dir default-opts)
          watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
   (let [opts (assoc opts
@@ -287,7 +291,7 @@
                  (println "Re-rendering")
                  (render opts)))
 
-        (watch "templates"
+        (watch templates-dir
                (fn [_]
                  (println "Re-rendering")
                  (render opts))))))
