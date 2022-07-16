@@ -15,9 +15,11 @@
           ks))
 
 (def ^:private default-opts
-  {:cache-dir ".work"
+  {:assets-dir "assets"
+   :cache-dir ".work"
    :out-dir "public"
-   :posts-dir "posts"})
+   :posts-dir "posts"
+   :templates-dir "templates"})
 
 (def ^:private post-template
   "<h1>{{title}}</h1>
@@ -55,9 +57,10 @@
       (fs/create-dirs (fs/parent f))
       (spit f (slurp (io/resource path))))))
 
-(defn- base-html []
-  (ensure-template "templates/base.html")
-  (slurp "templates/base.html"))
+(defn- base-html [{:keys [templates-dir]}]
+  (let [template (fs/file templates-dir "base.html")]
+    (ensure-template template)
+    (slurp template)))
 
 (defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir
                           discuss-link] :as opts}]
@@ -66,7 +69,7 @@
   (doseq [{:keys [file title date legacy discuss]
            :or {discuss discuss-link}}
           posts]
-    (let [base-html (base-html)
+    (let [base-html (base-html opts)
           cache-file (fs/file cache-dir (html-file file))
           markdown-file (fs/file posts-dir file)
           stale? (seq (fs/modified-since cache-file markdown-file))
@@ -124,7 +127,7 @@
   [{:keys [posts out-dir] :as opts}]
   (spit
    (fs/file out-dir "index.html")
-   (selmer/render (base-html)
+   (selmer/render (base-html opts)
                   (assoc opts
                          :body (hiccup/html {:escape-strings? false} (index {:posts posts}))))))
 
@@ -174,33 +177,39 @@
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
   [{:keys [blog-title
+           assets-dir
            cache-dir
            out-dir
            posts-dir
+           templates-dir
            discuss-link]
-    :or {cache-dir (:cache-dir default-opts)
+    :or {assets-dir (:assets-dir default-opts)
+         cache-dir (:cache-dir default-opts)
          out-dir (:out-dir default-opts)
-         posts-dir (:posts-dir default-opts)}
+         posts-dir (:posts-dir default-opts)
+         templates-dir (:templates-dir default-opts)}
     :as opts}]
-  (ensure-template "templates/style.css")
+  (ensure-template (fs/file templates-dir "style.css"))
   (let [opts (assoc opts
                     :out-dir out-dir
+                    :assets-dir assets-dir
                     :cache-dir cache-dir
                     :posts-dir posts-dir
+                    :templates-dir templates-dir
                     :discuss-link discuss-link)
         posts (sort-by :date (comp - compare)
                        (edn/read-string (format "[%s]"
                                                 (slurp "posts.edn"))))
         opts (assoc opts :posts posts)
-        asset-dir (fs/create-dirs (fs/file out-dir "assets"))]
-    (when (fs/exists? "assets")
-      (fs/copy-tree "assets" asset-dir {:replace-existing true}))
-    (doseq [file (fs/glob "templates" "*.{css,svg}")]
+        asset-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+    (when (fs/exists? assets-dir)
+      (fs/copy-tree assets-dir asset-dir {:replace-existing true}))
+    (doseq [file (fs/glob templates-dir "*.{css,svg}")]
       (fs/copy file out-dir {:replace-existing true}))
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (spit (fs/file out-dir "archive.html")
-          (selmer/render (base-html)
+          (selmer/render (base-html opts)
                          (assoc opts
                                 :skip-archive true
                                 :title (str blog-title " - Archive")
