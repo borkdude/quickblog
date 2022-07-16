@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
+   [quickblog.lib :as lib]
    [selmer.parser :as selmer]))
 
 (defmacro ^:private ->map [& ks]
@@ -201,9 +202,9 @@
                        (edn/read-string (format "[%s]"
                                                 (slurp "posts.edn"))))
         opts (assoc opts :posts posts)
-        asset-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+        asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
     (when (fs/exists? assets-dir)
-      (fs/copy-tree assets-dir asset-dir {:replace-existing true}))
+      (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
       (fs/copy file out-dir {:replace-existing true}))
     (fs/create-dirs (fs/file cache-dir))
