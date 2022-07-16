@@ -208,7 +208,7 @@
     (when (fs/exists? assets-dir)
       (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
-      (fs/copy file out-dir {:replace-existing true}))
+      (lib/copy-modified file (fs/file out-dir (.getFileName file))))
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (spit (fs/file out-dir "archive.html")
