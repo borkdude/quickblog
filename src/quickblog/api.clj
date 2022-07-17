@@ -28,6 +28,18 @@
 {{body | safe }}
 <p>Discuss this post <a href=\"{{discuss}}\">here</a>.</p>
 <p><i>Published: {{date}}</i></p>
+{% if tags %}
+<p>
+  <i>
+  Tagged:
+  {% for tag in tags %}
+  <span class=\"tag\">
+    <a href=\"tags/{{ tag }}.html\">{{ tag }}</a>
+  </span>
+  {% endfor %}
+  </i>
+</p>
+{% endif %}
 ")
 
 ;; re-used when generating atom.xml
@@ -68,7 +80,7 @@
                           discuss-link] :as opts}]
   (fs/create-dirs cache-dir)
   (fs/create-dirs out-dir)
-  (doseq [{:keys [file title date legacy discuss]
+  (doseq [{:keys [file title date tags legacy discuss]
            :or {discuss discuss-link}}
           posts]
     (let [base-html (base-html opts)
@@ -81,7 +93,7 @@
                    body)
                  (slurp cache-file))
           _ (swap! bodies assoc file body)
-          body (selmer/render post-template (->map body title date discuss))
+          body (selmer/render post-template (->map body title date tags discuss))
           html (selmer/render base-html
                               (assoc opts
                                      :title title
@@ -119,7 +131,7 @@
 ;;;; Generate index page with last 3 posts
 
 (defn- index [{:keys [posts discuss-link]}]
-  (for [{:keys [file title date preview discuss]
+  (for [{:keys [file title date tags preview discuss]
          :or {discuss discuss-link}} (take 3 posts)
         :when (not preview)]
     [:div
@@ -127,7 +139,13 @@
            title]]
      (get @bodies file)
      [:p "Discuss this post " [:a {:href discuss} "here"] "."]
-     [:p [:i "Published: " date]]]))
+     [:p [:i "Published: " date]]
+     (when tags
+       [:p
+        [:i "Tagged: "
+         (for [tag tags]
+           [:span {:class "tag"}
+            [:a {:href (format "tags/%s.html" tag)} tag]])]])]))
 
 (defn- spit-index
   [{:keys [posts out-dir
