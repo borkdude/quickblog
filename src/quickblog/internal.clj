@@ -3,6 +3,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [selmer.parser :as selmer]))
@@ -26,6 +27,13 @@
       (fs/create-dirs (.getParent target-path))
       (println "Writing" (str target-path))
       (fs/copy (fs/file path) target-path))))
+
+(defn ensure-template [path]
+  (let [f (fs/file path)]
+    (when-not (fs/exists? f)
+      (fs/create-dirs (fs/parent f))
+      (spit f (slurp (io/resource path))))
+    f))
 
 (defn load-posts [{:keys [posts-file]}]
   (->> (edn/read-string (format "[%s]" (slurp posts-file)))
@@ -68,6 +76,16 @@
             (count posts)
             " posts"]])]])
 
+(defn write-page! [{:keys [favicon-template] :as opts} out-file
+                   template template-vars]
+  (println "Writing page:" (str out-file))
+  (let [template-vars (merge opts
+                             template-vars
+                             (when favicon-template
+                               {:favicon (slurp (ensure-template favicon-template))}))]
+    (->> (selmer/render template template-vars)
+         (spit out-file))))
+
 (defn write-tag! [{:keys [blog-title]
                    :as opts}
                   tags-out-dir
@@ -76,11 +94,9 @@
   (let [tag-slug (str/replace tag #"[^A-z0-9]" "-")
         tag-file (fs/file tags-out-dir (str tag-slug ".html"))]
     (println "Writing tag page:" (str tag-file))
-    (spit tag-file
-          (selmer/render template
-                         (merge opts
-                                {:skip-archive true
-                                 :title (str blog-title " - Tag - " tag)
-                                 :relative-path "../"
-                                 :body (hiccup/html (post-links (str "Tag - " tag) posts
-                                                                {:relative-path "../"}))})))))
+    (write-page! opts tag-file template
+                 {:skip-archive true
+                  :title (str blog-title " - Tag - " tag)
+                  :relative-path "../"
+                  :body (hiccup/html (post-links (str "Tag - " tag) posts
+                                                 {:relative-path "../"}))})))
