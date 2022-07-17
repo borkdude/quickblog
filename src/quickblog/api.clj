@@ -20,6 +20,7 @@
    :cache-dir ".work"
    :out-dir "public"
    :posts-dir "posts"
+   :tags-dir "tags"
    :templates-dir "templates"})
 
 (def ^:private post-template
@@ -98,19 +99,23 @@
                                             {:new_url html-file})]
             (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
-;;;; Generate archive page
+(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir]
+                  :as opts}]
+  (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
+        posts-by-tag (lib/posts-by-tag posts)
+        tags-file (fs/file tags-out-dir "index.html")
+        template (base-html opts)]
+    (println "Writing tags page" (str tags-file))
+    (spit tags-file
+          (selmer/render template
+                         (merge opts
+                                {:skip-archive true
+                                 :title (str blog-title " - Tags")
+                                 :relative-path "../"
+                                 :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})))
+    (doseq [tag-and-posts posts-by-tag]
+      (lib/write-tag! opts tags-out-dir template tag-and-posts))))
 
-(defn- post-links [{:keys [posts]}]
-  [:div {:style "width: 600px;"}
-   [:h1 "Archive"]
-   [:ul.index
-    (for [{:keys [file title date preview]} posts
-          :when (not preview)]
-      [:li [:span
-            [:a {:href (str/replace file ".md" ".html")}
-             title]
-            " - "
-            date]])]])
 ;;;; Generate index page with last 3 posts
 
 (defn- index [{:keys [posts discuss-link]}]
@@ -184,12 +189,14 @@
            cache-dir
            out-dir
            posts-dir
+           tags-dir
            templates-dir
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          cache-dir (:cache-dir default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
+         tags-dir (:tags-dir default-opts)
          templates-dir (:templates-dir default-opts)}
     :as opts}]
   (ensure-template (fs/file templates-dir "style.css"))
@@ -198,6 +205,7 @@
                     :assets-dir assets-dir
                     :cache-dir cache-dir
                     :posts-dir posts-dir
+                    :tags-dir tags-dir
                     :templates-dir templates-dir
                     :discuss-link discuss-link)
         posts (sort-by :date (comp - compare)
@@ -211,20 +219,21 @@
       (lib/copy-modified file (fs/file out-dir (.getFileName file))))
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
-    (spit (fs/file out-dir "archive.html")
-          (selmer/render (base-html opts)
-                         (assoc opts
-                                :skip-archive true
-                                :title (str blog-title " - Archive")
-                                :body (hiccup/html (post-links {:posts posts})))))
+    (gen-tags opts)
+    (let [title (str blog-title " - Archive")]
+      (spit (fs/file out-dir "archive.html")
+            (selmer/render (base-html opts)
+                           (assoc opts
+                                  :skip-archive true
+                                  :title title
+                                  :body (hiccup/html (lib/post-links "Archive" posts))))))
     (spit-index opts)
     (spit (fs/file out-dir "atom.xml") (atom-feed opts))
     (spit (fs/file out-dir "planetclojure.xml")
           (atom-feed (filter
                       (fn [post]
-                        (some (:categories post) ["clojure" "clojurescript"]))
+                        (some (:tags post) ["clojure" "clojurescript"]))
                       posts)))))
-
 
 (defn quickblog
   "Alias for `render`"
@@ -253,7 +262,7 @@
                              {:title title
                               :file file
                               :date (now)
-                              :categories #{"clojure"}}))
+                              :tags #{"clojure"}}))
               :append true)))))
 
 (defn serve
