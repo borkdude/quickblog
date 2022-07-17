@@ -60,7 +60,6 @@
   (template opts "base.html"))
 
 (defn- post-html [opts]
-  (println (template opts "post.html"))
   (template opts "post.html"))
 
 (defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir
