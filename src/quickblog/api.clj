@@ -113,16 +113,19 @@
             date]])]])
 ;;;; Generate index page with last 3 posts
 
-(defn- index [{:keys [posts discuss-link]}]
-  (for [{:keys [file title date preview discuss]
-         :or {discuss discuss-link}} (take 3 posts)
-        :when (not preview)]
-    [:div
-     [:h1 [:a {:href (str/replace file ".md" ".html")}
-           title]]
-     (get @bodies file)
-     [:p "Discuss this post " [:a {:href discuss} "here"] "."]
-     [:p [:i "Published: " date]]]))
+(defn- index-html [opts]
+  (template opts "index.html"))
+
+(defn- index [{:keys [posts discuss-link] :as opts}]
+  (let [prepare-post (fn [{:keys [file discuss] :as post}]
+                       (assoc post
+                              :discuss (or discuss discuss-link)
+                              :link (str/replace file ".md" ".html")
+                              :body (get @bodies file)))]
+    (selmer/render (index-html opts)
+                   {:posts (->> posts
+                                (filter (comp not :preview))
+                                (map prepare-post))})))
 
 (defn- spit-index
   [{:keys [posts out-dir
@@ -132,7 +135,7 @@
    (selmer/render (base-html opts)
                   (assoc opts
                          :title blog-title
-                         :body (hiccup/html {:escape-strings? false} (index {:posts posts}))))))
+                         :body (hiccup/html {:escape-strings? false} (index opts))))))
 
 ;;;; Generate atom feeds
 

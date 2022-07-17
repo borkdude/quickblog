@@ -1,0 +1,10 @@
+{% for post in posts|take:3 %}
+<div>
+  <h1>
+    <a href="{{ post.link }}">{{ post.title | safe }}</a>
+  </h1>
+  {{ post.body | safe }}
+  <p>Discuss this post <a href="{{ discuss }}">here</a></p>
+  <p><i>Published: {{ post.date }}</i></p>
+</div>
+{% endfor %}
