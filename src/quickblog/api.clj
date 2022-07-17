@@ -2,7 +2,6 @@
   (:require
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
@@ -20,6 +19,7 @@
    :cache-dir ".work"
    :out-dir "public"
    :posts-dir "posts"
+   :posts-file "posts.edn"
    :tags-dir "tags"
    :templates-dir "templates"})
 
@@ -207,6 +207,7 @@
            cache-dir
            out-dir
            posts-dir
+           posts-file
            tags-dir
            templates-dir
            discuss-link]
@@ -214,6 +215,7 @@
          cache-dir (:cache-dir default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
+         posts-file (:posts-file default-opts)
          tags-dir (:tags-dir default-opts)
          templates-dir (:templates-dir default-opts)}
     :as opts}]
@@ -223,12 +225,11 @@
                     :assets-dir assets-dir
                     :cache-dir cache-dir
                     :posts-dir posts-dir
+                    :posts-file posts-file
                     :tags-dir tags-dir
                     :templates-dir templates-dir
                     :discuss-link discuss-link)
-        posts (sort-by :date (comp - compare)
-                       (edn/read-string (format "[%s]"
-                                                (slurp "posts.edn"))))
+        posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
     (when (fs/exists? assets-dir)

@@ -2,6 +2,7 @@
   {:no-doc true}
   (:require
    [babashka.fs :as fs]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [selmer.parser :as selmer]))
@@ -25,6 +26,12 @@
       (fs/create-dirs (.getParent target-path))
       (println "Writing" (str target-path))
       (fs/copy (fs/file path) target-path))))
+
+(defn load-posts [{:keys [posts-file]}]
+  (->> (edn/read-string (format "[%s]" (slurp posts-file)))
+       (map (fn [{:keys [tags categories] :as post}]
+              (assoc post :tags (or tags categories))))
+       (sort-by :date (comp - compare))))
 
 (defn posts-by-tag [posts]
   (->> posts
