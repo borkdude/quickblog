@@ -8,8 +8,11 @@
  :tasks
 
  {:init (def opts (merge {:blog-title "REPL adventures"
-                          :out-dir "public"
-                          :blog-root "https://blog.michielborkent.nl/"}
+                          :blog-description "A blog mostly about Clojure and ClojureScript."
+                          :blog-root "https://blog.michielborkent.nl/"
+                          :about-link "https://michielborkent.nl/"
+                          :twitter-handle "borkdude"
+                          :out-dir "public"}
                          (cli/parse-opts *command-line-args*)))
 
   :requires ([babashka.fs :as fs]

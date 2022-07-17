@@ -21,16 +21,20 @@
 	  <a class="page-link" href="{{relative-path | safe}}atom.xml">
             Feed
           </a>
-          <a class="page-link" href="https://twitter.com/borkdude">
+	  {% if twitter-handle %}
+	  <a class="page-link" href="https://twitter.com/{{twitter-handle}}">
             Twitter
           </a>
-          <a class="page-link" href="https://michielborkent.nl">About</a>
+	  {% endif %}
+	  {% if about-link %}
+	  <a class="page-link" href="{{about-link}}">About</a>
+	  {% endif %}
         </div>
         <div>
           <h1 class="site-title">
             <a class="page-link" href="{{relative-path | safe}}index.html">{{blog-title}}</a>
           </h1>
-          <p>A blog mostly about Clojure and ClojureScript.</p>
+	  <p>{{blog-description}}</p>
         </div>
       </div>
     </div>
