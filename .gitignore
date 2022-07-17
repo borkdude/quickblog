@@ -20,5 +20,5 @@ Gemfile.lock
 report.html
 classes
 posts.edn
-templates
+/templates
 posts
