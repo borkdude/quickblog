@@ -111,22 +111,24 @@
                                             {:new_url html-file})]
             (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
-(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir]
+(defn- gen-tags [{:keys [posts posts-file blog-title out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
-        template (base-html opts)]
-    (println "Writing tags page" (str tags-file))
-    (spit tags-file
-          (selmer/render template
-                         (merge opts
-                                {:skip-archive true
-                                 :title (str blog-title " - Tags")
-                                 :relative-path "../"
-                                 :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})))
-    (doseq [tag-and-posts posts-by-tag]
-      (lib/write-tag! opts tags-out-dir template tag-and-posts))))
+        template (base-html opts)
+        stale? (seq (fs/modified-since tags-out-dir posts-file))]
+    (when stale?
+      (println "Writing tags page" (str tags-file))
+      (spit tags-file
+            (selmer/render template
+                           (merge opts
+                                  {:skip-archive true
+                                   :title (str blog-title " - Tags")
+                                   :relative-path "../"
+                                   :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})))
+      (doseq [tag-and-posts posts-by-tag]
+        (lib/write-tag! opts tags-out-dir template tag-and-posts)))))
 
 ;;;; Generate index page with last 3 posts
 
