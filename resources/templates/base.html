@@ -3,8 +3,8 @@
   <head>
     <title>{{title}}</title>
     <meta charset="utf-8"/>
-    <link type="application/atom+xml" rel="alternate" href="atom.xml" title="REPL Adventures">
-    <link rel="stylesheet" href="style.css">
+    <link type="application/atom+xml" rel="alternate" href="{{relative-path | safe}}atom.xml" title="{{title}}">
+    <link rel="stylesheet" href="{{relative-path | safe}}style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/components/prism-clojure.min.js"></script>
     {{watch | safe }}
@@ -15,9 +15,10 @@
     <div class="site-header">
       <div class="wrapper">
         <div class="site-nav">
-          <a class="page-link" href="archive.html">Archive</a>
+          <a class="page-link" href="{{relative-path | safe}}archive.html">Archive</a>
+          <a class="page-link" href="{{relative-path | safe}}tags/index.html">Tags</a>
           <a class="page-link" href="{{discuss-link}}">Discuss</a>
-          <a class="page-link" href="atom.xml">
+	  <a class="page-link" href="{{relative-path | safe}}atom.xml">
             Feed
           </a>
           <a class="page-link" href="https://twitter.com/borkdude">
@@ -27,7 +28,7 @@
         </div>
         <div>
           <h1 class="site-title">
-            <a class="page-link" href="index.html">REPL adventures</a>
+            <a class="page-link" href="{{relative-path | safe}}index.html">{{blog-title}}</a>
           </h1>
           <p>A blog mostly about Clojure and ClojureScript.</p>
         </div>
@@ -40,7 +41,7 @@
 
       {% if not skip-archive %}
       <div style="margin-bottom: 20px; float: right;">
-        <a class="page-link" href="archive.html">Archive</a>
+        <a class="page-link" href="{{relative-path | safe}}archive.html">Archive</a>
       </div>
       {% endif %}
     </div>
