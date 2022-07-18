@@ -75,8 +75,9 @@
              :or {discuss discuss-link}}
             posts]
       (let [base-html (base-html opts)
-            cache-file (fs/file cache-dir (html-file file))
             markdown-file (fs/file posts-dir file)
+            cache-file (fs/file cache-dir (html-file file))
+            out-file (fs/file out-dir (html-file file))
             stale? (seq (fs/modified-since cache-file markdown-file))
             body (if stale?
                    (let [body (markdown->html markdown-file)]
@@ -85,12 +86,12 @@
                    (slurp cache-file))
             _ (swap! bodies assoc file body)
             body (selmer/render (slurp post-template)
-                                (->map body title date tags discuss))
-            html-file (str/replace file ".md" ".html")]
-        (lib/write-page! opts (fs/file out-dir html-file)
-                         base-html
-                         {:title title
-                                       :body body})
+                                (->map body title date tags discuss))]
+        (when (or stale? (not (fs/exists? out-file)))
+          (lib/write-page! opts out-file
+                           base-html
+                           {:title title
+                            :body body}))
         (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
                                   (str/replace file ".md" ""))]
           (when legacy

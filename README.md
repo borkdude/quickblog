@@ -70,6 +70,9 @@ etc.
 
 ### favicon
 
+**NOTE:** when enabling or disabling a favicon, you must do a full re-render of
+your site by running `bb clean` and then your `bb render` command.
+
 To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add
 `:enable-favicon true` to your quickblog opts (or use `--enable-favicon
 true` on the command line).
