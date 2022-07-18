@@ -19,6 +19,6 @@ Gemfile.lock
 .shadow-cljs
 report.html
 classes
-posts.edn
-templates
-posts
+/posts.edn
+/templates/
+/posts/

@@ -17,30 +17,12 @@
 (def ^:private default-opts
   {:assets-dir "assets"
    :cache-dir ".work"
+   :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
    :posts-file "posts.edn"
    :tags-dir "tags"
    :templates-dir "templates"})
-
-(def ^:private post-template
-  "<h1>{{title}}</h1>
-{{body | safe }}
-<p>Discuss this post <a href=\"{{discuss}}\">here</a>.</p>
-<p><i>Published: {{date}}</i></p>
-{% if tags %}
-<p>
-  <i>
-  Tagged:
-  {% for tag in tags %}
-  <span class=\"tag\">
-    <a href=\"tags/{{ tag }}.html\">{{ tag }}</a>
-  </span>
-  {% endfor %}
-  </i>
-</p>
-{% endif %}
-")
 
 ;; re-used when generating atom.xml
 (def ^:private bodies (atom {}))
@@ -69,47 +51,52 @@
   (let [f (fs/file path)]
     (when-not (fs/exists? f)
       (fs/create-dirs (fs/parent f))
-      (spit f (slurp (io/resource path))))))
+      (spit f (slurp (io/resource path))))
+    f))
 
 (defn- base-html [{:keys [templates-dir]}]
   (let [template (fs/file templates-dir "base.html")]
     (ensure-template template)
     (slurp template)))
 
-(defn- gen-posts [{:keys [posts cache-dir posts-dir out-dir
-                          discuss-link] :as opts}]
-  (fs/create-dirs cache-dir)
-  (fs/create-dirs out-dir)
-  (doseq [{:keys [file title date tags legacy discuss]
-           :or {discuss discuss-link}}
-          posts]
-    (let [base-html (base-html opts)
-          cache-file (fs/file cache-dir (html-file file))
-          markdown-file (fs/file posts-dir file)
-          stale? (seq (fs/modified-since cache-file markdown-file))
-          body (if stale?
-                 (let [body (markdown->html markdown-file)]
-                   (spit cache-file body)
-                   body)
-                 (slurp cache-file))
-          _ (swap! bodies assoc file body)
-          body (selmer/render post-template (->map body title date tags discuss))
-          html (selmer/render base-html
-                              (assoc opts
-                                     :title title
-                                     :body body))
-          html-file (str/replace file ".md" ".html")]
-      (spit (fs/file out-dir html-file) html)
-      (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
-                                (str/replace file ".md" ""))]
-        (when legacy
-          (fs/create-dirs legacy-dir)
-          (let [redirect-html (selmer/render"
+(defn- gen-posts [{:keys [posts discuss-link
+                          cache-dir posts-dir out-dir templates-dir]
+                   :as opts}]
+  (let [post-template (fs/file templates-dir "post.html")]
+    (fs/create-dirs cache-dir)
+    (fs/create-dirs out-dir)
+    (ensure-template post-template)
+    (doseq [{:keys [file title date tags legacy discuss]
+             :or {discuss discuss-link}}
+            posts]
+      (let [base-html (base-html opts)
+            cache-file (fs/file cache-dir (html-file file))
+            markdown-file (fs/file posts-dir file)
+            stale? (seq (fs/modified-since cache-file markdown-file))
+            body (if stale?
+                   (let [body (markdown->html markdown-file)]
+                     (spit cache-file body)
+                     body)
+                   (slurp cache-file))
+            _ (swap! bodies assoc file body)
+            body (selmer/render (slurp post-template)
+                                (->map body title date tags discuss))
+            html (selmer/render base-html
+                                (assoc opts
+                                       :title title
+                                       :body body))
+            html-file (str/replace file ".md" ".html")]
+        (spit (fs/file out-dir html-file) html)
+        (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
+                                  (str/replace file ".md" ""))]
+          (when legacy
+            (fs/create-dirs legacy-dir)
+            (let [redirect-html (selmer/render"
 <html><head>
 <meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
 </head></html>"
-                                            {:new_url html-file})]
-            (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
+                                              {:new_url html-file})]
+              (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html))))))))
 
 (defn- gen-tags [{:keys [posts posts-file blog-title out-dir tags-dir]
                   :as opts}]
@@ -132,32 +119,32 @@
 
 ;;;; Generate index page with last 3 posts
 
-(defn- index [{:keys [posts discuss-link]}]
-  (for [{:keys [file title date tags preview discuss]
-         :or {discuss discuss-link}} (take 3 posts)
-        :when (not preview)]
-    [:div
-     [:h1 [:a {:href (str/replace file ".md" ".html")}
-           title]]
-     (get @bodies file)
-     [:p "Discuss this post " [:a {:href discuss} "here"] "."]
-     [:p [:i "Published: " date]]
-     (when tags
-       [:p
-        [:i "Tagged: "
-         (for [tag tags]
-           [:span {:class "tag"}
-            [:a {:href (format "tags/%s.html" tag)} tag]])]])]))
+(defn- index [{:keys [posts discuss-link num-index-posts
+                      templates-dir]}]
+  (->> posts
+       (remove :preview)
+       (take num-index-posts)
+       (map (fn [{:keys [file title date tags preview discuss]
+                  :or {discuss discuss-link}
+                  :as post}]
+              (let [post-template (ensure-template (fs/file templates-dir "post.html"))]
+                (->> (selmer/render (slurp post-template)
+                                    (assoc post
+                                           :post-link (str/replace file ".md" ".html")
+                                           :body (get @bodies file)))
+                     (format "<div>\n%s\n</div>")))))
+       (str/join "\n")))
 
 (defn- spit-index
   [{:keys [posts out-dir
            blog-title] :as opts}]
-  (spit
-   (fs/file out-dir "index.html")
-   (selmer/render (base-html opts)
-                  (assoc opts
-                         :title blog-title
-                         :body (hiccup/html {:escape-strings? false} (index {:posts posts}))))))
+  (let [body (index (assoc opts :posts posts))]
+    (spit
+     (fs/file out-dir "index.html")
+     (selmer/render (base-html opts)
+                    (assoc opts
+                           :title blog-title
+                           :body body)))))
 
 ;;;; Generate atom feeds
 
@@ -207,6 +194,7 @@
   [{:keys [blog-title
            assets-dir
            cache-dir
+           num-index-posts
            out-dir
            posts-dir
            posts-file
@@ -215,6 +203,7 @@
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          cache-dir (:cache-dir default-opts)
+         num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
          posts-file (:posts-file default-opts)
@@ -226,11 +215,12 @@
                     :out-dir out-dir
                     :assets-dir assets-dir
                     :cache-dir cache-dir
+                    :discuss-link discuss-link
+                    :num-index-posts num-index-posts
                     :posts-dir posts-dir
                     :posts-file posts-file
                     :tags-dir tags-dir
-                    :templates-dir templates-dir
-                    :discuss-link discuss-link)
+                    :templates-dir templates-dir)
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]

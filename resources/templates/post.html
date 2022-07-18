@@ -1,0 +1,24 @@
+<h1>
+  {% if post-link %}
+  <a href="{{post-link}}">
+  {% endif %}
+  {{title}}
+  {% if post-link %}
+  </a>
+  {% endif %}
+</h1>
+{{body | safe}}
+<p>Discuss this post <a href="{{discuss}}">here</a>.</p>
+<p><i>Published: {{date}}</i></p>
+{% if tags %}
+<p>
+  <i>
+  Tagged:
+  {% for tag in tags %}
+  <span class="tag">
+    <a href="tags/{{tag}}.html">{{tag}}</a>
+  </span>
+  {% endfor %}
+  </i>
+</p>
+{% endif %}
