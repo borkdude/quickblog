@@ -54,16 +54,6 @@
     (lib/ensure-template template)
     (slurp template)))
 
-(defn- load-favicon [{:keys [favicon
-                             favicon-dir
-                             templates-dir]
-                      :as opts}]
-  (when favicon
-    (-> (fs/file templates-dir "favicon.html")
-        lib/ensure-template
-        slurp
-        (selmer/render opts))))
-
 (defn- gen-posts [{:keys [posts discuss-link
                           cache-dir posts-dir out-dir templates-dir]
                    :as opts}]
@@ -238,7 +228,6 @@
                     :posts-file posts-file
                     :tags-dir tags-dir
                     :templates-dir templates-dir)
-        opts (assoc opts :favicon-tags (load-favicon opts))
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]

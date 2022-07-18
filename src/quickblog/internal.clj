@@ -50,6 +50,16 @@
                  (update acc tag #(conj % post)))
                {})))
 
+(defn- load-favicon [{:keys [favicon
+                             favicon-dir
+                             templates-dir]
+                      :as opts}]
+  (when favicon
+    (-> (fs/file templates-dir "favicon.html")
+        ensure-template
+        slurp
+        (selmer/render opts))))
+
 (defn post-links
   ([title posts]
    (post-links title posts {}))
@@ -79,7 +89,9 @@
 (defn write-page! [opts out-file
                    template template-vars]
   (println "Writing page:" (str out-file))
-  (let [template-vars (merge opts template-vars)]
+  (let [template-vars (merge opts template-vars)
+        template-vars (assoc template-vars
+                             :favicon-tags (load-favicon template-vars))]
     (->> (selmer/render template template-vars)
          (spit out-file))))
 
