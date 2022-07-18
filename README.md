@@ -73,10 +73,8 @@ etc.
 **NOTE:** when enabling or disabling a favicon, you must do a full re-render of
 your site by running `bb clean` and then your `bb render` command.
 
-To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add
-`:enable-favicon true` to your quickblog opts (or use `--enable-favicon
-true` on the command line).
-
+To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add `:favicon
+true` to your quickblog opts (or use `--favicon true` on the command line).
 quickblog will render the contents of `templates/favicon.html` and insert them
 in the head of your pages.
 

@@ -17,7 +17,7 @@
 (def ^:private default-opts
   {:assets-dir "assets"
    :cache-dir ".work"
-   :enable-favicon "false"
+   :favicon "false"
    :favicon-dir "assets"
    :num-index-posts 3
    :out-dir "public"
@@ -54,11 +54,11 @@
     (lib/ensure-template template)
     (slurp template)))
 
-(defn- load-favicon [{:keys [enable-favicon
+(defn- load-favicon [{:keys [favicon
                              favicon-dir
                              templates-dir]
                       :as opts}]
-  (when enable-favicon
+  (when favicon
     (-> (fs/file templates-dir "favicon.html")
         lib/ensure-template
         slurp
@@ -153,8 +153,8 @@
     (lib/write-page! opts (fs/file out-dir "archive.html")
                      (base-html opts)
                      {:skip-archive true
-                     :title title
-                     :body (hiccup/html (lib/post-links "Archive" posts))})))
+                      :title title
+                      :body (hiccup/html (lib/post-links "Archive" posts))})))
 
 ;;;; Generate atom feeds
 
@@ -204,7 +204,7 @@
   [{:keys [blog-title
            assets-dir
            cache-dir
-           enable-favicon
+           favicon
            favicon-dir
            num-index-posts
            out-dir
@@ -215,7 +215,7 @@
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          cache-dir (:cache-dir default-opts)
-         enable-favicon (:enable-favicon default-opts)
+         favicon (:favicon default-opts)
          favicon-dir (:favicon-dir default-opts)
          num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
@@ -230,15 +230,15 @@
                     :assets-dir assets-dir
                     :cache-dir cache-dir
                     :discuss-link discuss-link
-                    :enable-favicon (and enable-favicon
-                                         (not= "false" enable-favicon))
+                    :favicon (and favicon
+                                  (not= "false" favicon))
                     :favicon-dir favicon-dir
                     :num-index-posts num-index-posts
                     :posts-dir posts-dir
                     :posts-file posts-file
                     :tags-dir tags-dir
                     :templates-dir templates-dir)
-        opts (assoc opts :favicon (load-favicon opts))
+        opts (assoc opts :favicon-tags (load-favicon opts))
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
