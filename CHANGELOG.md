@@ -2,7 +2,7 @@
 
 ## Unreleased:
 
-- ...
+- favicon support
 
 ## 0.0.1
 

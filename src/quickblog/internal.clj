@@ -76,13 +76,10 @@
             (count posts)
             " posts"]])]])
 
-(defn write-page! [{:keys [favicon-template] :as opts} out-file
+(defn write-page! [opts out-file
                    template template-vars]
   (println "Writing page:" (str out-file))
-  (let [template-vars (merge opts
-                             template-vars
-                             (when favicon-template
-                               {:favicon (slurp (ensure-template favicon-template))}))]
+  (let [template-vars (merge opts template-vars)]
     (->> (selmer/render template template-vars)
          (spit out-file))))
 
