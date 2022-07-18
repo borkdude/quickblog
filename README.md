@@ -70,50 +70,26 @@ etc.
 
 ### favicon
 
-To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), set the following
-key of the quickblog opts:
-- `:favicon-template` - path to a file containing an HTML fragment to insert
-  into the head of all pages. Unless you need something specific, you can set it
-  to `templates/favicon.html` and quickblog will copy a [default favicon
-  template](resources/templates/favicon.html) to that path next time you render.
+To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add
+`:enable-favicon true` to your quickblog opts (or use `--enable-favicon
+true` on the command line).
 
-If you want quickblog to manage your favicon assets, set these keys as well:
-- `:favicon-local-dir` - local directory containing the favicon assets. If this
-  is not set, the assumption is that your favicon assets are deployed by
-  something other than quickblog (for example, your blog might be a subdirectory
-  of your website, and the favicon assets might be managed by your website, in
-  which case you just want the template to point to them, but don't need
-  quickblog to manage the assets for you).
-- `:favicon-remote-dir` - [optional; default: `""`] directory relative to
-  `out-dir` in which to deploy the assets. It is recommended to keep your
-  favicon assets at the root of your site if possible, so you probably don't
-  need to change the default. This has no effect unless `:favicon-local-dir` is
-  also set.
-
-To fine-tune your favicon settings (probably because you're not using quickblog
-to manage your favicon assets), set the following key:
-- `:favicon-link-path` - [default: `""`] path relative to your blog root which will be
-  prepended to the `link.href` attribute in the default template. This value is
-  exposed as the `favicon-link-path` template variable.
+quickblog will render the contents of `templates/favicon.html` and insert them
+in the head of your pages.
 
 You will also need to create the favicon assets themselves. The easiest way is
 to use a favicon generator such as
 [RealFaviconGenerator](https://realfavicongenerator.net/), which will let you
 upload an image and then gives you a ZIP file containing all of the assets,
-which you should unzip into a directory corresponding to the value of the
-`:favicon-local-path` key as detailed above.
+which you should unzip into your `:assets-dir` (which defaults to `assets`).
 
 You can read an example of how to prepare a favicon here: https://jmglov.net/blog/2022-07-05-hacking-blog-favicon.html
 
-**Example**
-
-Assuming the favicon assets have been unzipped in the `favicon` direction, add
-the following to `opts`:
-
-``` clojure
-:favicon-template "templates/favicon.html"
-:favicon-local-path "favicon"
-```
+If you're using favicon assets that aren't managed by quickblog, you can set the
+`:favicon-dir` option to a path which will be prepended to the all `link.href`
+attribute in the favicon template. For example, if you're deploying your favicon
+assets manually into a `favicon` directory at the root of your webserver, set
+`:favicon-dir "/favicon"`.
 
 ## Improvements
 

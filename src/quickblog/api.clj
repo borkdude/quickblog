@@ -13,11 +13,12 @@
   (zipmap (map keyword ks)
           ks))
 
+;; all values should be strings for consistency with command line args
 (def ^:private default-opts
   {:assets-dir "assets"
    :cache-dir ".work"
-   :favicon-link-path ""
-   :favicon-remote-dir ""
+   :enable-favicon "false"
+   :favicon-dir "assets"
    :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
@@ -53,26 +54,15 @@
     (lib/ensure-template template)
     (slurp template)))
 
-(defn- copy-favicon [{:keys [favicon-template
-                             favicon-local-dir
-                             favicon-remote-dir
-                             out-dir]
-                      :or {favicon-remote-dir (:favicon-remote-dir default-opts)}}]
-  (when favicon-local-dir
-    (let [favicon-out-dir (fs/file out-dir favicon-remote-dir)]
-      (doseq [file (fs/glob favicon-local-dir "*")]
-        (lib/copy-modified file (fs/file favicon-out-dir (.getFileName file)))))))
-
-(defn- get-favicon-opts [{:keys [favicon-template
-                                 favicon-link-path]
-                          :or {favicon-link-path (:favicon-link-path default-opts)}
-                          :as opts}]
-  (when favicon-template
-    (let [template (lib/ensure-template favicon-template)
-          favicon (selmer/render (slurp template)
-                                 (assoc opts :favicon-link-path favicon-link-path))]
-      {:favicon favicon
-       :favicon-link-path favicon-link-path})))
+(defn- load-favicon [{:keys [enable-favicon
+                             favicon-dir
+                             templates-dir]
+                      :as opts}]
+  (when enable-favicon
+    (-> (fs/file templates-dir "favicon.html")
+        lib/ensure-template
+        slurp
+        (selmer/render opts))))
 
 (defn- gen-posts [{:keys [posts discuss-link
                           cache-dir posts-dir out-dir templates-dir]
@@ -213,8 +203,8 @@
   [{:keys [blog-title
            assets-dir
            cache-dir
-           favicon-template
-           favicon-local-path
+           enable-favicon
+           favicon-dir
            num-index-posts
            out-dir
            posts-dir
@@ -224,7 +214,8 @@
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          cache-dir (:cache-dir default-opts)
-         favicon-link-path (:favicon-link-path default-opts)
+         enable-favicon (:enable-favicon default-opts)
+         favicon-dir (:favicon-dir default-opts)
          num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
@@ -233,17 +224,20 @@
          templates-dir (:templates-dir default-opts)}
     :as opts}]
   (lib/ensure-template (fs/file templates-dir "style.css"))
-  (let [opts (merge opts
-                    {:out-dir out-dir
+  (let [opts (assoc opts
+                    :out-dir out-dir
                     :assets-dir assets-dir
                     :cache-dir cache-dir
                     :discuss-link discuss-link
+                    :enable-favicon (and enable-favicon
+                                         (not= "false" enable-favicon))
+                    :favicon-dir favicon-dir
                     :num-index-posts num-index-posts
                     :posts-dir posts-dir
                     :posts-file posts-file
                     :tags-dir tags-dir
-                    :templates-dir templates-dir}
-                    (get-favicon-opts opts))
+                    :templates-dir templates-dir)
+        opts (assoc opts :favicon (load-favicon opts))
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
@@ -251,7 +245,6 @@
       (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
       (lib/copy-modified file (fs/file out-dir (.getFileName file))))
-    (copy-favicon opts)
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (gen-tags opts)
