@@ -26,6 +26,18 @@
    :tags-dir "tags"
    :templates-dir "templates"})
 
+(def ^:private favicon-assets
+  ["android-chrome-192x192.png"
+   "android-chrome-512x512.png"
+   "apple-touch-icon.png"
+   "browserconfig.xml"
+   "favicon-16x16.png"
+   "favicon-32x32.png"
+   "favicon.ico"
+   "mstile-150x150.png"
+   "safari-pinned-tab.svg"
+   "site.webmanifest"])
+
 ;; re-used when generating atom.xml
 (def ^:private bodies (atom {}))
 
@@ -51,8 +63,13 @@
 
 (defn- base-html [{:keys [templates-dir]}]
   (let [template (fs/file templates-dir "base.html")]
-    (lib/ensure-template template)
+    (lib/ensure-resource template)
     (slurp template)))
+
+(defn- ensure-favicon-assets [{:keys [assets-dir favicon]}]
+  (when favicon
+    (doseq [asset favicon-assets]
+      (lib/ensure-resource (fs/file assets-dir asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
                           cache-dir posts-dir out-dir templates-dir]
@@ -60,7 +77,7 @@
   (let [post-template (fs/file templates-dir "post.html")]
     (fs/create-dirs cache-dir)
     (fs/create-dirs out-dir)
-    (lib/ensure-template post-template)
+    (lib/ensure-resource post-template)
     (doseq [{:keys [file title date tags legacy discuss]
              :or {discuss discuss-link}}
             posts]
@@ -120,7 +137,7 @@
        (map (fn [{:keys [file title date tags preview discuss]
                   :or {discuss discuss-link}
                   :as post}]
-              (let [post-template (lib/ensure-template (fs/file templates-dir "post.html"))]
+              (let [post-template (lib/ensure-resource (fs/file templates-dir "post.html"))]
                 (->> (selmer/render (slurp post-template)
                                     (assoc post
                                            :post-link (str/replace file ".md" ".html")
@@ -214,7 +231,7 @@
          tags-dir (:tags-dir default-opts)
          templates-dir (:templates-dir default-opts)}
     :as opts}]
-  (lib/ensure-template (fs/file templates-dir "style.css"))
+  (lib/ensure-resource (fs/file templates-dir "style.css"))
   (let [opts (assoc opts
                     :out-dir out-dir
                     :assets-dir assets-dir
@@ -231,6 +248,7 @@
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+    (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
       (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]

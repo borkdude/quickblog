@@ -8,6 +8,8 @@
    [hiccup2.core :as hiccup]
    [selmer.parser :as selmer]))
 
+(def ^:private resource-path "quickblog")
+
 (defn stale? [src target]
   (seq (fs/modified-since target src)))
 
@@ -28,11 +30,12 @@
       (println "Writing" (str target-path))
       (fs/copy (fs/file path) target-path))))
 
-(defn ensure-template [path]
+(defn ensure-resource [path]
   (let [f (fs/file path)]
     (when-not (fs/exists? f)
       (fs/create-dirs (fs/parent f))
-      (spit f (slurp (io/resource path))))
+      (println "Writing default resource:" (str f))
+      (fs/copy (io/resource (fs/file resource-path path)) f))
     f))
 
 (defn load-posts [{:keys [posts-file]}]
@@ -56,7 +59,7 @@
                       :as opts}]
   (when favicon
     (-> (fs/file templates-dir "favicon.html")
-        ensure-template
+        ensure-resource
         slurp
         (selmer/render opts))))
 

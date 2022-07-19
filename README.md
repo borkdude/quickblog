@@ -86,11 +86,20 @@ which you should unzip into your `:assets-dir` (which defaults to `assets`).
 
 You can read an example of how to prepare a favicon here: https://jmglov.net/blog/2022-07-05-hacking-blog-favicon.html
 
-If you're using favicon assets that aren't managed by quickblog, you can set the
-`:favicon-dir` option to a path which will be prepended to the all `link.href`
-attribute in the favicon template. For example, if you're deploying your favicon
-assets manually into a `favicon` directory at the root of your webserver, set
-`:favicon-dir "/favicon"`.
+quickblog's default template expects the favicon files to be named as follows:
+- `android-chrome-192x192.png`
+- `android-chrome-512x512.png`
+- `apple-touch-icon.png`
+- `browserconfig.xml`
+- `favicon-16x16.png`
+- `favicon-32x32.png`
+- `favicon.ico`
+- `mstile-150x150.png`
+- `safari-pinned-tab.svg`
+- `site.webmanifest`
+
+If any of these files are not present in your `:assets-dir`, a quickblog default
+will be copied there from `resources/quickblog/assets`. 
 
 ## Improvements
 
