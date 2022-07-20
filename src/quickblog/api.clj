@@ -146,22 +146,28 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title out-dir posts] :as opts}]
-  (let [body (index (assoc opts :posts posts))]
-    (lib/write-page! opts (fs/file out-dir "index.html")
-                     (base-html opts)
-                     {:title blog-title
-                      :body body})))
+  [{:keys [blog-title out-dir posts posts-file] :as opts}]
+  (let [out-file (fs/file out-dir "index.html")
+        stale? (seq (fs/modified-since out-file posts-file))]
+    (when stale?
+      (let [body (index (assoc opts :posts posts))]
+        (lib/write-page! opts out-file
+                         (base-html opts)
+                         {:title blog-title
+                          :body body})))))
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title out-dir posts] :as opts}]
-  (let [title (str blog-title " - Archive")]
-    (lib/write-page! opts (fs/file out-dir "archive.html")
-                     (base-html opts)
-                     {:skip-archive true
-                      :title title
-                      :body (hiccup/html (lib/post-links "Archive" posts))})))
+(defn- spit-archive [{:keys [blog-title out-dir posts posts-file] :as opts}]
+  (let [out-file (fs/file out-dir "archive.html")
+        stale? (seq (fs/modified-since out-file posts-file))]
+    (when stale?
+      (let [title (str blog-title " - Archive")]
+        (lib/write-page! opts out-file
+                         (base-html opts)
+                         {:skip-archive true
+                          :title title
+                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
 
 ;;;; Generate atom feeds
 
