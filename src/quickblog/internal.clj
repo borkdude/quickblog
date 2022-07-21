@@ -28,7 +28,7 @@
             :let [target-path (fs/file out-dir path)]]
       (fs/create-dirs (.getParent target-path))
       (println "Writing" (str target-path))
-      (fs/copy (fs/file path) target-path))))
+      (fs/copy (fs/file path) target-path {:replace-existing true}))))
 
 (defn ensure-resource [path]
   (let [f (fs/file path)]
