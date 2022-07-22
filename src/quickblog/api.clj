@@ -18,7 +18,7 @@
   {:assets-dir "assets"
    :cache-dir ".work"
    :favicon "false"
-   :favicon-dir "assets"
+   :favicon-dir (fs/file "assets" "favicon")
    :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
@@ -66,10 +66,10 @@
     (lib/ensure-resource template)
     (slurp template)))
 
-(defn- ensure-favicon-assets [{:keys [assets-dir favicon]}]
+(defn- ensure-favicon-assets [{:keys [favicon-dir favicon]}]
   (when favicon
     (doseq [asset favicon-assets]
-      (lib/ensure-resource (fs/file assets-dir asset)))))
+      (lib/ensure-resource (fs/file favicon-dir asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
                           cache-dir posts-dir out-dir templates-dir]
