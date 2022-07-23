@@ -66,6 +66,41 @@ clj -M:quickblog watch
 
 etc.
 
+## Features
+
+### favicon
+
+**NOTE:** when enabling or disabling a favicon, you must do a full re-render of
+your site by running `bb clean` and then your `bb render` command.
+
+To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add `:favicon
+true` to your quickblog opts (or use `--favicon true` on the command line).
+quickblog will render the contents of `templates/favicon.html` and insert them
+in the head of your pages.
+
+You will also need to create the favicon assets themselves. The easiest way is
+to use a favicon generator such as
+[RealFaviconGenerator](https://realfavicongenerator.net/), which will let you
+upload an image and then gives you a ZIP file containing all of the assets,
+which you should unzip into your `:assets-dir` (which defaults to `assets`).
+
+You can read an example of how to prepare a favicon here: https://jmglov.net/blog/2022-07-05-hacking-blog-favicon.html
+
+quickblog's default template expects the favicon files to be named as follows:
+- `android-chrome-192x192.png`
+- `android-chrome-512x512.png`
+- `apple-touch-icon.png`
+- `browserconfig.xml`
+- `favicon-16x16.png`
+- `favicon-32x32.png`
+- `favicon.ico`
+- `mstile-150x150.png`
+- `safari-pinned-tab.svg`
+- `site.webmanifest`
+
+If any of these files are not present in your `:assets-dir`, a quickblog default
+will be copied there from `resources/quickblog/assets`. 
+
 ## Improvements
 
 Feel free to send PRs for improvements.

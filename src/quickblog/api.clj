@@ -2,7 +2,6 @@
   (:require
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
@@ -14,15 +13,30 @@
   (zipmap (map keyword ks)
           ks))
 
+;; all values should be strings for consistency with command line args
 (def ^:private default-opts
   {:assets-dir "assets"
    :cache-dir ".work"
+   :favicon "false"
+   :favicon-dir (fs/file "assets" "favicon")
    :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
    :posts-file "posts.edn"
    :tags-dir "tags"
    :templates-dir "templates"})
+
+(def ^:private favicon-assets
+  ["android-chrome-192x192.png"
+   "android-chrome-512x512.png"
+   "apple-touch-icon.png"
+   "browserconfig.xml"
+   "favicon-16x16.png"
+   "favicon-32x32.png"
+   "favicon.ico"
+   "mstile-150x150.png"
+   "safari-pinned-tab.svg"
+   "site.webmanifest"])
 
 ;; re-used when generating atom.xml
 (def ^:private bodies (atom {}))
@@ -47,17 +61,15 @@
         html (str/replace html "$$RET$$" "\n")]
     html))
 
-(defn- ensure-template [path]
-  (let [f (fs/file path)]
-    (when-not (fs/exists? f)
-      (fs/create-dirs (fs/parent f))
-      (spit f (slurp (io/resource path))))
-    f))
-
 (defn- base-html [{:keys [templates-dir]}]
   (let [template (fs/file templates-dir "base.html")]
-    (ensure-template template)
+    (lib/ensure-resource template)
     (slurp template)))
+
+(defn- ensure-favicon-assets [{:keys [favicon-dir favicon]}]
+  (when favicon
+    (doseq [asset favicon-assets]
+      (lib/ensure-resource (fs/file favicon-dir asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
                           cache-dir posts-dir out-dir templates-dir]
@@ -65,13 +77,14 @@
   (let [post-template (fs/file templates-dir "post.html")]
     (fs/create-dirs cache-dir)
     (fs/create-dirs out-dir)
-    (ensure-template post-template)
+    (lib/ensure-resource post-template)
     (doseq [{:keys [file title date tags legacy discuss]
              :or {discuss discuss-link}}
             posts]
       (let [base-html (base-html opts)
-            cache-file (fs/file cache-dir (html-file file))
             markdown-file (fs/file posts-dir file)
+            cache-file (fs/file cache-dir (html-file file))
+            out-file (fs/file out-dir (html-file file))
             stale? (seq (fs/modified-since cache-file markdown-file))
             body (if stale?
                    (let [body (markdown->html markdown-file)]
@@ -80,13 +93,12 @@
                    (slurp cache-file))
             _ (swap! bodies assoc file body)
             body (selmer/render (slurp post-template)
-                                (->map body title date tags discuss))
-            html (selmer/render base-html
-                                (assoc opts
-                                       :title title
-                                       :body body))
-            html-file (str/replace file ".md" ".html")]
-        (spit (fs/file out-dir html-file) html)
+                                (->map body title date tags discuss))]
+        (when (or stale? (not (fs/exists? out-file)))
+          (lib/write-page! opts out-file
+                           base-html
+                           {:title title
+                            :body body}))
         (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
                                   (str/replace file ".md" ""))]
           (when legacy
@@ -107,13 +119,11 @@
         stale? (seq (fs/modified-since tags-out-dir posts-file))]
     (when stale?
       (println "Writing tags page" (str tags-file))
-      (spit tags-file
-            (selmer/render template
-                           (merge opts
-                                  {:skip-archive true
-                                   :title (str blog-title " - Tags")
-                                   :relative-path "../"
-                                   :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})))
+      (lib/write-page! opts tags-file template
+                       {:skip-archive true
+                        :title (str blog-title " - Tags")
+                        :relative-path "../"
+                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})
       (doseq [tag-and-posts posts-by-tag]
         (lib/write-tag! opts tags-out-dir template tag-and-posts)))))
 
@@ -127,7 +137,7 @@
        (map (fn [{:keys [file title date tags preview discuss]
                   :or {discuss discuss-link}
                   :as post}]
-              (let [post-template (ensure-template (fs/file templates-dir "post.html"))]
+              (let [post-template (lib/ensure-resource (fs/file templates-dir "post.html"))]
                 (->> (selmer/render (slurp post-template)
                                     (assoc post
                                            :post-link (str/replace file ".md" ".html")
@@ -136,15 +146,28 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [posts out-dir
-           blog-title] :as opts}]
-  (let [body (index (assoc opts :posts posts))]
-    (spit
-     (fs/file out-dir "index.html")
-     (selmer/render (base-html opts)
-                    (assoc opts
-                           :title blog-title
-                           :body body)))))
+  [{:keys [blog-title out-dir posts posts-file] :as opts}]
+  (let [out-file (fs/file out-dir "index.html")
+        stale? (seq (fs/modified-since out-file posts-file))]
+    (when stale?
+      (let [body (index (assoc opts :posts posts))]
+        (lib/write-page! opts out-file
+                         (base-html opts)
+                         {:title blog-title
+                          :body body})))))
+
+;;;; Generate archive page with links to all posts
+
+(defn- spit-archive [{:keys [blog-title out-dir posts posts-file] :as opts}]
+  (let [out-file (fs/file out-dir "archive.html")
+        stale? (seq (fs/modified-since out-file posts-file))]
+    (when stale?
+      (let [title (str blog-title " - Archive")]
+        (lib/write-page! opts out-file
+                         (base-html opts)
+                         {:skip-archive true
+                          :title title
+                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
 
 ;;;; Generate atom feeds
 
@@ -194,6 +217,8 @@
   [{:keys [blog-title
            assets-dir
            cache-dir
+           favicon
+           favicon-dir
            num-index-posts
            out-dir
            posts-dir
@@ -203,6 +228,8 @@
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          cache-dir (:cache-dir default-opts)
+         favicon (:favicon default-opts)
+         favicon-dir (:favicon-dir default-opts)
          num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
@@ -210,12 +237,15 @@
          tags-dir (:tags-dir default-opts)
          templates-dir (:templates-dir default-opts)}
     :as opts}]
-  (ensure-template (fs/file templates-dir "style.css"))
+  (lib/ensure-resource (fs/file templates-dir "style.css"))
   (let [opts (assoc opts
                     :out-dir out-dir
                     :assets-dir assets-dir
                     :cache-dir cache-dir
                     :discuss-link discuss-link
+                    :favicon (and favicon
+                                  (not= "false" favicon))
+                    :favicon-dir favicon-dir
                     :num-index-posts num-index-posts
                     :posts-dir posts-dir
                     :posts-file posts-file
@@ -224,6 +254,7 @@
         posts (lib/load-posts opts)
         opts (assoc opts :posts posts)
         asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+    (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
       (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
@@ -231,13 +262,7 @@
     (fs/create-dirs (fs/file cache-dir))
     (gen-posts opts)
     (gen-tags opts)
-    (let [title (str blog-title " - Archive")]
-      (spit (fs/file out-dir "archive.html")
-            (selmer/render (base-html opts)
-                           (assoc opts
-                                  :skip-archive true
-                                  :title title
-                                  :body (hiccup/html (lib/post-links "Archive" posts))))))
+    (spit-archive opts)
     (spit-index opts)
     (spit (fs/file out-dir "atom.xml") (atom-feed opts))
     (spit (fs/file out-dir "planetclojure.xml")
