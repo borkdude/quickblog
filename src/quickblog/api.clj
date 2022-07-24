@@ -8,23 +8,77 @@
    [quickblog.internal :as lib]
    [selmer.parser :as selmer]))
 
+;; all values should be strings for consistency with command line args
+(def ^:private default-opts
+  {:assets-dir "assets"
+   :assets-out-dir "assets"
+   :blog-dir (fs/file ".")
+   :cache-dir ".work"
+   :favicon "false"
+   :favicon-dir (fs/file "assets" "favicon")
+   :favicon-out-dir (fs/file "assets" "favicon")
+   :num-index-posts 3
+   :out-dir "public"
+   :posts-dir "posts"
+   :tags-dir "tags"
+   :templates-dir "templates"})
+
+(defn- update-out-dirs
+  [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]
+  (let [out-dir-ify (fn [dir]
+                      (if-not (str/starts-with? (str dir) (str out-dir))
+                        (fs/file out-dir dir)
+                        dir))]
+    (assoc opts
+           :assets-out-dir (out-dir-ify assets-out-dir)
+           :favicon-out-dir (out-dir-ify favicon-out-dir))))
+
+(defn- apply-default-opts
+  [{:keys [blog-title
+           assets-dir
+           assets-out-dir
+           cache-dir
+           favicon
+           favicon-dir
+           favicon-out-dir
+           num-index-posts
+           out-dir
+           posts-dir
+           tags-dir
+           templates-dir
+           discuss-link]
+    :or {assets-dir (:assets-dir default-opts)
+         assets-out-dir (:assets-out-dir default-opts)
+         cache-dir (:cache-dir default-opts)
+         favicon (:favicon default-opts)
+         favicon-dir (:favicon-dir default-opts)
+         favicon-out-dir (:favicon-out-dir default-opts)
+         num-index-posts (:num-index-posts default-opts)
+         out-dir (:out-dir default-opts)
+         posts-dir (:posts-dir default-opts)
+         tags-dir (:tags-dir default-opts)
+         templates-dir (:templates-dir default-opts)}
+    :as opts}]
+  (-> opts
+      (assoc :out-dir out-dir
+             :assets-dir assets-dir
+             :assets-out-dir assets-out-dir
+             :cache-dir cache-dir
+             :discuss-link discuss-link
+             :favicon (and favicon
+                           (not= "false" favicon))
+             :favicon-dir favicon-dir
+             :favicon-out-dir favicon-out-dir
+             :num-index-posts num-index-posts
+             :posts-dir posts-dir
+             :tags-dir tags-dir
+             :templates-dir templates-dir)
+      update-out-dirs))
+
 (defmacro ^:private ->map [& ks]
   (assert (every? symbol? ks))
   (zipmap (map keyword ks)
           ks))
-
-;; all values should be strings for consistency with command line args
-(def ^:private default-opts
-  {:assets-dir "assets"
-   :cache-dir ".work"
-   :favicon "false"
-   :favicon-dir (fs/file "assets" "favicon")
-   :num-index-posts 3
-   :out-dir "public"
-   :posts-dir "posts"
-   :posts-file "posts.edn"
-   :tags-dir "tags"
-   :templates-dir "templates"})
 
 (def ^:private favicon-assets
   ["android-chrome-192x192.png"
@@ -38,8 +92,17 @@
    "safari-pinned-tab.svg"
    "site.webmanifest"])
 
+(def ^:private rendering-system-files
+  [(fs/file "bb.edn")
+   (fs/file "src/quickblog/api.clj")])
+
 ;; re-used when generating atom.xml
 (def ^:private bodies (atom {}))
+
+(def ^:private legacy-template "
+<html><head>
+<meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
+</head></html>")
 
 (defn- html-file [file]
   (str/replace file ".md" ".html"))
@@ -61,62 +124,50 @@
         html (str/replace html "$$RET$$" "\n")]
     html))
 
-(defn- base-html [{:keys [templates-dir]}]
-  (let [template (fs/file templates-dir "base.html")]
-    (lib/ensure-resource template)
-    (slurp template)))
+(defn- base-html [opts]
+  (-> (lib/ensure-template opts "base.html")
+      slurp))
 
-(defn- ensure-favicon-assets [{:keys [favicon-dir favicon]}]
+(defn- ensure-favicon-assets [{:keys [favicon favicon-dir]}]
   (when favicon
     (doseq [asset favicon-assets]
-      (lib/ensure-resource (fs/file favicon-dir asset)))))
+      (lib/ensure-resource (fs/file favicon-dir asset)
+                           (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
-                          cache-dir posts-dir out-dir templates-dir]
+                          cache-dir favicon-dir posts-dir out-dir templates-dir]
                    :as opts}]
-  (let [post-template (fs/file templates-dir "post.html")]
+  (let [page-template (base-html opts)
+        post-template (-> (lib/ensure-template opts "post.html")
+                          slurp)
+        rendering-system-files (concat rendering-system-files
+                                       (map fs/file [templates-dir]))]
     (fs/create-dirs cache-dir)
     (fs/create-dirs out-dir)
-    (lib/ensure-resource post-template)
-    (doseq [{:keys [file title date tags legacy discuss]
-             :or {discuss discuss-link}}
-            posts]
-      (let [base-html (base-html opts)
-            markdown-file (fs/file posts-dir file)
-            cache-file (fs/file cache-dir (html-file file))
-            out-file (fs/file out-dir (html-file file))
-            stale? (seq (fs/modified-since cache-file markdown-file))
-            body (if stale?
-                   (let [body (markdown->html markdown-file)]
-                     (spit cache-file body)
-                     body)
-                   (slurp cache-file))
-            _ (swap! bodies assoc file body)
-            body (selmer/render (slurp post-template)
-                                (->map body title date tags discuss))]
-        (when (or stale? (not (fs/exists? out-file)))
-          (lib/write-page! opts out-file
-                           base-html
-                           {:title title
-                            :body body}))
-        (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
-                                  (str/replace file ".md" ""))]
-          (when legacy
-            (fs/create-dirs legacy-dir)
-            (let [redirect-html (selmer/render"
-<html><head>
-<meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
-</head></html>"
-                                              {:new_url html-file})]
-              (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html))))))))
+    (doseq [post posts
+            :let [{:keys [file date legacy]} post
+                  html-file (html-file file)]]
+      (lib/write-post! (assoc opts
+                              :bodies bodies
+                              :page-template page-template
+                              :post-template post-template
+                              :rendering-system-files rendering-system-files)
+                       post)
+      (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
+                                (str/replace file ".md" ""))]
+        (when legacy
+          (fs/create-dirs legacy-dir)
+          (let [redirect-html (selmer/render legacy-template
+                                             {:new_url html-file})]
+            (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
-(defn- gen-tags [{:keys [posts posts-file blog-title out-dir tags-dir]
+(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)
-        stale? (seq (fs/modified-since tags-out-dir posts-file))]
+        stale? true]
     (when stale?
       (println "Writing tags page" (str tags-file))
       (lib/write-page! opts tags-file template
@@ -138,19 +189,14 @@
                 (->> (selmer/render (slurp post-template)
                                     (assoc post
                                            :post-link (str/replace file ".md" ".html")
-                                           :body (get @bodies file)))
+                                           :body @(get @bodies file)))
                      (format "<div>\n%s\n</div>")))))
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title out-dir posts posts-file num-index-posts] :as opts}]
+  [{:keys [blog-title out-dir posts] :as opts}]
   (let [out-file (fs/file out-dir "index.html")
-        posts (->> posts
-                   (remove :preview)
-                   (take num-index-posts))
-        post-files (map (comp (partial fs/file "posts") :file) posts)
-        stale? (seq (fs/modified-since out-file
-                                       (cons posts-file post-files)))]
+        stale? true]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
@@ -160,9 +206,9 @@
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title out-dir posts posts-file] :as opts}]
+(defn- spit-archive [{:keys [blog-title out-dir posts] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
-        stale? (seq (fs/modified-since out-file posts-file))]
+        stale? true]
     (when stale?
       (let [title (str blog-title " - Archive")]
         (lib/write-page! opts out-file
@@ -190,7 +236,7 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [posts blog-title blog-root]}]
+  [{:keys [posts blog-title blog-author blog-root]}]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
@@ -200,7 +246,7 @@
         [::atom/updated (rfc-3339-now)]
         [::atom/id blog-root]
         [::atom/author
-         [::atom/name "Michiel Borkent"]]
+         [::atom/name blog-author]]
         (for [{:keys [title date file preview]} posts
               :when (not preview)
               :let [html (str/replace file ".md" ".html")
@@ -211,54 +257,31 @@
            [::atom/title title]
            [::atom/updated (rfc-3339 date)]
            [::atom/content {:type "html"}
-            [:-cdata (get @bodies file)]]])])
+            [:-cdata @(get @bodies file)]]])])
       xml/indent-str))
 
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
-  [{:keys [blog-title
-           assets-dir
-           cache-dir
-           favicon
-           favicon-dir
-           num-index-posts
-           out-dir
-           posts-dir
-           posts-file
-           tags-dir
-           templates-dir
-           discuss-link]
-    :or {assets-dir (:assets-dir default-opts)
-         cache-dir (:cache-dir default-opts)
-         favicon (:favicon default-opts)
-         favicon-dir (:favicon-dir default-opts)
-         num-index-posts (:num-index-posts default-opts)
-         out-dir (:out-dir default-opts)
-         posts-dir (:posts-dir default-opts)
-         posts-file (:posts-file default-opts)
-         tags-dir (:tags-dir default-opts)
-         templates-dir (:templates-dir default-opts)}
-    :as opts}]
-  (lib/ensure-resource (fs/file templates-dir "style.css"))
-  (let [opts (assoc opts
-                    :out-dir out-dir
-                    :assets-dir assets-dir
-                    :cache-dir cache-dir
-                    :discuss-link discuss-link
-                    :favicon (and favicon
-                                  (not= "false" favicon))
-                    :favicon-dir favicon-dir
-                    :num-index-posts num-index-posts
-                    :posts-dir posts-dir
-                    :posts-file posts-file
-                    :tags-dir tags-dir
-                    :templates-dir templates-dir)
-        posts (lib/load-posts opts)
+  [opts]
+  (let [{:keys [assets-dir
+                assets-out-dir
+                cache-dir
+                favicon-dir
+                favicon-out-dir
+                out-dir
+                posts-dir
+                templates-dir
+                default-metadata]
+         :as opts} (apply-default-opts opts)
+        posts (lib/load-posts posts-dir default-metadata)
         opts (assoc opts :posts posts)
-        asset-out-dir (fs/create-dirs (fs/file out-dir assets-dir))]
+        assets-out-dir (fs/create-dirs assets-out-dir)]
+    (lib/ensure-resource (fs/file templates-dir "style.css"))
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
-      (lib/copy-tree-modified assets-dir asset-out-dir out-dir))
+      (lib/copy-tree-modified assets-dir assets-out-dir))
+    (when (fs/exists? favicon-dir)
+      (lib/copy-tree-modified favicon-dir favicon-out-dir))
     (doseq [file (fs/glob templates-dir "*.{css,svg}")]
       (lib/copy-modified file (fs/file out-dir (.getFileName file))))
     (fs/create-dirs (fs/file cache-dir))

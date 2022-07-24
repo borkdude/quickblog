@@ -4,11 +4,29 @@
    [babashka.fs :as fs]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
+   [markdown.core :as md]
    [selmer.parser :as selmer]))
 
 (def ^:private resource-path "quickblog")
+(def ^:private templates-resource-dir "templates")
+(def ^:private favicon-template "favicon.html")
+
+(def ^:private metadata-transformers
+  {:default first
+   :tags #(-> % first (str/split #",\s*") set)})
+
+(def ^:private required-metadata
+  #{:date
+    :title})
+
+(defn rendering-modified? [rendering-system-files target-file]
+  (let [rendering-system-files (concat rendering-system-files
+                                       (map fs/file ["src/quickblog/internal.clj"
+                                                     "src/quickblog/internal.clj"]))]
+    (seq (fs/modified-since target-file rendering-system-files))))
 
 (defn stale? [src target]
   (seq (fs/modified-since target src)))
@@ -19,30 +37,104 @@
     (fs/create-dirs (.getParent (fs/file target)))
     (fs/copy src target {:replace-existing true})))
 
-(defn copy-tree-modified [src-dir target-dir out-dir]
-  (let [modified-paths (fs/modified-since (fs/file target-dir)
-                                          (fs/file src-dir))
+(defn copy-tree-modified [src-dir target-dir]
+  (let [src-dir (fs/file src-dir)
+        target-dir (fs/file target-dir)
+        num-dirs (->> src-dir .toPath .iterator iterator-seq count)
+        from-src-dir (fn [path]
+                       (->> path .iterator iterator-seq (drop num-dirs) (apply fs/file)))
+        modified-paths (fs/modified-since target-dir src-dir)
         new-paths (->> (fs/glob src-dir "**")
-                       (remove #(fs/exists? (fs/file out-dir %))))]
+                       (remove #(fs/exists? (fs/file target-dir (from-src-dir %)))))]
     (doseq [path (concat modified-paths new-paths)
-            :let [target-path (fs/file out-dir path)]]
+            :let [target-path (fs/file target-dir (from-src-dir path))]]
       (fs/create-dirs (.getParent target-path))
       (println "Writing" (str target-path))
       (fs/copy (fs/file path) target-path {:replace-existing true}))))
 
-(defn ensure-resource [path]
-  (let [f (fs/file path)]
-    (when-not (fs/exists? f)
-      (fs/create-dirs (fs/parent f))
-      (println "Writing default resource:" (str f))
-      (fs/copy (io/resource (fs/file resource-path path)) f))
-    f))
+(defn ensure-resource
+  ([path]
+   (ensure-resource path path))
+  ([target-path source-path]
+   (let [target-file (fs/file target-path)
+         source-file (fs/file source-path)]
+     (when-not (fs/exists? target-file)
+       (fs/create-dirs (fs/parent target-file))
+       (println "Writing default resource:" (str target-file))
+       (fs/copy (io/resource (fs/file resource-path source-file)) target-file))
+     target-file)))
 
-(defn load-posts [{:keys [posts-file]}]
-  (->> (edn/read-string (format "[%s]" (slurp posts-file)))
-       (map (fn [{:keys [tags categories] :as post}]
-              (assoc post :tags (or tags categories))))
-       (sort-by :date (comp - compare))))
+(defn ensure-template [{:keys [templates-dir]} template-name]
+  (ensure-resource (fs/file templates-dir template-name)
+                   (fs/file templates-resource-dir template-name)))
+
+(defn html-file [file]
+  (str/replace file ".md" ".html"))
+
+(defn transform-metadata
+  ([metadata]
+   (transform-metadata metadata {}))
+  ([metadata default-metadata]
+   (->> metadata
+        (map (fn [[k v]]
+               (let [transformer (or (metadata-transformers k)
+                                     (metadata-transformers :default))]
+                 [k (transformer v)])))
+        (into {})
+        (merge default-metadata))))
+
+(defn pre-process-markdown [markdown]
+  (-> markdown
+      (str/replace #"--" (fn [_] "$$NDASH$$"))
+      (str/replace #"\[[^\]]+\n"
+                   (fn [match]
+                     (str/replace match "\n" "$$RET$$")))))
+
+(defn post-process-markdown [html]
+  (-> html
+      (str/replace "$$NDASH$$" "--")
+      (str/replace "$$RET$$" "\n")))
+
+(defn markdown->html [file]
+  (let [markdown (slurp file)]
+    (println "Processing markdown for file:" (str file))
+    (-> markdown
+        pre-process-markdown
+        (md/md-to-html-string-with-meta :reference-links? true
+                                        :code-style
+                                        (fn [lang]
+                                          (format "class=\"lang-%s\"" lang)))
+        :html
+        post-process-markdown)))
+
+(defn load-post
+  ([file]
+   (load-post file {}))
+  ([file default-metadata]
+   (println "Reading metadata for file:" (str file))
+   (-> (slurp file)
+       md/md-to-meta
+       (transform-metadata default-metadata)
+       (assoc :file (.getName file)
+              :html (delay (markdown->html file))))))
+
+(defn load-posts
+  "Returns all posts from `post-dir` in descending date order"
+  ([posts-dir]
+   (load-posts posts-dir {}))
+  ([posts-dir default-metadata]
+   (->> (fs/glob posts-dir "*.md")
+        (map #(load-post (.toFile %) default-metadata))
+        (remove
+         (fn [post]
+           (when-let [missing-keys
+                      (seq (set/difference required-metadata
+                                           (set (keys post))))]
+             (println "Skipping" (:file post)
+                      "due to missing required metadata:"
+                      (str/join ", " (map name missing-keys)))
+             :skipping)))
+        (sort-by :date (comp - compare)))))
 
 (defn posts-by-tag [posts]
   (->> posts
@@ -58,8 +150,8 @@
                              templates-dir]
                       :as opts}]
   (when favicon
-    (-> (fs/file templates-dir "favicon.html")
-        ensure-resource
+    (-> (fs/file templates-dir favicon-template)
+        (ensure-resource (fs/file templates-resource-dir favicon-template))
         slurp
         (selmer/render opts))))
 
@@ -88,6 +180,49 @@
             " - "
             (count posts)
             " posts"]])]])
+
+(defn write-post! [{:keys [bodies
+                           discuss-fallback
+                           cache-dir
+                           out-dir
+                           page-template
+                           post-template
+                           posts-dir
+                           rendering-system-files]
+                    :as opts}
+                   {:keys [file title date discuss tags modified? html]
+                    :or {discuss discuss-fallback}}]
+  (let [out-file (fs/file out-dir (html-file file))
+        markdown-file (fs/file posts-dir file)
+        post-modified? (or modified?
+                           (rendering-modified? rendering-system-files out-file))
+        cached-file (fs/file cache-dir (str file ".pre-template.html"))
+        cached? (and (fs/exists? cached-file) (not post-modified?))
+        html (if cached?
+               (delay
+                 (println "Reading file from cache:" (str cached-file))
+                 (slurp cached-file))
+               html)
+        ;; The index page and XML feed will need the post HTML if they need to
+        ;; be re-rendered, so pass it along (but not deferenced, as it may not
+        ;; be needed)
+        _ (swap! bodies assoc file html)]
+    (if post-modified?
+      (let [body (selmer/render post-template {:body @html
+                                               :title title
+                                               :date date
+                                               :discuss discuss
+                                               :tags tags})
+            rendered-html (selmer/render page-template
+                                         (merge opts
+                                                {:title title
+                                                 :body body}))]
+        (println "Writing post:" (str out-file))
+        (spit out-file rendered-html)
+        (when (and cache-dir (not cached?))
+          (println "Writing rendered HTML to cache:" (str cached-file))
+          (spit cached-file @html)))
+      (println file "not modified; using cached version"))))
 
 (defn write-page! [opts out-file
                    template template-vars]
