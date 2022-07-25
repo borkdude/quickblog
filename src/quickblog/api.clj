@@ -129,11 +129,8 @@
 
 ;;;; Generate index page with last 3 posts
 
-(defn- index [{:keys [posts discuss-link num-index-posts
-                      templates-dir]}]
+(defn- index [{:keys [posts discuss-link templates-dir]}]
   (->> posts
-       (remove :preview)
-       (take num-index-posts)
        (map (fn [{:keys [file title date tags preview discuss]
                   :or {discuss discuss-link}
                   :as post}]
@@ -146,9 +143,14 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title out-dir posts posts-file] :as opts}]
+  [{:keys [blog-title out-dir posts posts-file num-index-posts] :as opts}]
   (let [out-file (fs/file out-dir "index.html")
-        stale? (seq (fs/modified-since out-file posts-file))]
+        posts (->> posts
+                   (remove :preview)
+                   (take num-index-posts))
+        post-files (map (comp (partial fs/file "posts") :file) posts)
+        stale? (seq (fs/modified-since out-file
+                                       (cons posts-file post-files)))]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
