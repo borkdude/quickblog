@@ -309,24 +309,26 @@
 
 (defn new
   "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
-  [{:keys [file title
+  [{:keys [file title help
            posts-dir]
     :or {posts-dir (:posts-dir default-opts)}
     :as opts}]
-  (let [_opts (assoc opts :posts-dir posts-dir)]
-    (assert file "Missing required argument: --file POST_FILENAME")
-    (assert title "Missing required argument: --title POST_TITLE")
-    (let [post-file (fs/file posts-dir file)]
+  (let [_opts (assoc opts :posts-dir posts-dir)
+        usage "Usage: bb new --file [POST_FILENAME] --title [POST_TITLE]"]
+    (when help
+      (println usage)
+      (System/exit 0))
+    (assert file (format "Missing required argument: --file\n\n%s" usage))
+    (assert title (format "Missing required argument: --title\n\n%s" usage))
+    (let [file (if (re-matches #"^.+[.][^.]+$" file)
+                 file
+                 (str file ".md"))
+          post-file (fs/file posts-dir file)]
       (when-not (fs/exists? post-file)
         (fs/create-dirs posts-dir)
-        (spit (fs/file posts-dir file) "TODO: write blog post")
-        (spit (fs/file "posts.edn")
-              (with-out-str ((requiring-resolve 'clojure.pprint/pprint)
-                             {:title title
-                              :file file
-                              :date (now)
-                              :tags #{"clojure"}}))
-              :append true)))))
+        (spit (fs/file posts-dir file)
+              (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
+                      title (now)))))))
 
 (defn serve
   "Runs file-server on `port`."
