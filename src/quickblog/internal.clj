@@ -71,6 +71,9 @@
 (defn html-file [file]
   (str/replace file ".md" ".html"))
 
+(defn cache-file [file]
+  (str file ".pre-template.html"))
+
 (defn transform-metadata
   ([metadata]
    (transform-metadata metadata {}))
@@ -228,6 +231,7 @@
                            discuss-fallback
                            cache-dir
                            out-dir
+                           force-render
                            page-template
                            post-template
                            posts-dir
@@ -238,8 +242,9 @@
   (let [out-file (fs/file out-dir (html-file file))
         markdown-file (fs/file posts-dir file)
         post-modified? (or modified?
-                           (rendering-modified? rendering-system-files out-file))
-        cached-file (fs/file cache-dir (str file ".pre-template.html"))
+                           (rendering-modified? rendering-system-files out-file)
+                           force-render)
+        cached-file (fs/file cache-dir (cache-file file))
         cached? (and (fs/exists? cached-file) (not post-modified?))
         html (if cached?
                (delay

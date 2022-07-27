@@ -19,6 +19,7 @@
    :favicon "false"
    :favicon-dir (fs/file "assets" "favicon")
    :favicon-out-dir (fs/file "assets" "favicon")
+   :force-render "false"
    :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
@@ -45,6 +46,7 @@
            favicon
            favicon-dir
            favicon-out-dir
+           force-render
            num-index-posts
            out-dir
            posts-dir
@@ -59,6 +61,7 @@
          favicon (:favicon default-opts)
          favicon-dir (:favicon-dir default-opts)
          favicon-out-dir (:favicon-out-dir default-opts)
+         force-render (:force-render default-opts)
          num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
@@ -77,6 +80,8 @@
                            (not= "false" favicon))
              :favicon-dir favicon-dir
              :favicon-out-dir favicon-out-dir
+             :force-render (and force-render
+                                (not= "false" force-render))
              :num-index-posts num-index-posts
              :posts-dir posts-dir
              :posts-file posts-file
@@ -112,26 +117,6 @@
 <meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
 </head></html>")
 
-(defn- html-file [file]
-  (str/replace file ".md" ".html"))
-
-(defn- markdown->html [file]
-  (let [_ (println "Processing markdown for file:" (str file))
-        markdown (slurp file)
-        markdown (str/replace markdown #"--" (fn [_]
-                                               "$$NDASH$$"))
-        ;; allow links with markup over multiple lines
-        markdown (str/replace markdown #"\[[^\]]+\n"
-                              (fn [match]
-                                (str/replace match "\n" "$$RET$$")))
-        html (md/md-to-html-string markdown :code-style
-                                   (fn [lang]
-                                     (format "class=\"lang-%s\"" lang)))
-        ;; see issue https://github.com/yogthos/markdown-clj/issues/146
-        html (str/replace html "$$NDASH$$" "--")
-        html (str/replace html "$$RET$$" "\n")]
-    html))
-
 (defn- base-html [opts]
   (-> (lib/ensure-template opts "base.html")
       slurp))
@@ -154,7 +139,7 @@
     (fs/create-dirs out-dir)
     (doseq [post posts
             :let [{:keys [file date legacy]} post
-                  html-file (html-file file)]]
+                  html-file (lib/html-file file)]]
       (lib/write-post! (assoc opts
                               :bodies bodies
                               :page-template page-template
@@ -169,14 +154,15 @@
                                              {:new_url html-file})]
             (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
-(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir]
+(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir force-render]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)
         stale? (or (lib/rendering-modified? rendering-system-files tags-out-dir)
-                   (some :modified? posts))]
+                   (some :modified? posts)
+                   force-render)]
     (when stale?
       (println "Writing tags page" (str tags-file))
       (lib/write-page! opts tags-file template
@@ -203,11 +189,12 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title num-index-posts out-dir posts] :as opts}]
+  [{:keys [blog-title num-index-posts out-dir posts force-render] :as opts}]
   (let [posts (take num-index-posts posts)
         out-file (fs/file out-dir "index.html")
         stale? (or (lib/rendering-modified? rendering-system-files out-file)
-                   (some :modified? posts))]
+                   (some :modified? posts)
+                   force-render)]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
@@ -217,10 +204,11 @@
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title out-dir posts] :as opts}]
+(defn- spit-archive [{:keys [blog-title out-dir posts force-render] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (lib/rendering-modified? rendering-system-files out-file)
-                   (some :modified? posts))]
+                   (some :modified? posts)
+                   force-render)]
     (when stale?
       (let [title (str blog-title " - Archive")]
         (lib/write-page! opts out-file
@@ -272,7 +260,7 @@
             [:-cdata @(get @bodies file)]]])])
       xml/indent-str))
 
-(defn- spit-feeds [{:keys [out-dir posts]}]
+(defn- spit-feeds [{:keys [out-dir posts force-render]}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
         clojure-posts (filter
@@ -280,14 +268,16 @@
                          (some tags ["clojure" "clojurescript"]))
                        posts)]
     (if (or (lib/rendering-modified? rendering-system-files clojure-feed-file)
-            (some :modified? clojure-posts))
+            (some :modified? clojure-posts)
+            force-render)
       (do
         (println "Writing Clojure feed" (str clojure-feed-file))
         (spit clojure-feed-file
               (atom-feed clojure-posts)))
       (println "No Clojure posts modified; skipping Clojure feed"))
     (if (or (lib/rendering-modified? rendering-system-files feed-file)
-            (some :modified? posts))
+            (some :modified? posts)
+            force-render)
       (do
         (println "Writing feed" (str feed-file))
         (spit feed-file
@@ -305,12 +295,19 @@
                 favicon-out-dir
                 out-dir
                 posts-dir
+                posts-file
                 templates-dir]
          :as opts} (apply-default-opts opts)
         posts (->> (lib/load-posts posts-dir default-metadata)
                    (lib/add-modified-metadata posts-dir out-dir))
         opts (assoc opts :posts posts)
         assets-out-dir (fs/create-dirs assets-out-dir)]
+    (when (empty? posts)
+      (if (fs/exists? posts-file)
+        (println (format "Run `bb migrate` to move metadata from `%s` to post files"
+                         posts-file))
+        (println "No posts found; run `bb new` to create one"))
+      (System/exit 1))
     (lib/ensure-resource (fs/file templates-dir "style.css"))
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
@@ -358,13 +355,30 @@
               (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
                       title (now)))))))
 
+(defn delete
+  "Deletes a post from the cache and output directories"
+  [{:keys [file] :as opts}]
+  (when-not file
+    (println "Missing required argument: --file")
+    (System/exit 1))
+  (let [{:keys [cache-dir out-dir posts-dir]} (apply-default-opts opts)
+        file (fs/file-name (fs/file file))]
+    (fs/delete-if-exists (fs/file posts-dir file))
+    (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
+    (fs/delete-if-exists (fs/file out-dir (lib/html-file file)))
+    ;; Remove post from tags, archive, index, and feeds by forcing re-render
+    (render (assoc opts :force-render true))))
+
 (defn migrate
   "Migrates from `posts.edn` to post-local metadata"
   [opts]
   (let [{:keys [posts-file] :as opts} (apply-default-opts opts)]
     (if (fs/exists? posts-file)
-      (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
-        (lib/migrate-post opts post))
+      (do
+        (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
+          (lib/migrate-post opts post))
+        (println "If all posts were successfully migrated, you should now delete"
+                 posts-file))
       (println (format "Posts file %s does not exist; no posts to migrate"
                        (str posts-file))))))
 
