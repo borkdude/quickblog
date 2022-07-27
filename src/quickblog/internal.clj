@@ -21,10 +21,11 @@
   #{:date
     :title})
 
+;; Cons-ing *file* directly in `rendering-modified?` doesn't work for some reason
+(def ^:private this-file (fs/file *file*))
+
 (defn rendering-modified? [rendering-system-files target-file]
-  (let [rendering-system-files (concat rendering-system-files
-                                       (map fs/file ["src/quickblog/internal.clj"
-                                                     "src/quickblog/internal.clj"]))]
+  (let [rendering-system-files (cons this-file rendering-system-files)]
     (seq (fs/modified-since target-file rendering-system-files))))
 
 (defn stale? [src target]
@@ -134,6 +135,28 @@
                       (str/join ", " (map name missing-keys)))
              :skipping)))
         (sort-by :date (comp - compare)))))
+
+(defn add-modified-metadata
+  "Adds :modified? to each post showing if it is new or modified more recently than `out-dir`"
+  [posts-dir out-dir posts]
+  (let [post-files (map #(fs/file posts-dir (:file %)) posts)
+        html-file-exists? #(->> (:file %)
+                                html-file
+                                (fs/file out-dir)
+                                fs/exists?)
+        new-posts (->> (remove html-file-exists? posts)
+                       (map :file)
+                       set)
+        modified-posts (->> post-files
+                            (fs/modified-since out-dir)
+                            (map #(str (.getFileName %)))
+                            set)
+        new-or-modified-posts (set/union new-posts modified-posts)]
+    (map #(assoc %
+                 :modified?
+                 (contains? new-or-modified-posts
+                            (:file %)))
+         posts)))
 
 (defn migrate-post [{:keys [default-metadata posts-dir] :as opts}
                     {:keys [file title date tags categories]}]

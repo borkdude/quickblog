@@ -102,8 +102,7 @@
    "site.webmanifest"])
 
 (def ^:private rendering-system-files
-  [(fs/file "bb.edn")
-   (fs/file "src/quickblog/api.clj")])
+  [(fs/file "bb.edn") (fs/file "deps.edn") (fs/file *file*)])
 
 ;; re-used when generating atom.xml
 (def ^:private bodies (atom {}))
@@ -176,7 +175,8 @@
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)
-        stale? true]
+        stale? (or (lib/rendering-modified? rendering-system-files tags-out-dir)
+                   (some :modified? posts))]
     (when stale?
       (println "Writing tags page" (str tags-file))
       (lib/write-page! opts tags-file template
@@ -203,9 +203,11 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title out-dir posts] :as opts}]
-  (let [out-file (fs/file out-dir "index.html")
-        stale? true]
+  [{:keys [blog-title num-index-posts out-dir posts] :as opts}]
+  (let [posts (take num-index-posts posts)
+        out-file (fs/file out-dir "index.html")
+        stale? (or (lib/rendering-modified? rendering-system-files out-file)
+                   (some :modified? posts))]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
@@ -217,7 +219,8 @@
 
 (defn- spit-archive [{:keys [blog-title out-dir posts] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
-        stale? true]
+        stale? (or (lib/rendering-modified? rendering-system-files out-file)
+                   (some :modified? posts))]
     (when stale?
       (let [title (str blog-title " - Archive")]
         (lib/write-page! opts out-file
@@ -269,20 +272,43 @@
             [:-cdata @(get @bodies file)]]])])
       xml/indent-str))
 
+(defn- spit-feeds [{:keys [out-dir posts]}]
+  (let [feed-file (fs/file out-dir "atom.xml")
+        clojure-feed-file (fs/file out-dir "planetclojure.xml")
+        clojure-posts (filter
+                       (fn [{:keys [tags]}]
+                         (some tags ["clojure" "clojurescript"]))
+                       posts)]
+    (if (or (lib/rendering-modified? rendering-system-files clojure-feed-file)
+            (some :modified? clojure-posts))
+      (do
+        (println "Writing Clojure feed" (str clojure-feed-file))
+        (spit clojure-feed-file
+              (atom-feed clojure-posts)))
+      (println "No Clojure posts modified; skipping Clojure feed"))
+    (if (or (lib/rendering-modified? rendering-system-files feed-file)
+            (some :modified? posts))
+      (do
+        (println "Writing feed" (str feed-file))
+        (spit feed-file
+              (atom-feed posts)))
+      (println "No posts modified; skipping main feed"))))
+
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
   [opts]
   (let [{:keys [assets-dir
                 assets-out-dir
                 cache-dir
+                default-metadata
                 favicon-dir
                 favicon-out-dir
                 out-dir
                 posts-dir
-                templates-dir
-                default-metadata]
+                templates-dir]
          :as opts} (apply-default-opts opts)
-        posts (lib/load-posts posts-dir default-metadata)
+        posts (->> (lib/load-posts posts-dir default-metadata)
+                   (lib/add-modified-metadata posts-dir out-dir))
         opts (assoc opts :posts posts)
         assets-out-dir (fs/create-dirs assets-out-dir)]
     (lib/ensure-resource (fs/file templates-dir "style.css"))
@@ -298,14 +324,7 @@
     (gen-tags opts)
     (spit-archive opts)
     (spit-index opts)
-    (spit (fs/file out-dir "atom.xml") (atom-feed opts))
-    (let [clojure-posts (filter
-                         (fn [post]
-                           (some (:tags post)
-                                 ["clojure" "clojurescript"]))
-                         posts)]
-      (spit (fs/file out-dir "planetclojure.xml")
-            (atom-feed (assoc opts :posts clojure-posts))))))
+    (spit-feeds opts)))
 
 (defn quickblog
   "Alias for `render`"
