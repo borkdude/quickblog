@@ -2,7 +2,6 @@
   {:no-doc true}
   (:require
    [babashka.fs :as fs]
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -135,6 +134,27 @@
                       (str/join ", " (map name missing-keys)))
              :skipping)))
         (sort-by :date (comp - compare)))))
+
+(defn migrate-post [{:keys [default-metadata posts-dir] :as opts}
+                    {:keys [file title date tags categories]}]
+  (let [post-file (fs/file posts-dir file)
+        post (load-post post-file)]
+    (if (every? post required-metadata)
+      (println (format "Post %s already contains metadata; skipping migration"
+                       (str file)))
+      (let [contents (slurp post-file)
+            tags (or tags categories)
+            metadata (assoc default-metadata
+                            :title title
+                            :date date
+                            :tags (str/join "," tags))
+            metadata-str (->> metadata
+                              (map (fn [[k v]]
+                                     (format "%s: %s"
+                                             (str/capitalize (name k)) v)))
+                              (str/join "\n"))]
+        (spit post-file (format "%s\n\n%s" metadata-str contents))
+        (println "Migrated file:" (str file))))))
 
 (defn posts-by-tag [posts]
   (->> posts

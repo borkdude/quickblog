@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
@@ -14,12 +15,14 @@
    :assets-out-dir "assets"
    :blog-dir (fs/file ".")
    :cache-dir ".work"
+   :default-metadata {}
    :favicon "false"
    :favicon-dir (fs/file "assets" "favicon")
    :favicon-out-dir (fs/file "assets" "favicon")
    :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
+   :posts-file "posts.edn"  ; deprecated, but used for `migrate`
    :tags-dir "tags"
    :templates-dir "templates"})
 
@@ -38,24 +41,28 @@
            assets-dir
            assets-out-dir
            cache-dir
+           default-metadata
            favicon
            favicon-dir
            favicon-out-dir
            num-index-posts
            out-dir
            posts-dir
+           posts-file
            tags-dir
            templates-dir
            discuss-link]
     :or {assets-dir (:assets-dir default-opts)
          assets-out-dir (:assets-out-dir default-opts)
          cache-dir (:cache-dir default-opts)
+         default-metadata (:default-metadata default-opts)
          favicon (:favicon default-opts)
          favicon-dir (:favicon-dir default-opts)
          favicon-out-dir (:favicon-out-dir default-opts)
          num-index-posts (:num-index-posts default-opts)
          out-dir (:out-dir default-opts)
          posts-dir (:posts-dir default-opts)
+         posts-file (:posts-file default-opts)
          tags-dir (:tags-dir default-opts)
          templates-dir (:templates-dir default-opts)}
     :as opts}]
@@ -64,6 +71,7 @@
              :assets-dir assets-dir
              :assets-out-dir assets-out-dir
              :cache-dir cache-dir
+             :default-metadata default-metadata
              :discuss-link discuss-link
              :favicon (and favicon
                            (not= "false" favicon))
@@ -71,6 +79,7 @@
              :favicon-out-dir favicon-out-dir
              :num-index-posts num-index-posts
              :posts-dir posts-dir
+             :posts-file posts-file
              :tags-dir tags-dir
              :templates-dir templates-dir)
       update-out-dirs))
@@ -308,7 +317,7 @@
            (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd")))
 
 (defn new
-  "Creates new entry in `posts.edn` and creates `file` in `posts` dir."
+  "Creates new `file` in posts dir."
   [{:keys [file title help
            posts-dir]
     :or {posts-dir (:posts-dir default-opts)}
@@ -329,6 +338,16 @@
         (spit (fs/file posts-dir file)
               (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
                       title (now)))))))
+
+(defn migrate
+  "Migrates from `posts.edn` to post-local metadata"
+  [opts]
+  (let [{:keys [posts-file] :as opts} (apply-default-opts opts)]
+    (if (fs/exists? posts-file)
+      (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
+        (lib/migrate-post opts post))
+      (println (format "Posts file %s does not exist; no posts to migrate"
+                       (str posts-file))))))
 
 (defn serve
   "Runs file-server on `port`."

@@ -22,6 +22,9 @@
   new {:doc "Create new blog article"
        :task (qb/new opts)}
 
+  migrate {:doc "Migrate from posts.edn"
+           :task (qb/migrate opts)}
+
   render {:doc "Render blog"
           :task (qb/render opts)}
 
