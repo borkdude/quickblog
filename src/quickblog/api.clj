@@ -11,19 +11,32 @@
 
 ;; all values should be strings for consistency with command line args
 (def ^:private default-opts
-  {:assets-dir "assets"
+  {
+   ;; about the blog
+   :blog-title "quickblog"
+   :blog-author "Quick Blogger"
+   :blog-description "A blog about blogging quickly"
+   :blog-root "https://github.com/borkdude/quickblog"
+   :about-link nil      ; example: "https://github.com/borkdude/quickblog"
+   :discuss-link nil    ; example: "https://github.com/borkdude/quickblog/issues"
+   :twitter-handle nil  ; example: "quickblogger"
+   ;; config
+   :default-metadata {}
+   :num-index-posts 3
+   :posts-file "posts.edn"  ; deprecated, but used for `migrate`
+   ;; features
+   :favicon "false"
+   ;; options
+   :force-render "false"
+   ;; directories
+   :assets-dir "assets"
    :assets-out-dir "assets"
    :blog-dir (fs/file ".")
    :cache-dir ".work"
-   :default-metadata {}
-   :favicon "false"
    :favicon-dir (fs/file "assets" "favicon")
    :favicon-out-dir (fs/file "assets" "favicon")
-   :force-render "false"
-   :num-index-posts 3
    :out-dir "public"
    :posts-dir "posts"
-   :posts-file "posts.edn"  ; deprecated, but used for `migrate`
    :tags-dir "tags"
    :templates-dir "templates"})
 
@@ -37,56 +50,10 @@
            :assets-out-dir (out-dir-ify assets-out-dir)
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
-(defn- apply-default-opts
-  [{:keys [blog-title
-           assets-dir
-           assets-out-dir
-           cache-dir
-           default-metadata
-           favicon
-           favicon-dir
-           favicon-out-dir
-           force-render
-           num-index-posts
-           out-dir
-           posts-dir
-           posts-file
-           tags-dir
-           templates-dir
-           discuss-link]
-    :or {assets-dir (:assets-dir default-opts)
-         assets-out-dir (:assets-out-dir default-opts)
-         cache-dir (:cache-dir default-opts)
-         default-metadata (:default-metadata default-opts)
-         favicon (:favicon default-opts)
-         favicon-dir (:favicon-dir default-opts)
-         favicon-out-dir (:favicon-out-dir default-opts)
-         force-render (:force-render default-opts)
-         num-index-posts (:num-index-posts default-opts)
-         out-dir (:out-dir default-opts)
-         posts-dir (:posts-dir default-opts)
-         posts-file (:posts-file default-opts)
-         tags-dir (:tags-dir default-opts)
-         templates-dir (:templates-dir default-opts)}
-    :as opts}]
-  (-> opts
-      (assoc :out-dir out-dir
-             :assets-dir assets-dir
-             :assets-out-dir assets-out-dir
-             :cache-dir cache-dir
-             :default-metadata default-metadata
-             :discuss-link discuss-link
-             :favicon (and favicon
-                           (not= "false" favicon))
-             :favicon-dir favicon-dir
-             :favicon-out-dir favicon-out-dir
-             :force-render (and force-render
-                                (not= "false" force-render))
-             :num-index-posts num-index-posts
-             :posts-dir posts-dir
-             :posts-file posts-file
-             :tags-dir tags-dir
-             :templates-dir templates-dir)
+(defn- apply-default-opts [opts]
+  (-> (merge default-opts opts)
+      (update :favicon #(and % (not= "false" %)))
+      (update :force-render #(and % (not= "false" %)))
       update-out-dirs))
 
 (defmacro ^:private ->map [& ks]
