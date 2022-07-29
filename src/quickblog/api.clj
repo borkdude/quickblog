@@ -24,6 +24,7 @@
    :default-metadata {}
    :num-index-posts 3
    :posts-file "posts.edn"  ; deprecated, but used for `migrate`
+   :rendering-system-files ["bb.edn" "deps.edn" *file*]
    ;; features
    :favicon "false"
    ;; options
@@ -54,6 +55,7 @@
   (-> (merge default-opts opts)
       (update :favicon #(and % (not= "false" %)))
       (update :force-render #(and % (not= "false" %)))
+      (update :rendering-system-files #(map fs/file %))
       update-out-dirs))
 
 (defmacro ^:private ->map [& ks]
@@ -72,9 +74,6 @@
    "mstile-150x150.png"
    "safari-pinned-tab.svg"
    "site.webmanifest"])
-
-(def ^:private rendering-system-files
-  [(fs/file "bb.edn") (fs/file "deps.edn") (fs/file *file*)])
 
 ;; used for caching
 (def ^:private bodies (atom {}))
@@ -96,7 +95,8 @@
                            (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
-                          cache-dir posts-dir out-dir templates-dir]
+                          cache-dir posts-dir out-dir templates-dir
+                          rendering-system-files]
                    :as opts}]
   (let [page-template (base-html opts)
         post-template (-> (lib/ensure-template opts "post.html")
@@ -122,7 +122,8 @@
                                              {:new_url html-file})]
             (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
 
-(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir force-render]
+(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir force-render
+                         rendering-system-files]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
@@ -157,7 +158,9 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title num-index-posts out-dir posts force-render] :as opts}]
+  [{:keys [blog-title num-index-posts out-dir posts force-render
+           rendering-system-files]
+    :as opts}]
   (let [posts (take num-index-posts posts)
         out-file (fs/file out-dir "index.html")
         stale? (or (lib/rendering-modified? rendering-system-files out-file)
@@ -172,7 +175,9 @@
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title out-dir posts force-render] :as opts}]
+(defn- spit-archive [{:keys [blog-title out-dir posts force-render
+                             rendering-system-files]
+                      :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (lib/rendering-modified? rendering-system-files out-file)
                    (some :modified? posts)
@@ -228,7 +233,7 @@
             [:-cdata @(get @bodies file)]]])])
       xml/indent-str))
 
-(defn- spit-feeds [{:keys [out-dir posts force-render]}]
+(defn- spit-feeds [{:keys [out-dir posts force-render rendering-system-files]}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
         clojure-posts (filter

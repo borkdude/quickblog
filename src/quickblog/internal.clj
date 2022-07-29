@@ -290,17 +290,21 @@
   (->> (render-page opts template template-vars)
        (spit out-file)))
 
-(defn write-tag! [{:keys [blog-title]
+(defn write-tag! [{:keys [blog-title force-render rendering-system-files]
                    :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
   (let [tag-slug (str/replace tag #"[^A-z0-9]" "-")
-        tag-file (fs/file tags-out-dir (str tag-slug ".html"))]
-    (println "Writing tag page:" (str tag-file))
-    (write-page! opts tag-file template
-                 {:skip-archive true
-                  :title (str blog-title " - Tag - " tag)
-                  :relative-path "../"
-                  :body (hiccup/html (post-links (str "Tag - " tag) posts
-                                                 {:relative-path "../"}))})))
+        tag-file (fs/file tags-out-dir (str tag-slug ".html"))
+        stale? (or (rendering-modified? rendering-system-files tags-out-dir)
+                   (some :modified? posts)
+                   force-render)]
+    (when stale?
+      (println "Writing tag page:" (str tag-file))
+      (write-page! opts tag-file template
+                   {:skip-archive true
+                    :title (str blog-title " - Tag - " tag)
+                    :relative-path "../"
+                    :body (hiccup/html (post-links (str "Tag - " tag) posts
+                                                   {:relative-path "../"}))}))))
