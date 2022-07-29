@@ -95,7 +95,7 @@
                            (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [posts discuss-link
-                          cache-dir favicon-dir posts-dir out-dir templates-dir]
+                          cache-dir posts-dir out-dir templates-dir]
                    :as opts}]
   (let [page-template (base-html opts)
         post-template (-> (lib/ensure-template opts "post.html")
