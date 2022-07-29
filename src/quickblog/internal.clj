@@ -227,6 +227,12 @@
             (count posts)
             " posts"]])]])
 
+(defn render-page [opts template template-vars]
+  (let [template-vars (merge opts template-vars)
+        template-vars (assoc template-vars
+                             :favicon-tags (load-favicon template-vars))]
+    (selmer/render template template-vars)))
+
 (defn write-post! [{:keys [bodies
                            discuss-fallback
                            cache-dir
@@ -261,10 +267,9 @@
                                                :date date
                                                :discuss discuss
                                                :tags tags})
-            rendered-html (selmer/render page-template
-                                         (merge opts
-                                                {:title title
-                                                 :body body}))]
+            rendered-html (render-page opts page-template
+                                       {:title title
+                                        :body body})]
         (println "Writing post:" (str out-file))
         (spit out-file rendered-html)
         (when (and cache-dir (not cached?))
@@ -275,11 +280,8 @@
 (defn write-page! [opts out-file
                    template template-vars]
   (println "Writing page:" (str out-file))
-  (let [template-vars (merge opts template-vars)
-        template-vars (assoc template-vars
-                             :favicon-tags (load-favicon template-vars))]
-    (->> (selmer/render template template-vars)
-         (spit out-file))))
+  (->> (render-page opts template template-vars)
+       (spit out-file)))
 
 (defn write-tag! [{:keys [blog-title]
                    :as opts}
