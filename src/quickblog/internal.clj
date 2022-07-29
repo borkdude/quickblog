@@ -110,16 +110,22 @@
         :html
         post-process-markdown)))
 
+(defn sort-posts [posts]
+  (sort-by :date (comp - compare) posts))
+
 (defn load-post
   ([file]
    (load-post file {}))
   ([file default-metadata]
    (println "Reading metadata for file:" (str file))
-   (-> (slurp file)
-       md/md-to-meta
-       (transform-metadata default-metadata)
-       (assoc :file (.getName file)
-              :html (delay (markdown->html file))))))
+   (try
+     (-> (slurp file)
+         md/md-to-meta
+         (transform-metadata default-metadata)
+         (assoc :file (fs/file-name file)
+                :html (delay (markdown->html file))))
+     (catch Exception e
+       (println "Skipping" (str file) "due to exception:" (str e))))))
 
 (defn load-posts
   "Returns all posts from `post-dir` in descending date order"
@@ -127,7 +133,8 @@
    (load-posts posts-dir {}))
   ([posts-dir default-metadata]
    (->> (fs/glob posts-dir "*.md")
-        (map #(load-post (.toFile %) default-metadata))
+        (map #(load-post (fs/file %) default-metadata))
+        (remove nil?)
         (remove
          (fn [post]
            (when-let [missing-keys
@@ -137,7 +144,7 @@
                       "due to missing required metadata:"
                       (str/join ", " (map name missing-keys)))
              :skipping)))
-        (sort-by :date (comp - compare)))))
+        sort-posts)))
 
 (defn add-modified-metadata
   "Adds :modified? to each post showing if it is new or modified more recently than `out-dir`"

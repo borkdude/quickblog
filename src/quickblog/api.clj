@@ -76,8 +76,9 @@
 (def ^:private rendering-system-files
   [(fs/file "bb.edn") (fs/file "deps.edn") (fs/file *file*)])
 
-;; re-used when generating atom.xml
+;; used for caching
 (def ^:private bodies (atom {}))
+(def ^:private posts-cache (atom nil))
 
 (def ^:private legacy-template "
 <html><head>
@@ -265,8 +266,9 @@
                 posts-file
                 templates-dir]
          :as opts} (apply-default-opts opts)
-        posts (->> (lib/load-posts posts-dir default-metadata)
-                   (lib/add-modified-metadata posts-dir out-dir))
+        posts (or (:posts opts)
+                  (->> (lib/load-posts posts-dir default-metadata)
+                       (lib/add-modified-metadata posts-dir out-dir)))
         opts (assoc opts :posts posts)
         assets-out-dir (fs/create-dirs assets-out-dir)]
     (when (empty? posts)
@@ -275,6 +277,7 @@
                          posts-file))
         (println "No posts found; run `bb new` to create one"))
       (System/exit 1))
+    (reset! posts-cache posts)
     (lib/ensure-resource (fs/file templates-dir "style.css"))
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
@@ -358,6 +361,27 @@
     (serve {:port port
             :dir out-dir})))
 
+(defn- update-posts-cache! [opts path post-filename]
+  (let [modified-post (lib/load-post path (:default-metadata opts))
+        unmodify (fn [posts] (map #(assoc % :modified? false) posts))]
+    (if modified-post
+      (let [modified-post (assoc modified-post :modified? true)]
+        (swap! posts-cache
+               (fn [posts]
+                 (if (some #(= post-filename (:file %)) posts)
+                   (->> posts
+                        unmodify
+                        (map (fn [post]
+                               (if (= post-filename (:file post))
+                                 modified-post
+                                 (assoc post :modified? false)))))
+                   (->> (cons modified-post (unmodify posts))
+                        lib/sort-posts)))))
+      (swap! posts-cache (fn [posts]
+                           (->> posts
+                                unmodify
+                                (remove #(= post-filename (:file %)))))))))
+
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
@@ -374,18 +398,20 @@
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.3")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
-        (watch "posts.edn"
-               (fn [_]
-                 (println "Re-rendering")
-                 (render opts)))
-
         (watch posts-dir
-               (fn [_]
-                 (println "Re-rendering")
-                 (render opts)))
+               (fn [{:keys [path type] :as event}]
+                 (println "Change detected:" event)
+                 (when (#{:create :remove :write|chmod} type)
+                   (let [post-filename (-> (fs/file path) fs/file-name)]
+                     ;; skip Emacs backup files and the like
+                     (when-not (str/starts-with? post-filename ".")
+                       (println "Re-rendering" post-filename)
+                       (update-posts-cache! opts path post-filename)
+                       (render (assoc opts :posts @posts-cache)))))))
 
         (watch templates-dir
                (fn [_]
-                 (println "Re-rendering")
+                 (println "Re-rendering all posts")
+                 (reset! posts-cache nil)
                  (render opts))))))
   @(promise))
