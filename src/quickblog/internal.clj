@@ -2,6 +2,8 @@
   {:no-doc true}
   (:require
    [babashka.fs :as fs]
+   [clojure.data :as data]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -9,6 +11,7 @@
    [markdown.core :as md]
    [selmer.parser :as selmer]))
 
+(def ^:private cache-filename "cache.edn")
 (def ^:private resource-path "quickblog")
 (def ^:private templates-resource-dir "templates")
 (def ^:private favicon-template "favicon.html")
@@ -20,6 +23,11 @@
 (def ^:private required-metadata
   #{:date
     :title})
+
+(defmacro ->map [& ks]
+  (assert (every? symbol? ks))
+  (zipmap (map keyword ks)
+          ks))
 
 ;; Cons-ing *file* directly in `rendering-modified?` doesn't work for some reason
 (def ^:private this-file (fs/file *file*))
@@ -113,65 +121,145 @@
 (defn sort-posts [posts]
   (sort-by :date (comp - compare) posts))
 
-(defn load-post
-  ([file]
-   (load-post file {}))
-  ([file default-metadata]
-   (println "Reading metadata for file:" (str file))
-   (try
-     (-> (slurp file)
-         md/md-to-meta
-         (transform-metadata default-metadata)
-         (assoc :file (fs/file-name file)
-                :html (delay (markdown->html file))))
-     (catch Exception e
-       (println "Skipping" (str file) "due to exception:" (str e))))))
+(defn modified-since? [target src]
+  (seq (fs/modified-since target src)))
 
-(defn load-posts
-  "Returns all posts from `post-dir` in descending date order"
-  ([posts-dir]
-   (load-posts posts-dir {}))
-  ([posts-dir default-metadata]
-   (->> (fs/glob posts-dir "*.md")
-        (map #(load-post (fs/file %) default-metadata))
-        (remove nil?)
-        (remove
-         (fn [post]
-           (when-let [missing-keys
-                      (seq (set/difference required-metadata
-                                           (set (keys post))))]
-             (println "Skipping" (:file post)
-                      "due to missing required metadata:"
-                      (str/join ", " (map name missing-keys)))
-             :skipping)))
-        sort-posts)))
+(defn validate-metadata [post]
+  (if-let [missing-keys
+           (seq (set/difference required-metadata
+                                (set (keys post))))]
+    {:quickblog/error (format "Skipping %s due to missing required metadata: %s"
+                              (:file post) (str/join ", " (map name missing-keys)))}
+    post))
 
-(defn add-modified-metadata
-  "Adds :modified? to each post showing if it is new or modified more recently than `out-dir`"
-  [posts-dir out-dir posts]
-  (let [post-files (map #(fs/file posts-dir (:file %)) posts)
-        html-file-exists? #(->> (:file %)
-                                html-file
-                                (fs/file out-dir)
-                                fs/exists?)
-        new-posts (->> (remove html-file-exists? posts)
-                       (map :file)
-                       set)
-        modified-posts (->> post-files
-                            (fs/modified-since out-dir)
-                            (map #(str (.getFileName %)))
-                            set)
-        new-or-modified-posts (set/union new-posts modified-posts)]
-    (map #(assoc %
-                 :modified?
-                 (contains? new-or-modified-posts
-                            (:file %)))
-         posts)))
+(defn load-post [{:keys [cache-dir default-metadata
+                         force-render rendering-system-files]
+                  :as opts}
+                 path]
+  (let [path (fs/file path)
+        file (fs/file-name path)
+        cached-file (fs/file cache-dir (cache-file file))
+        stale? (or force-render
+                   (modified-since? cached-file (cons path rendering-system-files)))]
+    (println "Reading metadata for post:" (str file))
+    (try
+      (-> (slurp path)
+          md/md-to-meta
+          (transform-metadata default-metadata)
+          (assoc :file (fs/file-name file)
+                 :html (if stale?
+                         (delay
+                           (println "Parsing Markdown for post:" (str file))
+                           (let [html (markdown->html path)]
+                             (println "Caching post to file:" (str cached-file))
+                             (spit cached-file html)
+                             html))
+                         (delay
+                           (println "Reading post from cache:" (str file))
+                           (slurp cached-file))))
+          validate-metadata)
+      (catch Exception e
+        {:quickblog/error (format "Skipping post %s due to exception: %s"
+                                  (str file) (str e))}))))
+
+(defn ->filename [path]
+  (-> path fs/file fs/file-name))
+
+(defn has-error? [opts [_ {:keys [quickblog/error]}]]
+  (when error
+    (println error)
+    true))
+
+(defn load-posts [{:keys [posts-dir] :as opts}]
+  (->> (fs/glob posts-dir "*.md")
+       (map (juxt ->filename (partial load-post opts)))
+       (remove (partial has-error? opts))
+       (into {})))
+
+(defn only-metadata [posts]
+  (->> posts
+       (map (fn [[file post]] [file (dissoc post :html)]))
+       (into {})))
+
+(defn load-cache [{:keys [cache-dir] :as opts}]
+  (let [cache-file (fs/file cache-dir cache-filename)]
+    (if (fs/exists? cache-file)
+      (edn/read-string (slurp cache-file))
+      {})))
+
+(defn write-cache! [{:keys [cache-dir posts] :as opts}]
+  (let [cache-file (fs/file cache-dir cache-filename)]
+    (fs/create-dirs cache-dir)
+    (spit cache-file (only-metadata posts))))
+
+(defn deleted-posts [{:keys [cached-posts posts] :as opts}]
+  (->> [cached-posts posts]
+       (map (comp set keys))
+       (apply set/difference)))
+
+(defn modified-metadata [{:keys [cached-posts posts] :as opts}]
+  (let [posts (only-metadata posts)
+        [cached current _] (data/diff cached-posts posts)]
+    (->map cached current)))
+
+(defn modified-post-pages
+  "Returns ids of posts which have newer cache files than post pages"
+  [{:keys [cache-dir out-dir posts]}]
+  (->> posts
+       (filter (fn [[file _]]
+                 (let [cached-file (fs/file cache-dir (cache-file file))
+                       page-file (fs/file out-dir (html-file file))]
+                   (if (fs/exists? cached-file)
+                     (modified-since? page-file cached-file)
+                     true))))
+       (map first)
+       set))
+
+(defn modified-posts [{:keys [cache-dir posts posts-dir
+                              force-render rendering-system-files]
+                       :as opts}]
+  (->> posts
+       (filter (fn [[file _]]
+                 (let [cached-file (fs/file cache-dir (cache-file file))
+                       post-file (fs/file posts-dir file)]
+                   (or force-render
+                       (modified-since? cached-file
+                                        (cons post-file rendering-system-files))))))
+       (map first)
+       set))
+
+(defn modified-tags [{:keys [modified-metadata] :as opts}]
+  (->> (vals modified-metadata)
+       (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
+       (apply set/union)))
+
+(defn refresh-cache [{:keys [force-render
+                             cache-dir
+                             cached-posts
+                             rendering-system-files]
+                      :as opts}]
+  ;; watch mode will manage caching, so do nothing if cached-posts is present
+  (if cached-posts
+    opts
+    (let [cached-posts (if (or force-render
+                               (rendering-modified? rendering-system-files cache-dir))
+                         {}
+                         (load-cache opts))
+          posts (load-posts opts)
+          opts (assoc opts
+                      :cached-posts cached-posts
+                      :posts posts)
+          opts (assoc opts
+                      :modified-metadata (modified-metadata opts))]
+      (assoc opts
+             :deleted-posts (deleted-posts opts)
+             :modified-posts (modified-posts opts)
+             :modified-tags (modified-tags opts)))))
 
 (defn migrate-post [{:keys [default-metadata posts-dir] :as opts}
-                    {:keys [file title date tags categories]}]
+                    {:keys [file title date tags categories legacy]}]
   (let [post-file (fs/file posts-dir file)
-        post (load-post post-file)]
+        post (load-post opts post-file)]
     (if (every? post required-metadata)
       (println (format "Post %s already contains metadata; skipping migration"
                        (str file)))
@@ -181,6 +269,9 @@
                             :title title
                             :date date
                             :tags (str/join "," tags))
+            metadata (merge metadata
+                            (when legacy
+                              {:legacy true}))
             metadata-str (->> metadata
                               (map (fn [[k v]]
                                      (format "%s: %s"
@@ -190,7 +281,7 @@
         (println "Migrated file:" (str file))))))
 
 (defn posts-by-tag [posts]
-  (->> posts
+  (->> (vals posts)
        (sort-by :date)
        (mapcat (fn [{:keys [tags] :as post}]
                  (map (fn [tag] [tag post]) tags)))
@@ -240,49 +331,29 @@
                              :favicon-tags (load-favicon template-vars))]
     (selmer/render template template-vars)))
 
-(defn write-post! [{:keys [bodies
-                           discuss-fallback
+(defn write-post! [{:keys [discuss-fallback
                            cache-dir
                            out-dir
                            force-render
                            page-template
                            post-template
-                           posts-dir
-                           rendering-system-files]
+                           posts-dir]
                     :as opts}
-                   {:keys [file title date discuss tags modified? html]
+                   {:keys [file title date discuss tags html]
                     :or {discuss discuss-fallback}}]
   (let [out-file (fs/file out-dir (html-file file))
         markdown-file (fs/file posts-dir file)
-        post-modified? (or modified?
-                           (rendering-modified? rendering-system-files out-file)
-                           force-render)
         cached-file (fs/file cache-dir (cache-file file))
-        cached? (and (fs/exists? cached-file) (not post-modified?))
-        html (if cached?
-               (delay
-                 (println "Reading file from cache:" (str cached-file))
-                 (slurp cached-file))
-               html)
-        ;; The index page and XML feed will need the post HTML if they need to
-        ;; be re-rendered, so pass it along (but not deferenced, as it may not
-        ;; be needed)
-        _ (swap! bodies assoc file html)]
-    (if post-modified?
-      (let [body (selmer/render post-template {:body @html
-                                               :title title
-                                               :date date
-                                               :discuss discuss
-                                               :tags tags})
-            rendered-html (render-page opts page-template
-                                       {:title title
-                                        :body body})]
-        (println "Writing post:" (str out-file))
-        (spit out-file rendered-html)
-        (when (and cache-dir (not cached?))
-          (println "Writing rendered HTML to cache:" (str cached-file))
-          (spit cached-file @html)))
-      (println file "not modified; using cached version"))))
+        body (selmer/render post-template {:body @html
+                                           :title title
+                                           :date date
+                                           :discuss discuss
+                                           :tags tags})
+        rendered-html (render-page opts page-template
+                                   {:title title
+                                    :body body})]
+    (println "Writing post:" (str out-file))
+    (spit out-file rendered-html)))
 
 (defn write-page! [opts out-file
                    template template-vars]
@@ -290,18 +361,13 @@
   (->> (render-page opts template template-vars)
        (spit out-file)))
 
-(defn write-tag! [{:keys [blog-title force-render rendering-system-files]
-                   :as opts}
+(defn write-tag! [{:keys [blog-title modified-tags] :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
   (let [tag-slug (str/replace tag #"[^A-z0-9]" "-")
-        tag-file (fs/file tags-out-dir (str tag-slug ".html"))
-        stale? (or (rendering-modified? rendering-system-files tags-out-dir)
-                   (some :modified? posts)
-                   force-render)]
-    (when stale?
-      (println "Writing tag page:" (str tag-file))
+        tag-file (fs/file tags-out-dir (str tag-slug ".html"))]
+    (when (or (modified-tags tag) (not (fs/exists? tag-file)))
       (write-page! opts tag-file template
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)

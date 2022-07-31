@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
    [clojure.edn :as edn]
+   [clojure.set :as set]
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
@@ -52,16 +53,12 @@
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
 (defn- apply-default-opts [opts]
-  (-> (merge default-opts opts)
-      (update :favicon #(and % (not= "false" %)))
-      (update :force-render #(and % (not= "false" %)))
-      (update :rendering-system-files #(map fs/file %))
-      update-out-dirs))
-
-(defmacro ^:private ->map [& ks]
-  (assert (every? symbol? ks))
-  (zipmap (map keyword ks)
-          ks))
+  (let [opts (merge default-opts opts)]
+    (-> opts
+        (update :favicon #(and % (not= "false" %)))
+        (update :force-render #(and % (not= "false" %)))
+        (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
+        update-out-dirs)))
 
 (def ^:private favicon-assets
   ["android-chrome-192x192.png"
@@ -75,18 +72,13 @@
    "safari-pinned-tab.svg"
    "site.webmanifest"])
 
-;; used for caching
-(def ^:private bodies (atom {}))
-(def ^:private posts-cache (atom nil))
-
 (def ^:private legacy-template "
 <html><head>
 <meta http-equiv=\"refresh\" content=\"0; URL=/{{new_url}}\" />
 </head></html>")
 
 (defn- base-html [opts]
-  (-> (lib/ensure-template opts "base.html")
-      slurp))
+  (slurp (lib/ensure-template opts "base.html")))
 
 (defn- ensure-favicon-assets [{:keys [favicon favicon-dir]}]
   (when favicon
@@ -94,46 +86,42 @@
       (lib/ensure-resource (fs/file favicon-dir asset)
                            (fs/file "assets" "favicon" asset)))))
 
-(defn- gen-posts [{:keys [posts discuss-link
-                          cache-dir posts-dir out-dir templates-dir
-                          rendering-system-files]
+(defn- gen-posts [{:keys [discuss-link modified-posts posts
+                          cache-dir posts-dir out-dir templates-dir]
                    :as opts}]
-  (let [page-template (base-html opts)
-        post-template (-> (lib/ensure-template opts "post.html")
-                          slurp)
-        rendering-system-files (concat rendering-system-files
-                                       (map fs/file [templates-dir]))]
+  (let [posts-to-write (set/union modified-posts
+                                  (lib/modified-post-pages opts))
+        page-template (base-html opts)
+        post-template (slurp (lib/ensure-template opts "post.html"))]
     (fs/create-dirs cache-dir)
     (fs/create-dirs out-dir)
-    (doseq [post posts
+    (doseq [[file post] posts
+            :when (contains? posts-to-write file)
             :let [{:keys [file date legacy]} post
                   html-file (lib/html-file file)]]
       (lib/write-post! (assoc opts
-                              :bodies bodies
                               :page-template page-template
-                              :post-template post-template
-                              :rendering-system-files rendering-system-files)
+                              :post-template post-template)
                        post)
       (let [legacy-dir (fs/file out-dir (str/replace date "-" "/")
                                 (str/replace file ".md" ""))]
         (when legacy
           (fs/create-dirs legacy-dir)
-          (let [redirect-html (selmer/render legacy-template
+          (let [legacy-file  (fs/file (fs/file legacy-dir "index.html"))
+                redirect-html (selmer/render legacy-template
                                              {:new_url html-file})]
-            (spit (fs/file (fs/file legacy-dir "index.html")) redirect-html)))))))
+            (println "Writing legacy redirect:" (str legacy-file))
+            (spit legacy-file redirect-html)))))))
 
-(defn- gen-tags [{:keys [posts blog-title out-dir tags-dir force-render
-                         rendering-system-files]
+(defn- gen-tags [{:keys [blog-title modified-tags posts
+                         out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
-        template (base-html opts)
-        stale? (or (lib/rendering-modified? rendering-system-files tags-out-dir)
-                   (some :modified? posts)
-                   force-render)]
-    (when stale?
-      (println "Writing tags page" (str tags-file))
+        template (base-html opts)]
+    (when (or (not (empty? modified-tags))
+              (not (fs/exists? tags-file)))
       (lib/write-page! opts tags-file template
                        {:skip-archive true
                         :title (str blog-title " - Tags")
@@ -146,26 +134,28 @@
 
 (defn- index [{:keys [posts discuss-link templates-dir]}]
   (->> posts
-       (map (fn [{:keys [file title date tags preview discuss]
+       (map (fn [{:keys [file title date tags preview discuss html]
                   :or {discuss discuss-link}
                   :as post}]
               (let [post-template (lib/ensure-resource (fs/file templates-dir "post.html"))]
                 (->> (selmer/render (slurp post-template)
                                     (assoc post
                                            :post-link (str/replace file ".md" ".html")
-                                           :body @(get @bodies file)))
+                                           :body @html))
                      (format "<div>\n%s\n</div>")))))
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title num-index-posts out-dir posts force-render
-           rendering-system-files]
+  [{:keys [blog-title cached-posts num-index-posts out-dir posts]
     :as opts}]
-  (let [posts (take num-index-posts posts)
+  (let [index-posts #(->> (vals %)
+                          lib/sort-posts
+                          (take num-index-posts))
+        posts (index-posts posts)
         out-file (fs/file out-dir "index.html")
-        stale? (or (lib/rendering-modified? rendering-system-files out-file)
-                   (some :modified? posts)
-                   force-render)]
+        stale? (or (not= (map :file posts)
+                         (map :file (index-posts cached-posts)))
+                   (not (fs/exists? out-file)))]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
@@ -175,20 +165,16 @@
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title out-dir posts force-render
-                             rendering-system-files]
-                      :as opts}]
+(defn- spit-archive [{:keys [blog-title modified-metadata out-dir posts] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
-        stale? (or (lib/rendering-modified? rendering-system-files out-file)
-                   (some :modified? posts)
-                   force-render)]
+        stale? (or (seq modified-metadata) (not (fs/exists? out-file)))]
     (when stale?
       (let [title (str blog-title " - Archive")]
         (lib/write-page! opts out-file
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
+                          :body (hiccup/html (lib/post-links "Archive" (vals posts)))})))))
 
 ;;;; Generate atom feeds
 
@@ -220,42 +206,36 @@
         [::atom/id blog-root]
         [::atom/author
          [::atom/name blog-author]]
-        (for [{:keys [title date file preview]} posts
+        (for [{:keys [title date file preview html]} posts
               :when (not preview)
-              :let [html (str/replace file ".md" ".html")
-                    link (str blog-root html)]]
+              :let [html-file (str/replace file ".md" ".html")
+                    link (str blog-root html-file)]]
           [::atom/entry
            [::atom/id link]
            [::atom/link {:href link}]
            [::atom/title title]
            [::atom/updated (rfc-3339 date)]
            [::atom/content {:type "html"}
-            [:-cdata @(get @bodies file)]]])])
+            [:-cdata @html]]])])
       xml/indent-str))
 
-(defn- spit-feeds [{:keys [out-dir posts force-render rendering-system-files]}]
+(defn- spit-feeds [{:keys [out-dir modified-posts posts]}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
-        clojure-posts (filter
-                       (fn [{:keys [tags]}]
-                         (some tags ["clojure" "clojurescript"]))
-                       posts)]
-    (if (or (lib/rendering-modified? rendering-system-files clojure-feed-file)
-            (some :modified? clojure-posts)
-            force-render)
+        clojure-posts (->> modified-posts
+                           (map posts)
+                           (filter (fn [{:keys [tags]}]
+                                     (some tags ["clojure" "clojurescript"]))))]
+    (if (and (empty? clojure-posts) (fs/exists? clojure-feed-file))
+      (println "No Clojure posts modified; skipping Clojure feed")
       (do
         (println "Writing Clojure feed" (str clojure-feed-file))
-        (spit clojure-feed-file
-              (atom-feed clojure-posts)))
-      (println "No Clojure posts modified; skipping Clojure feed"))
-    (if (or (lib/rendering-modified? rendering-system-files feed-file)
-            (some :modified? posts)
-            force-render)
+        (spit clojure-feed-file (atom-feed clojure-posts))))
+    (if (and (empty? modified-posts) (fs/exists? feed-file))
+      (println "No posts modified; skipping main feed")
       (do
         (println "Writing feed" (str feed-file))
-        (spit feed-file
-              (atom-feed posts)))
-      (println "No posts modified; skipping main feed"))))
+        (spit feed-file (atom-feed (vals posts)))))))
 
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
@@ -263,26 +243,19 @@
   (let [{:keys [assets-dir
                 assets-out-dir
                 cache-dir
-                default-metadata
                 favicon-dir
                 favicon-out-dir
                 out-dir
-                posts-dir
                 posts-file
                 templates-dir]
-         :as opts} (apply-default-opts opts)
-        posts (or (:posts opts)
-                  (->> (lib/load-posts posts-dir default-metadata)
-                       (lib/add-modified-metadata posts-dir out-dir)))
-        opts (assoc opts :posts posts)
-        assets-out-dir (fs/create-dirs assets-out-dir)]
-    (when (empty? posts)
+         :as opts}
+        (-> opts apply-default-opts lib/refresh-cache)]
+    (when (empty? (:posts opts))
       (if (fs/exists? posts-file)
         (println (format "Run `bb migrate` to move metadata from `%s` to post files"
                          posts-file))
         (println "No posts found; run `bb new` to create one"))
       (System/exit 1))
-    (reset! posts-cache posts)
     (lib/ensure-resource (fs/file templates-dir "style.css"))
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
@@ -296,7 +269,8 @@
     (gen-tags opts)
     (spit-archive opts)
     (spit-index opts)
-    (spit-feeds opts)))
+    (spit-feeds opts)
+    (lib/write-cache! opts)))
 
 (defn quickblog
   "Alias for `render`"
@@ -366,7 +340,7 @@
     (serve {:port port
             :dir out-dir})))
 
-(defn- update-posts-cache! [opts path post-filename]
+#_(defn- update-posts-cache! [opts path post-filename]
   (let [modified-post (lib/load-post path (:default-metadata opts))
         unmodify (fn [posts] (map #(assoc % :modified? false) posts))]
     (if modified-post
@@ -406,7 +380,7 @@
         (watch posts-dir
                (fn [{:keys [path type] :as event}]
                  (println "Change detected:" event)
-                 (when (#{:create :remove :write|chmod} type)
+                 #_(when (#{:create :remove :write|chmod} type)
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
                      (when-not (str/starts-with? post-filename ".")
@@ -417,6 +391,6 @@
         (watch templates-dir
                (fn [_]
                  (println "Re-rendering all posts")
-                 (reset! posts-cache nil)
-                 (render opts))))))
+                 #_(reset! posts-cache nil)
+                 #_(render opts))))))
   @(promise))
