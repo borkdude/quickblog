@@ -86,7 +86,7 @@
       (lib/ensure-resource (fs/file favicon-dir asset)
                            (fs/file "assets" "favicon" asset)))))
 
-(defn- gen-posts [{:keys [discuss-link modified-posts posts
+(defn- gen-posts [{:keys [deleted-posts modified-posts posts
                           cache-dir posts-dir out-dir templates-dir]
                    :as opts}]
   (let [posts-to-write (set/union modified-posts
@@ -111,7 +111,11 @@
                 redirect-html (selmer/render legacy-template
                                              {:new_url html-file})]
             (println "Writing legacy redirect:" (str legacy-file))
-            (spit legacy-file redirect-html)))))))
+            (spit legacy-file redirect-html)))))
+    (doseq [file deleted-posts]
+      (println "Post deleted; removing from cache and outdir:" (str file))
+      (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
+      (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
 (defn- gen-tags [{:keys [blog-title modified-tags posts
                          out-dir tags-dir]
