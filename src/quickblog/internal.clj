@@ -215,15 +215,15 @@
        (map first)
        set))
 
-(defn modified-posts [{:keys [cache-dir posts posts-dir
-                              force-render rendering-system-files]
+(defn modified-posts [{:keys [force-render out-dir posts posts-dir
+                              rendering-system-files]
                        :as opts}]
   (->> posts
        (filter (fn [[file _]]
-                 (let [cached-file (fs/file cache-dir (cache-file file))
+                 (let [out-file (fs/file out-dir (html-file file))
                        post-file (fs/file posts-dir file)]
                    (or force-render
-                       (modified-since? cached-file
+                       (modified-since? out-file
                                         (cons post-file rendering-system-files))))))
        (map first)
        set))
@@ -238,23 +238,17 @@
                              cached-posts
                              rendering-system-files]
                       :as opts}]
-  ;; watch mode will manage caching, so do nothing if cached-posts is present
-  (if cached-posts
-    opts
-    (let [cached-posts (if (or force-render
-                               (rendering-modified? rendering-system-files cache-dir))
-                         {}
-                         (load-cache opts))
-          posts (load-posts opts)
-          opts (assoc opts
-                      :cached-posts cached-posts
-                      :posts posts)
-          opts (assoc opts
-                      :modified-metadata (modified-metadata opts))]
-      (assoc opts
-             :deleted-posts (deleted-posts opts)
-             :modified-posts (modified-posts opts)
-             :modified-tags (modified-tags opts)))))
+  (let [cached-posts (load-cache opts)
+        posts (load-posts opts)
+        opts (assoc opts
+                    :cached-posts cached-posts
+                    :posts posts)
+        opts (assoc opts
+                    :modified-metadata (modified-metadata opts))]
+    (assoc opts
+           :deleted-posts (deleted-posts opts)
+           :modified-posts (modified-posts opts)
+           :modified-tags (modified-tags opts))))
 
 (defn migrate-post [{:keys [default-metadata posts-dir] :as opts}
                     {:keys [file title date tags categories legacy]}]
