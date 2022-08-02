@@ -195,7 +195,7 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [posts blog-title blog-author blog-root]}]
+  [{:keys [blog-title blog-author blog-root]} posts]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
@@ -219,7 +219,7 @@
             [:-cdata @html]]])])
       xml/indent-str))
 
-(defn- spit-feeds [{:keys [out-dir modified-posts posts]}]
+(defn- spit-feeds [{:keys [out-dir modified-posts posts] :as opts}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
         clojure-posts (->> modified-posts
@@ -230,12 +230,12 @@
       (println "No Clojure posts modified; skipping Clojure feed")
       (do
         (println "Writing Clojure feed" (str clojure-feed-file))
-        (spit clojure-feed-file (atom-feed clojure-posts))))
+        (spit clojure-feed-file (atom-feed opts clojure-posts))))
     (if (and (empty? modified-posts) (fs/exists? feed-file))
       (println "No posts modified; skipping main feed")
       (do
         (println "Writing feed" (str feed-file))
-        (spit feed-file (atom-feed (vals posts)))))))
+        (spit feed-file (atom-feed opts (vals posts)))))))
 
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
