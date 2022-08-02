@@ -267,11 +267,13 @@
     (spit-archive opts)
     (spit-index opts)
     (spit (fs/file out-dir "atom.xml") (atom-feed opts))
-    (spit (fs/file out-dir "planetclojure.xml")
-          (atom-feed (filter
-                      (fn [post]
-                        (some (:tags post) ["clojure" "clojurescript"]))
-                      posts)))))
+    (let [clojure-posts (filter
+                         (fn [post]
+                           (some (:tags post)
+                                 ["clojure" "clojurescript"]))
+                         posts)]
+      (spit (fs/file out-dir "planetclojure.xml")
+            (atom-feed (assoc opts :posts clojure-posts))))))
 
 (defn quickblog
   "Alias for `render`"
