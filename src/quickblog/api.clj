@@ -150,15 +150,19 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title cached-posts num-index-posts out-dir posts]
+  [{:keys [blog-title cached-posts deleted-posts modified-posts num-index-posts
+           out-dir posts]
     :as opts}]
   (let [index-posts #(->> (vals %)
                           lib/sort-posts
                           (take num-index-posts))
         posts (index-posts posts)
+        cached-posts (index-posts cached-posts)
         out-file (fs/file out-dir "index.html")
         stale? (or (not= (map :file posts)
-                         (map :file (index-posts cached-posts)))
+                         (map :file cached-posts))
+                   (some modified-posts (map :file posts))
+                   (some deleted-posts (map :file cached-posts))
                    (not (fs/exists? out-file)))]
     (when stale?
       (let [body (index (assoc opts :posts posts))]
@@ -275,7 +279,8 @@
     (spit-archive opts)
     (spit-index opts)
     (spit-feeds opts)
-    (lib/write-cache! opts)))
+    (lib/write-cache! opts)
+    opts))
 
 (defn quickblog
   "Alias for `render`"
@@ -345,26 +350,7 @@
     (serve {:port port
             :dir out-dir})))
 
-#_(defn- update-posts-cache! [opts path post-filename]
-  (let [modified-post (lib/load-post path (:default-metadata opts))
-        unmodify (fn [posts] (map #(assoc % :modified? false) posts))]
-    (if modified-post
-      (let [modified-post (assoc modified-post :modified? true)]
-        (swap! posts-cache
-               (fn [posts]
-                 (if (some #(= post-filename (:file %)) posts)
-                   (->> posts
-                        unmodify
-                        (map (fn [post]
-                               (if (= post-filename (:file post))
-                                 modified-post
-                                 (assoc post :modified? false)))))
-                   (->> (cons modified-post (unmodify posts))
-                        lib/sort-posts)))))
-      (swap! posts-cache (fn [posts]
-                           (->> posts
-                                unmodify
-                                (remove #(= post-filename (:file %)))))))))
+(def ^:private posts-cache (atom nil))
 
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
@@ -374,10 +360,11 @@
          templates-dir (:templates-dir default-opts)
          watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
     :as opts}]
-  (let [opts (assoc opts
-                    :watch watch-script
-                    :posts-dir posts-dir)]
-    (render opts)
+  (let [opts (-> opts
+                 (assoc :watch watch-script
+                        :posts-dir posts-dir)
+                 render)]
+    (reset! posts-cache (:posts opts))
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.3")
@@ -385,17 +372,26 @@
         (watch posts-dir
                (fn [{:keys [path type] :as event}]
                  (println "Change detected:" event)
-                 #_(when (#{:create :remove :write|chmod} type)
+                 (when (#{:create :remove :write :write|chmod} type)
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
                      (when-not (str/starts-with? post-filename ".")
                        (println "Re-rendering" post-filename)
-                       (update-posts-cache! opts path post-filename)
-                       (render (assoc opts :posts @posts-cache)))))))
+                       (let [posts (if (= :remove type)
+                                     (dissoc @posts-cache post-filename)
+                                     (assoc @posts-cache post-filename
+                                            (lib/load-post opts path)))
+                             opts (-> opts
+                                      (assoc :cached-posts @posts-cache
+                                             :posts posts)
+                                      render)]
+                         (reset! posts-cache (:posts opts))))))))
 
         (watch templates-dir
-               (fn [_]
-                 (println "Re-rendering all posts")
-                 #_(reset! posts-cache nil)
-                 #_(render opts))))))
+               (fn [event]
+                 (println "Template changed; re-rendering all posts:" event)
+                 (let [opts (-> opts
+                                (dissoc :cached-posts :posts)
+                                render)]
+                   (reset! posts-cache (:posts opts))))))))
   @(promise))

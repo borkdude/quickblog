@@ -236,10 +236,17 @@
 (defn refresh-cache [{:keys [force-render
                              cache-dir
                              cached-posts
+                             posts
                              rendering-system-files]
                       :as opts}]
-  (let [cached-posts (load-cache opts)
-        posts (load-posts opts)
+  ;; watch mode manages caching manually, so if cached-posts and posts are
+  ;; already set, use them as is
+  (let [cached-posts (if cached-posts
+                       cached-posts
+                       (load-cache opts))
+        posts (if posts
+                posts
+                (load-posts opts))
         opts (assoc opts
                     :cached-posts cached-posts
                     :posts posts)
