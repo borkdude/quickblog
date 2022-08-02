@@ -167,7 +167,8 @@
 
 (defn- spit-archive [{:keys [blog-title modified-metadata out-dir posts] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
-        stale? (or (seq modified-metadata) (not (fs/exists? out-file)))]
+        stale? (or (some not-empty (vals modified-metadata))
+                   (not (fs/exists? out-file)))]
     (when stale?
       (let [title (str blog-title " - Archive")]
         (lib/write-page! opts out-file
