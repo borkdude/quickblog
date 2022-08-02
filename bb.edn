@@ -23,7 +23,7 @@
        :task (qb/new opts)}
 
   delete {:doc "Delete blog article"
-       :task (qb/delete opts)}
+          :task (qb/delete opts)}
 
   migrate {:doc "Migrate away from posts.edn to metadata in post files"
            :task (qb/migrate opts)}
