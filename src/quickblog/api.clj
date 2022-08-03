@@ -314,20 +314,6 @@
               (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
                       title (now)))))))
 
-(defn delete
-  "Deletes a post from the cache and output directories"
-  [{:keys [file] :as opts}]
-  (when-not file
-    (println "Missing required argument: --file")
-    (System/exit 1))
-  (let [{:keys [cache-dir out-dir posts-dir]} (apply-default-opts opts)
-        file (fs/file-name (fs/file file))]
-    (fs/delete-if-exists (fs/file posts-dir file))
-    (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
-    (fs/delete-if-exists (fs/file out-dir (lib/html-file file)))
-    ;; Remove post from tags, archive, index, and feeds by forcing re-render
-    (render (assoc opts :force-render true))))
-
 (defn migrate
   "Migrates from `posts.edn` to post-local metadata"
   [opts]
