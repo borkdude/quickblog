@@ -198,7 +198,8 @@
        (apply set/difference)))
 
 (defn modified-metadata [{:keys [cached-posts posts] :as opts}]
-  (let [posts (only-metadata posts)
+  (let [cached-posts (only-metadata cached-posts)
+        posts (only-metadata posts)
         [cached current _] (data/diff cached-posts posts)]
     (->map cached current)))
 
