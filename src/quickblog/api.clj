@@ -363,14 +363,24 @@
                      ;; skip Emacs backup files and the like
                      (when-not (str/starts-with? post-filename ".")
                        (println "Re-rendering" post-filename)
-                       (let [posts (if (= :remove type)
+                       (let [post (lib/load-post opts path)
+                             posts (cond
+                                     (= :remove type)
                                      (dissoc @posts-cache post-filename)
-                                     (assoc @posts-cache post-filename
-                                            (lib/load-post opts path)))
-                             opts (-> opts
-                                      (assoc :cached-posts @posts-cache
-                                             :posts posts)
-                                      render)]
+
+                                     (:quickblog/error post)
+                                     (do
+                                       (println (:quickblog/error post))
+                                       @posts-cache)
+
+                                     :else
+                                     (assoc @posts-cache post-filename post))
+                             opts (if (and (not= :remove type) (:quickblog/error post))
+                                    opts
+                                    (-> opts
+                                        (assoc :cached-posts @posts-cache
+                                               :posts posts)
+                                        render))]
                          (reset! posts-cache (:posts opts))))))))
 
         (watch templates-dir
