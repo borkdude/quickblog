@@ -132,7 +132,12 @@
                         :relative-path "../"
                         :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})
       (doseq [tag-and-posts posts-by-tag]
-        (lib/write-tag! opts tags-out-dir template tag-and-posts)))))
+        (lib/write-tag! opts tags-out-dir template tag-and-posts))
+      ;; Delete tags pages for removed tags
+      (doseq [tag (remove posts-by-tag modified-tags)
+              :let [tag-filename (fs/file tags-out-dir (lib/tag-file tag))]]
+        (println "Deleting removed tag:" (str tag-filename))
+        (fs/delete-if-exists tag-filename)))))
 
 ;;;; Generate index page with last 3 posts
 

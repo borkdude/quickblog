@@ -82,6 +82,11 @@
 (defn cache-file [file]
   (str file ".pre-template.html"))
 
+(defn tag-file [tag]
+  (-> tag
+      (str/replace #"[^A-z0-9]" "-")
+      (str ".html")))
+
 (defn transform-metadata
   ([metadata]
    (transform-metadata metadata {}))
@@ -367,10 +372,9 @@
                   tags-out-dir
                   template
                   [tag posts]]
-  (let [tag-slug (str/replace tag #"[^A-z0-9]" "-")
-        tag-file (fs/file tags-out-dir (str tag-slug ".html"))]
-    (when (or (modified-tags tag) (not (fs/exists? tag-file)))
-      (write-page! opts tag-file template
+  (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
+    (when (or (modified-tags tag) (not (fs/exists? tag-filename)))
+      (write-page! opts tag-filename template
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
