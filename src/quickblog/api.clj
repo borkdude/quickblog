@@ -361,8 +361,8 @@
       (load-pod 'org.babashka/fswatcher "0.0.3")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
         (watch posts-dir
-               (fn [{:keys [path type] :as event}]
-                 (println "Change detected:" event)
+               (fn [{:keys [path type]}]
+                 (println "Change detected:" (name type) (str path))
                  (when (#{:create :remove :write :write|chmod} type)
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
@@ -376,21 +376,20 @@
                                      (:quickblog/error post)
                                      (do
                                        (println (:quickblog/error post))
-                                       @posts-cache)
+                                       (dissoc @posts-cache post-filename))
 
                                      :else
                                      (assoc @posts-cache post-filename post))
-                             opts (if (and (not= :remove type) (:quickblog/error post))
-                                    opts
-                                    (-> opts
-                                        (assoc :cached-posts @posts-cache
-                                               :posts posts)
-                                        render))]
+                             opts (-> opts
+                                      (assoc :cached-posts @posts-cache
+                                             :posts posts)
+                                      render)]
                          (reset! posts-cache (:posts opts))))))))
 
         (watch templates-dir
-               (fn [event]
-                 (println "Template changed; re-rendering all posts:" event)
+               (fn [{:keys [path type]}]
+                 (println "Template change detected; re-rendering all posts:"
+                          (name type) (str path))
                  (let [opts (-> opts
                                 (dissoc :cached-posts :posts)
                                 render)]
