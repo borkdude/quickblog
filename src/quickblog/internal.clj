@@ -32,15 +32,12 @@
 ;; Cons-ing *file* directly in `rendering-modified?` doesn't work for some reason
 (def ^:private this-file (fs/file *file*))
 
-(defn rendering-modified? [rendering-system-files target-file]
+(defn rendering-modified? [target-file rendering-system-files]
   (let [rendering-system-files (cons this-file rendering-system-files)]
     (seq (fs/modified-since target-file rendering-system-files))))
 
-(defn stale? [src target]
-  (seq (fs/modified-since target src)))
-
 (defn copy-modified [src target]
-  (when (stale? src target)
+  (when (seq (fs/modified-since target src))
     (println "Writing" (str target))
     (fs/create-dirs (.getParent (fs/file target)))
     (fs/copy src target {:replace-existing true})))
@@ -145,7 +142,7 @@
         file (fs/file-name path)
         cached-file (fs/file cache-dir (cache-file file))
         stale? (or force-render
-                   (modified-since? cached-file (cons path rendering-system-files)))]
+                   (rendering-modified? cached-file (cons path rendering-system-files)))]
     (println "Reading metadata for post:" (str file))
     (try
       (-> (slurp path)
@@ -229,8 +226,8 @@
                  (let [out-file (fs/file out-dir (html-file file))
                        post-file (fs/file posts-dir file)]
                    (or force-render
-                       (modified-since? out-file
-                                        (cons post-file rendering-system-files))))))
+                       (rendering-modified? out-file
+                                            (cons post-file rendering-system-files))))))
        (map first)
        set))
 
