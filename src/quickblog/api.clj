@@ -183,12 +183,13 @@
         stale? (or (some not-empty (vals modified-metadata))
                    (not (fs/exists? out-file)))]
     (when stale?
-      (let [title (str blog-title " - Archive")]
+      (let [title (str blog-title " - Archive")
+            posts (lib/sort-posts (vals posts))]
         (lib/write-page! opts out-file
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" (vals posts)))})))))
+                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
 
 ;;;; Generate atom feeds
 
@@ -239,7 +240,9 @@
         clojure-posts (->> modified-posts
                            (map posts)
                            (filter (fn [{:keys [tags]}]
-                                     (some tags ["clojure" "clojurescript"]))))]
+                                     (some tags ["clojure" "clojurescript"])))
+                           lib/sort-posts)
+        all-posts (lib/sort-posts (vals posts))]
     (if (and (empty? clojure-posts) (fs/exists? clojure-feed-file))
       (println "No Clojure posts modified; skipping Clojure feed")
       (do
@@ -249,7 +252,7 @@
       (println "No posts modified; skipping main feed")
       (do
         (println "Writing feed" (str feed-file))
-        (spit feed-file (atom-feed opts (vals posts)))))))
+        (spit feed-file (atom-feed opts all-posts))))))
 
 (defn render
   "Renders posts declared in `posts.edn` to `out-dir`."
