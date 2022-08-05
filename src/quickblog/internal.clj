@@ -134,6 +134,12 @@
                               (:file post) (str/join ", " (map name missing-keys)))}
     post))
 
+(defn read-cached-post [{:keys [cache-dir]} file]
+  (let [cached-file (fs/file cache-dir (cache-file file))]
+    (delay
+      (println "Reading post from cache:" (str file))
+      (slurp cached-file))))
+
 (defn load-post [{:keys [cache-dir default-metadata
                          force-render rendering-system-files]
                   :as opts}
@@ -156,9 +162,7 @@
                              (println "Caching post to file:" (str cached-file))
                              (spit cached-file html)
                              html))
-                         (delay
-                           (println "Reading post from cache:" (str file))
-                           (slurp cached-file))))
+                         (read-cached-post opts file)))
           validate-metadata)
       (catch Exception e
         {:quickblog/error (format "Skipping post %s due to exception: %s"
@@ -172,11 +176,21 @@
     (println error)
     true))
 
-(defn load-posts [{:keys [posts-dir] :as opts}]
-  (->> (fs/glob posts-dir "*.md")
-       (map (juxt ->filename (partial load-post opts)))
-       (remove (partial has-error? opts))
-       (into {})))
+(defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
+  (let [cache-file (fs/file cache-dir cache-filename)
+        post-paths (set (fs/glob posts-dir "*.md"))
+        modified-post-paths (if (empty? cached-posts)
+                              (set post-paths)
+                              (set (fs/modified-since cache-file post-paths)))
+        cached-post-paths (set/difference post-paths modified-post-paths)]
+    (merge (->> cached-posts
+                (map (fn [[file post]]
+                       [file (assoc post :html (read-cached-post opts file))]))
+                (into {}))
+           (->> modified-post-paths
+                (map (juxt ->filename (partial load-post opts)))
+                (remove (partial has-error? opts))
+                (into {})))))
 
 (defn only-metadata [posts]
   (->> posts
@@ -249,12 +263,11 @@
   (let [cached-posts (if cached-posts
                        cached-posts
                        (load-cache opts))
+        opts (assoc opts :cached-posts cached-posts)
         posts (if posts
                 posts
                 (load-posts opts))
-        opts (assoc opts
-                    :cached-posts cached-posts
-                    :posts posts)
+        opts (assoc opts :posts posts)
         opts (assoc opts
                     :modified-metadata (modified-metadata opts))]
     (assoc opts
