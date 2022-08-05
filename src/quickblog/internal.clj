@@ -183,11 +183,13 @@
        (map (fn [[file post]] [file (dissoc post :html)]))
        (into {})))
 
-(defn load-cache [{:keys [cache-dir] :as opts}]
+(defn load-cache [{:keys [cache-dir rendering-system-files]}]
   (let [cache-file (fs/file cache-dir cache-filename)]
-    (if (fs/exists? cache-file)
-      (edn/read-string (slurp cache-file))
-      {})))
+    ;; Invalidate the cache if the rendering system has been modified
+    (if (or (rendering-modified? cache-file rendering-system-files)
+            (not (fs/exists? cache-file)))
+      {}
+      (edn/read-string (slurp cache-file)))))
 
 (defn write-cache! [{:keys [cache-dir posts] :as opts}]
   (let [cache-file (fs/file cache-dir cache-filename)]
