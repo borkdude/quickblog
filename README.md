@@ -19,10 +19,12 @@ $ bb tasks
 The following tasks are available:
 
 new       Create new blog article
+delete    Delete blog article
 quickblog Render blog
 watch     Watch posts and templates and render file changes
 publish   Publish blog
-clean     Remove .work and public directory
+clean     Remove cache and output directories
+migrate   Migrate away from `posts.edn` to metadata in post files
 ```
 
 To create a new blog post:
@@ -84,7 +86,8 @@ to use a favicon generator such as
 upload an image and then gives you a ZIP file containing all of the assets,
 which you should unzip into your `:assets-dir` (which defaults to `assets`).
 
-You can read an example of how to prepare a favicon here: https://jmglov.net/blog/2022-07-05-hacking-blog-favicon.html
+You can read an example of how to prepare a favicon here:
+https://jmglov.net/blog/2022-07-05-hacking-blog-favicon.html
 
 quickblog's default template expects the favicon files to be named as follows:
 - `android-chrome-192x192.png`
@@ -99,7 +102,16 @@ quickblog's default template expects the favicon files to be named as follows:
 - `site.webmanifest`
 
 If any of these files are not present in your `:assets-dir`, a quickblog default
-will be copied there from `resources/quickblog/assets`. 
+will be copied there from `resources/quickblog/assets`.
+
+## Breaking changes
+
+### posts.edn removed
+
+quickblog now keeps metadata for each blog post in the post file itself. It used
+to use a `posts.edn` file for this purpose. If you are upgrading from a version
+that used `posts.edn`, you should run `bb migrate` and then remove the
+`posts.edn` file.
 
 ## Improvements
 
@@ -107,6 +119,5 @@ Feel free to send PRs for improvements.
 
 My wishlist:
 
-- Category links
 - There might be a few things hardcoded that still need to be made configurable.
 - Upstream improvements to [markdown-clj](https://github.com/yogthos/markdown-clj)

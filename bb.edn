@@ -22,6 +22,9 @@
   new {:doc "Create new blog article"
        :task (qb/new opts)}
 
+  migrate {:doc "Migrate away from posts.edn to metadata in post files"
+           :task (qb/migrate opts)}
+
   render {:doc "Render blog"
           :task (qb/render opts)}
 
@@ -32,7 +35,7 @@
            :depends [render]
            :task (shell "rsync -a --delete public/ user@yourdomain:~/blog")}
 
-  clean {:doc "Remove .work and public directory"
+  clean {:doc "Remove cache and output directories"
          :task (do (fs/delete-tree ".work")
                    (fs/delete-tree "public"))}
 
