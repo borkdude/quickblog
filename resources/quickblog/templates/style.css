@@ -65,3 +65,7 @@ ul.index {
 .index li {
   margin-bottom: 1em;
 }
+
+code {
+  white-space: nowrap;
+}
