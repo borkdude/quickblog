@@ -273,7 +273,7 @@
                          posts-file))
         (println "No posts found; run `bb new` to create one"))
       (System/exit 1))
-    (lib/ensure-resource (fs/file templates-dir "style.css"))
+    (lib/ensure-template opts "style.css")
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
       (lib/copy-tree-modified assets-dir assets-out-dir))
