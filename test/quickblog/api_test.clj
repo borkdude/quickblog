@@ -31,11 +31,18 @@
     (spit f content)
     f))
 
-(defn- write-test-post [posts-dir]
-  (write-test-file
-   posts-dir "test.md"
-   "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"))
-
+(defn- write-test-post
+  ([posts-dir]
+   (write-test-post posts-dir {}))
+  ([posts-dir {:keys [file title date tags content]
+               :or {file "test.md"
+                    title "Test post"
+                    date "2022-01-02"
+                    tags #{"clojure"}
+                    content "Write a blog post here!"}}]
+   (write-test-file posts-dir file
+                    (format "Title: %s\nDate: %s\nTags: %s\n\n%s"
+                            title date (str/join "," tags) content))))
 
 (deftest new-test
   (with-dirs [posts-dir]
@@ -124,7 +131,6 @@
         (write-test-file assets-dir "asset.txt" "something")
         (render)
         (let [asset-file (fs/file out-dir "assets" "asset.txt")]
-          (is (fs/exists? asset-file))
           (let [mtime (fs/last-modified-time asset-file)]
             ;; Shouldn't copy unmodified file
             (render)
@@ -132,4 +138,52 @@
             ;; Should copy modified file
             (write-test-file assets-dir "asset.txt" "something else")
             (render)
-            (is (not= mtime (fs/last-modified-time asset-file)))))))))
+            (is (not= mtime (fs/last-modified-time asset-file))))))))
+
+  (testing "posts"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (let [render #(api/render {:posts-dir posts-dir
+                                 :templates-dir templates-dir
+                                 :cache-dir cache-dir
+                                 :out-dir out-dir})]
+        (write-test-post posts-dir)
+        (render)
+        (let [->mtimes (fn [dir filenames]
+                         (->> filenames
+                              (map #(let [filename (fs/file dir %)]
+                                      [filename (fs/last-modified-time filename)]))
+                              (into {})))
+              content-cached (merge (->mtimes cache-dir ["test.md.pre-template.html"])
+                                    (->mtimes out-dir ["test.html" "index.html"
+                                                       "atom.xml" "planetclojure.xml"]))
+              metadata-cached (merge (->mtimes out-dir ["archive.html"])
+                                     (->mtimes (fs/file out-dir "tags")
+                                               ["index.html"]))
+              clojure-metadata-cached (merge metadata-cached
+                                             (->mtimes (fs/file out-dir "tags")
+                                                       ["clojure.html"]))]
+          ;; Shouldn't rewrite anything when post unmodified
+          (render)
+          (doseq [[filename mtime] (merge content-cached clojure-metadata-cached)]
+            (is (= (map str [filename mtime])
+                   (map str [filename (fs/last-modified-time filename)]))))
+          ;; Should rewrite all but metadata-cached files when post modified
+          (write-test-post posts-dir)
+          (render)
+          (doseq [[filename mtime] content-cached]
+            (is (not= (map str [filename mtime])
+                      (map str [filename (fs/last-modified-time filename)]))))
+          (doseq [[filename mtime] clojure-metadata-cached]
+            (is (= (map str [filename mtime])
+                   (map str [filename (fs/last-modified-time filename)]))))
+          ;; Should rewrite everything when metadata modified
+          (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
+          (render)
+          (doseq [[filename mtime] (merge content-cached metadata-cached)]
+            (is (not= (map str [filename mtime])
+                      (map str [filename (fs/last-modified-time filename)]))))
+          (is (fs/exists? (fs/file out-dir "tags" "not-clojure.html")))
+          (is (not (fs/exists? (fs/file out-dir "tags" "clojure.html")))))))))
