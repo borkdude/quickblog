@@ -63,7 +63,7 @@
              (slurp post-file))))))
 
 (deftest render
-  (testing "happy-path"
+  (testing "happy path"
     (with-dirs [assets-dir
                 posts-dir
                 templates-dir
@@ -86,7 +86,7 @@
                         "atom.xml" "planetclojure.xml"]]
         (is (fs/exists? (fs/file out-dir filename))))))
 
-  (testing "with-favicon"
+  (testing "with favicon"
     (with-dirs [favicon-dir
                 posts-dir
                 templates-dir
@@ -107,3 +107,29 @@
           (is (fs/exists? (fs/file favicon-out-dir filename))))
         (is (str/includes? (slurp (fs/file out-dir "index.html"))
                            "favicon-16x16.png"))))))
+
+(deftest caching
+  (testing "assets"
+    (with-dirs [assets-dir
+                posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (let [render #(api/render {:assets-dir assets-dir
+                                 :posts-dir posts-dir
+                                 :templates-dir templates-dir
+                                 :cache-dir cache-dir
+                                 :out-dir out-dir})]
+        (write-test-post posts-dir)
+        (write-test-file assets-dir "asset.txt" "something")
+        (render)
+        (let [asset-file (fs/file out-dir "assets" "asset.txt")]
+          (is (fs/exists? asset-file))
+          (let [mtime (fs/last-modified-time asset-file)]
+            ;; Shouldn't copy unmodified file
+            (render)
+            (is (= mtime (fs/last-modified-time asset-file)))
+            ;; Should copy modified file
+            (write-test-file assets-dir "asset.txt" "something else")
+            (render)
+            (is (not= mtime (fs/last-modified-time asset-file)))))))))
