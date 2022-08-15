@@ -12,8 +12,9 @@ source/stylesheets/screen.css
 vendor
 node_modules
 Gemfile.lock
-.cache
-.work
+/.cache
+/.work
+/.test
 .clj-kondo/rewrite-clj
 .cpcache
 .shadow-cljs
