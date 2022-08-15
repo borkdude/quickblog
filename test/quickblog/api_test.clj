@@ -14,8 +14,15 @@
   (fs/file test-dir
            (format "quickblog-test-%s-%s" dir-name (str (UUID/randomUUID)))))
 
+(defmacro with-dirs
+  "dirs is a seq of directory names; e.g. [cache-dir out-dir]"
+  [dirs & body]
+  (let [binding-form# (mapcat (fn [dir] [dir `(tmp-dir ~(str dir))]) dirs)]
+    `(let [~@binding-form#]
+       ~@body)))
+
 (deftest new-test
-  (let [posts-dir (tmp-dir "posts")]
+  (with-dirs [posts-dir]
     (with-redefs [api/now (constantly "2022-01-02")]
       (api/new {:posts-dir posts-dir
                 :file "test.md"
