@@ -31,3 +31,18 @@
         (is (fs/exists? post-file))
         (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"
                (slurp post-file)))))))
+
+(deftest migrate
+  (with-dirs [posts-dir]
+    (let [posts-edn (fs/file posts-dir "posts.edn")
+          post-file (fs/file posts-dir "test.md")]
+      (fs/create-dirs posts-dir)
+      (spit posts-edn {:file "test.md"
+                       :title "Test post"
+                       :date "2022-01-02"
+                       :tags #{"clojure"}})
+      (spit post-file "Write a blog post here!")
+      (api/migrate {:posts-dir posts-dir
+                    :posts-file posts-edn})
+      (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"
+             (slurp post-file))))))

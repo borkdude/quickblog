@@ -331,7 +331,7 @@
         (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
           (lib/migrate-post opts post))
         (println "If all posts were successfully migrated, you should now delete"
-                 posts-file))
+                 (str posts-file)))
       (println (format "Posts file %s does not exist; no posts to migrate"
                        (str posts-file))))))
 
