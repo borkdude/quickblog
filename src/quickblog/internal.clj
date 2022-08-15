@@ -66,7 +66,7 @@
      (when-not (fs/exists? target-file)
        (fs/create-dirs (fs/parent target-file))
        (println "Writing default resource:" (str target-file))
-       (fs/copy (io/resource (fs/file resource-path source-file)) target-file))
+       (fs/copy (io/resource (str (fs/file resource-path source-file))) target-file))
      target-file)))
 
 (defn ensure-template [{:keys [templates-dir]} template-name]

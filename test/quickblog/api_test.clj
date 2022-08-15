@@ -8,7 +8,11 @@
 
 (def test-dir ".test")
 
-(use-fixtures :each (fn [test-fn] (test-fn) (fs/delete-tree test-dir)))
+(use-fixtures :each
+  (fn [test-fn]
+    (with-out-str
+      (test-fn)
+      (fs/delete-tree test-dir))))
 
 (defn- tmp-dir [dir-name]
   (fs/file test-dir
@@ -59,7 +63,7 @@
              (slurp post-file))))))
 
 (deftest render
-  (deftest happy-path
+  (testing "happy-path"
     (with-dirs [assets-dir
                 posts-dir
                 templates-dir
@@ -76,7 +80,30 @@
       (doseq [filename ["base.html" "post.html" "style.css"]]
         (is (fs/exists? (fs/file templates-dir filename))))
       (is (fs/exists? (fs/file cache-dir "test.md.pre-template.html")))
-      (doseq [filename ["test.html" "index.html" "archive.html" "tags.html"
+      (doseq [filename ["test.html" "index.html" "archive.html"
+                        (fs/file "tags" "index.html")
                         (fs/file "tags" "clojure.html")
                         "atom.xml" "planetclojure.xml"]]
-        (is (fs/exists? (fs/file out-dir (fs/file out-dir filename))))))))
+        (is (fs/exists? (fs/file out-dir filename))))))
+
+  (testing "with-favicon"
+    (with-dirs [favicon-dir
+                posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (let [favicon-out-dir (fs/file out-dir "favicon")]
+        (write-test-post posts-dir)
+        (api/render {:favicon true
+                     :favicon-dir favicon-dir
+                     :favicon-out-dir favicon-out-dir
+                     :posts-dir posts-dir
+                     :templates-dir templates-dir
+                     :cache-dir cache-dir
+                     :out-dir out-dir})
+        (is (fs/exists? (fs/file templates-dir "favicon.html")))
+        (doseq [filename (var-get #'api/favicon-assets)]
+          (is (fs/exists? (fs/file favicon-dir filename)))
+          (is (fs/exists? (fs/file favicon-out-dir filename))))
+        (is (str/includes? (slurp (fs/file out-dir "index.html"))
+                           "favicon-16x16.png"))))))
