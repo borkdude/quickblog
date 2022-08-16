@@ -346,6 +346,11 @@
       (println (format "Posts file %s does not exist; no posts to migrate"
                        (str posts-file))))))
 
+(defn refresh-templates
+  "Updates to latest default templates"
+  [opts]
+  (lib/refresh-templates (apply-default-opts opts)))
+
 (defn serve
   "Runs file-server on `port`."
   [{:keys [port out-dir]

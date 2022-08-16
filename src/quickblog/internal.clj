@@ -73,6 +73,17 @@
   (ensure-resource (fs/file templates-dir template-name)
                    (fs/file templates-resource-dir template-name)))
 
+(defn refresh-templates [{:keys [templates-dir] :as opts}]
+  (doseq [template (map fs/file (fs/glob templates-dir "*"))
+          :let [template-name (fs/file-name template)
+                resource (fs/file resource-path templates-resource-dir template-name)]]
+    (if (io/resource (str resource))
+      (do
+        (println "Refreshing template:" (str template))
+        (fs/delete template)
+        (ensure-template opts template-name))
+      (println "Skipping custom template:" (str template)))))
+
 (defn blog-link [{:keys [blog-root] :as opts} relative-url]
   (when relative-url
     (format "%s%s%s"

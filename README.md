@@ -149,6 +149,26 @@ Resources for understanding and testing social sharing:
 - [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/)
 - [Twitter Card Validator](https://cards-dev.twitter.com/validator)
 
+## Templates
+
+quickblog uses the following templates in site generation:
+- `base.html` - All pages. Page body is provided by the `{{body}}` variable.
+- `post.html` - Post bodies.
+- `style.css` - Styles for all pages.
+- `favicon.html` - If `:favicon true`, used to include favicon in the `<head>`
+  of all pages.
+
+quickblog looks for these templates in your `:templates-dir`, and if it doesn't
+find them, will copy a default template into that directory. It is recommended
+to keep `:templates-dir` under revision control so that you can modify the
+templates to suit your needs and preferences.
+
+The default templates are occasionally modified to support new features. When
+this happens, you won't be able to use the new feature without making the same
+modifications to your local templates. The easiest way to do this is to copy the
+`refresh-templates` task from quickblog's `bb.edn` into your own `bb.edn` and
+run `bb refresh-templates`.
+
 ## Breaking changes
 
 ### posts.edn removed
