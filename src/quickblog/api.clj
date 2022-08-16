@@ -331,7 +331,7 @@
         (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
           (lib/migrate-post opts post))
         (println "If all posts were successfully migrated, you should now delete"
-                 posts-file))
+                 (str posts-file)))
       (println (format "Posts file %s does not exist; no posts to migrate"
                        (str posts-file))))))
 
@@ -366,14 +366,14 @@
         (watch posts-dir
                (fn [{:keys [path type]}]
                  (println "Change detected:" (name type) (str path))
-                 (when (#{:create :remove :write :write|chmod} type)
+                 (when (#{:create :remove :rename :write :write|chmod} type)
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
                      (when-not (str/starts-with? post-filename ".")
                        (println "Re-rendering" post-filename)
                        (let [post (lib/load-post opts path)
                              posts (cond
-                                     (= :remove type)
+                                     (contains? #{:remove :rename} type)
                                      (dissoc @posts-cache post-filename)
 
                                      (:quickblog/error post)

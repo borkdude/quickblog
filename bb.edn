@@ -39,6 +39,9 @@
          :task (do (fs/delete-tree ".work")
                    (fs/delete-tree "public"))}
 
+  test {:doc "Run tests"
+        :task (apply clojure "-M:test" *command-line-args*)}
+
   quickdoc {:doc "Re-generate API.md"
             :task (shell "bb --config quickdoc.edn quickdoc")}
   }}
