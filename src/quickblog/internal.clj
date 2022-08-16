@@ -74,10 +74,11 @@
                    (fs/file templates-resource-dir template-name)))
 
 (defn blog-link [{:keys [blog-root] :as opts} relative-url]
-  (format "%s%s%s"
-          blog-root
-          (if (str/ends-with? blog-root "/") "" "/")
-          relative-url))
+  (when relative-url
+    (format "%s%s%s"
+            blog-root
+            (if (str/ends-with? blog-root "/") "" "/")
+            relative-url)))
 
 (defn html-file [file]
   (str/replace file ".md" ".html"))
@@ -392,7 +393,8 @@
   (->> (render-page opts template template-vars)
        (spit out-file)))
 
-(defn write-tag! [{:keys [blog-title blog-description modified-tags] :as opts}
+(defn write-tag! [{:keys [blog-title blog-description blog-image
+                          modified-tags] :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
@@ -404,5 +406,6 @@
                     :relative-path "../"
                     :body (hiccup/html (post-links (str "Tag - " tag) posts
                                                    {:relative-path "../"}))
-                    :sharing {:description (format "Posts tagged \"%s\" - %s"
+                    :sharing {:image (blog-link opts blog-image)
+                              :description (format "Posts tagged \"%s\" - %s"
                                                    tag blog-description)}}))))
