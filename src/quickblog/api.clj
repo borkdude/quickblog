@@ -155,8 +155,9 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title cached-posts deleted-posts modified-posts num-index-posts
-           out-dir posts]
+  [{:keys [blog-title blog-description
+           posts cached-posts deleted-posts modified-posts num-index-posts
+           out-dir]
     :as opts}]
   (let [index-posts #(->> (vals %)
                           lib/sort-posts
@@ -174,7 +175,8 @@
         (lib/write-page! opts out-file
                          (base-html opts)
                          {:title blog-title
-                          :body body})))))
+                          :body body
+                          :sharing {:description blog-description}})))))
 
 ;;;; Generate archive page with links to all posts
 
