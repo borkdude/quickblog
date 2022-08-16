@@ -73,6 +73,12 @@
   (ensure-resource (fs/file templates-dir template-name)
                    (fs/file templates-resource-dir template-name)))
 
+(defn blog-link [{:keys [blog-root] :as opts} relative-url]
+  (format "%s%s%s"
+          blog-root
+          (if (str/ends-with? blog-root "/") "" "/")
+          relative-url))
+
 (defn html-file [file]
   (str/replace file ".md" ".html"))
 
@@ -350,7 +356,8 @@
                              :favicon-tags (load-favicon template-vars))]
     (selmer/render template template-vars)))
 
-(defn write-post! [{:keys [discuss-fallback
+(defn write-post! [{:keys [blog-root
+                           discuss-fallback
                            cache-dir
                            out-dir
                            force-render
@@ -358,7 +365,8 @@
                            post-template
                            posts-dir]
                     :as opts}
-                   {:keys [file title date discuss tags html]
+                   {:keys [file title date discuss tags html
+                           description image]
                     :or {discuss discuss-fallback}}]
   (let [out-file (fs/file out-dir (html-file file))
         markdown-file (fs/file posts-dir file)
@@ -368,9 +376,13 @@
                                            :date date
                                            :discuss discuss
                                            :tags tags})
+        image (when image (if (re-matches #"^https?://.+" image)
+                            image
+                            (blog-link opts image)))
         rendered-html (render-page opts page-template
                                    {:title title
-                                    :body body})]
+                                    :body body
+                                    :sharing (->map description image)})]
     (println "Writing post:" (str out-file))
     (spit out-file rendered-html)))
 

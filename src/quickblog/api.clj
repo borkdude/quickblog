@@ -217,12 +217,12 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [blog-title blog-author blog-root]} posts]
+  [{:keys [blog-title blog-author blog-root] :as opts} posts]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
         [::atom/title blog-title]
-        [::atom/link {:href (str blog-root "atom.xml") :rel "self"}]
+        [::atom/link {:href (lib/blog-link opts "atom.xml") :rel "self"}]
         [::atom/link {:href blog-root}]
         [::atom/updated (rfc-3339-now)]
         [::atom/id blog-root]
@@ -231,7 +231,7 @@
         (for [{:keys [title date file preview html]} posts
               :when (not preview)
               :let [html-file (str/replace file ".md" ".html")
-                    link (str blog-root html-file)]]
+                    link (lib/blog-link opts html-file)]]
           [::atom/entry
            [::atom/id link]
            [::atom/link {:href link}]
