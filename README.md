@@ -104,6 +104,51 @@ quickblog's default template expects the favicon files to be named as follows:
 If any of these files are not present in your `:assets-dir`, a quickblog default
 will be copied there from `resources/quickblog/assets`.
 
+### Social sharing
+
+Social media sites such as Facebook, Twitter, LinkedIn, etc. display neat little
+preview cards when you share a link. These cards are populated from certain
+`<meta>` tags (as described in "[How to add a social media share card to any
+website](https://dev.to/mishmanners/how-to-add-a-social-media-share-card-to-any-website-ha8)",
+by Michelle Mannering) and typically contain a title, description / summary, and
+preview image.
+
+By default, quickblog adds tags for the page title for all pages and
+descriptions for the following pages:
+- Index: `{{blog-description}}`
+- Archive: Archive - `{{blog-description}}`
+- Tags: Tags - `{{blog-description}}`
+- Tag pages: Posts tagged "`{{tag}}`" - `{{blog-description}}`
+
+If you specify a `:blog-image URL` option, a preview image will be added to the
+index, archive, tags, and tag pages. The URL should point to an image that is
+1200x630 and maximum 5MB in size. It may either be an absolute URL or a URL
+relative to `:blog-root`.
+
+For post pages, meta tags will be populated from `Description` and `Image`
+metadata in the document. For example, a post could look like this:
+
+``` text
+Title: Sharing is caring
+Date: 2022-08-16
+Tags: demo
+Description: quickblog now creates nifty social media sharing cards / previews. Read all about how this works and how you can maximise engagement with your posts!
+Image: assets/2022-08-16-sharing-preview.png
+
+You may have already heard the good news: quickblog is more social than ever!
+...
+```
+
+The value of the `Image` field is either an absolute URL or a URL relative to
+`:blog-root`. As noted above, images should be 1200x630 and maximum 5MB in size
+for best results.
+
+Resources for understanding and testing social sharing:
+- [Meta Tags debugger](https://metatags.io/)
+- [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+- [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/)
+- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+
 ## Breaking changes
 
 ### posts.edn removed
