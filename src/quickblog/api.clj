@@ -117,7 +117,7 @@
       (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
       (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
-(defn- gen-tags [{:keys [blog-title modified-tags posts
+(defn- gen-tags [{:keys [blog-title blog-description modified-tags posts
                          out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
@@ -130,7 +130,9 @@
                        {:skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
-                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})
+                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))
+                        :sharing {:description (format "Tags - %s"
+                                                       blog-description)}})
       (doseq [tag-and-posts posts-by-tag]
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
@@ -180,7 +182,8 @@
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title modified-metadata out-dir posts] :as opts}]
+(defn- spit-archive [{:keys [blog-title blog-description
+                             modified-metadata posts out-dir] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
                    (not (fs/exists? out-file)))]
@@ -191,7 +194,9 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
+                          :body (hiccup/html (lib/post-links "Archive" posts))
+                          :sharing {:description (format "Archive - %s"
+                                                         blog-description)}})))))
 
 ;;;; Generate atom feeds
 

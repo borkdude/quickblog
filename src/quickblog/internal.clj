@@ -380,7 +380,7 @@
   (->> (render-page opts template template-vars)
        (spit out-file)))
 
-(defn write-tag! [{:keys [blog-title modified-tags] :as opts}
+(defn write-tag! [{:keys [blog-title blog-description modified-tags] :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
@@ -391,4 +391,6 @@
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
                     :body (hiccup/html (post-links (str "Tag - " tag) posts
-                                                   {:relative-path "../"}))}))))
+                                                   {:relative-path "../"}))
+                    :sharing {:description (format "Posts tagged \"%s\" - %s"
+                                                   tag blog-description)}}))))
