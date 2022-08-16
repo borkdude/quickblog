@@ -2,6 +2,7 @@
 
 ## Unreleased:
 
+- Social sharing (preview for Facebook, Twitter, LinkedIn, etc.)
 - Move metadata to post files and improve caching
 - favicon support
 
