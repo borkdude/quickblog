@@ -121,19 +121,29 @@ descriptions for the following pages:
 - Tag pages: Posts tagged "`{{tag}}`" - `{{blog-description}}`
 
 If you specify a `:blog-image URL` option, a preview image will be added to the
-index, archive, tags, and tag pages. The URL should point to an image that is
-1200x630 and maximum 5MB in size. It may either be an absolute URL or a URL
-relative to `:blog-root`.
+index, archive, tags, and tag pages. The URL should point to an image; for best
+results, the image should be 1200x630 and maximum 5MB in size. It may either be
+an absolute URL or a URL relative to `:blog-root`.
 
-For post pages, meta tags will be populated from `Description` and `Image`
-metadata in the document. For example, a post could look like this:
+For post pages, meta tags will be populated from `Description`, `Image`,
+`Image-Alt`, and `Twitter-Handle` metadata in the document.
+
+If not specified, `Twitter-Handle` defaults to the `:twitter-handle` option to
+quickblog. The idea is that the `:twitter-handle` option is the Twitter handle
+of the person owning the blog, who is likely also the author of most posts on
+the blog. If there's a guest post, however, the guest blogger can add their
+Twitter handle instead.
+
+For example, a post could look like this:
 
 ``` text
 Title: Sharing is caring
 Date: 2022-08-16
 Tags: demo
-Description: quickblog now creates nifty social media sharing cards / previews. Read all about how this works and how you can maximise engagement with your posts!
 Image: assets/2022-08-16-sharing-preview.png
+Image-Alt: A leather-bound notebook lies open on a writing desk
+Twitter-Handle: quickblog
+Description: quickblog now creates nifty social media sharing cards / previews. Read all about how this works and how you can maximise engagement with your posts!
 
 You may have already heard the good news: quickblog is more social than ever!
 ...
@@ -142,6 +152,12 @@ You may have already heard the good news: quickblog is more social than ever!
 The value of the `Image` field is either an absolute URL or a URL relative to
 `:blog-root`. As noted above, images should be 1200x630 and maximum 5MB in size
 for best results.
+
+`Image-Alt` provides alt text for the preview image, which is extremely
+important for making pages accessible to people using screen readers. I highly
+recommend reading resources like "[Write good Alt Text to describe
+images](https://accessibility.huit.harvard.edu/describe-content-images)" to
+learn more.
 
 Resources for understanding and testing social sharing:
 - [Meta Tags debugger](https://metatags.io/)

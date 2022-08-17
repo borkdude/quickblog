@@ -14,20 +14,31 @@
 
     <!-- Social sharing (Facebook, Twitter, LinkedIn, etc.) -->
     <meta name="title" content="{{title}}">
+    <meta name="twitter:title" content="{{title}}">
     <meta property="og:title" content="{{title}}">
-    <meta property="twitter:title" content="{{title}}">
     <meta property="og:type" content="website">
 {% if sharing.description %}
     <meta name="description" content="{{sharing.description}}">
+    <meta name="twitter:description" content="{{sharing.description}}">
     <meta property="og:description" content="{{sharing.description}}">
-    <meta property="twitter:description" content="{{sharing.description}}">
+{% endif %}
+{% if sharing.url %}
+    <meta name="twitter:url" content="{{sharing.url}}">
+    <meta property="og:url" content="{{sharing.url}}">
 {% endif %}
 {% if sharing.image %}
+    <meta name="twitter:image" content="{{sharing.image}}">
+    <meta name="twitter:card" content="summary_large_image">
     <meta property="og:image" content="{{sharing.image}}">
-    <meta property="twitter:image" content="{{sharing.image}}">
-    <meta property="twitter:card" content="summary_large_image">
+    <meta property="og:image:alt" content="{{sharing.image-alt}}">
 {% else %}
-    <meta property="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary">
+{% endif %}
+{% if sharing.author %}
+    <meta name="twitter:creator" content="{{sharing.author}}">
+{% endif %}
+{% if sharing.twitter-handle %}
+    <meta name="twitter:site" content="{{sharing.twitter-handle}}">
 {% endif %}
   </head>
   <body>
