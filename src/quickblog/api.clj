@@ -379,15 +379,13 @@
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
-  [{:keys [posts-dir templates-dir watch-script]
-    :or {posts-dir (:posts-dir default-opts)
-         templates-dir (:templates-dir default-opts)
-         watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
-    :as opts}]
-  (let [opts (-> opts
-                 (assoc :watch watch-script
-                        :posts-dir posts-dir)
-                 render)]
+  [opts]
+  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
+         :as opts}
+        (-> opts
+            apply-default-opts
+            (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
+            render)]
     (reset! posts-cache (:posts opts))
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
@@ -426,5 +424,15 @@
                  (let [opts (-> opts
                                 (dissoc :cached-posts :posts)
                                 render)]
-                   (reset! posts-cache (:posts opts))))))))
+                   (reset! posts-cache (:posts opts)))))
+
+        (watch assets-dir
+               (fn [{:keys [path type]}]
+                 (println "Asset change detected:"
+                          (name type) (str path))
+                 (when (contains? #{:remove :rename} type)
+                   (let [file (fs/file assets-out-dir (fs/file-name path))]
+                     (println "Removing deleted asset:" (str file))
+                     (fs/delete-if-exists file)))
+                 (lib/copy-tree-modified assets-dir assets-out-dir))))))
   @(promise))
