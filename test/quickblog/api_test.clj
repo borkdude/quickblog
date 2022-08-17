@@ -249,3 +249,26 @@
                     {:title (str blog-title " - Tag - clojure")
                      :description (str "Posts tagged &quot;clojure&quot; - " blog-description)
                      :image (format "%s/%s" blog-root blog-image)}))))
+
+(deftest refresh-templates
+  (with-dirs [templates-dir]
+    (fs/create-dirs templates-dir)
+    (let [default-templates ["base.html" "post.html" "favicon.html" "style.css"]
+          custom-templates ["template1.html" "some-file.txt"]
+          mtimes (->> (concat default-templates custom-templates)
+                      (map #(let [filename %
+                                  file (fs/file templates-dir filename)]
+                             (spit file filename)
+                             [filename (str (fs/last-modified-time file))]))
+                      (into {}))]
+      (api/refresh-templates {:templates-dir templates-dir})
+      (doseq [filename default-templates
+              :let [file (fs/file templates-dir filename)
+                    mtime (str (fs/last-modified-time file))]]
+        (is (not= [filename (mtimes filename)]
+                  [filename mtime])))
+      (doseq [filename custom-templates
+              :let [file (fs/file templates-dir filename)
+                    mtime (str (fs/last-modified-time file))]]
+        (is (= [filename (mtimes filename)]
+               [filename mtime]))))))

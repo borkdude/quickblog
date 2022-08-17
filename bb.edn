@@ -25,6 +25,10 @@
   migrate {:doc "Migrate away from posts.edn to metadata in post files"
            :task (qb/migrate opts)}
 
+  refresh-templates
+  {:doc "Update to latest templates. NOTE: this is a destructive operation, as it will overwrite any templates you have in your `:templates-dir`. You should ensure that your templates are backed up or under revision control before running this command!"
+   :task (qb/refresh-templates opts)}
+
   render {:doc "Render blog"
           :task (qb/render opts)}
 
