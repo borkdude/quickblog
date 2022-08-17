@@ -8,10 +8,10 @@
  :tasks
 
  {:init (def opts (merge {:blog-title "REPL adventures"
-                          :blog-description "A blog mostly about Clojure and ClojureScript."
-                          :blog-root "https://blog.michielborkent.nl/"
-                          :about-link "https://michielborkent.nl/"
-                          :twitter-handle "borkdude"
+                          :blog-description "A blog about blogging quickly"
+                          :blog-root "http://localhost:1888"
+                          :about-link "https://github.com/borkdude/quickblog"
+                          :twitter-handle "quickblog"
                           :out-dir "public"}
                          (cli/parse-opts *command-line-args*)))
 

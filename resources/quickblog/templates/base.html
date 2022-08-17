@@ -11,6 +11,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/themes/prism.min.css">
 
 {% if favicon-tags %}{{favicon-tags | safe}}{% endif %}
+
+    <!-- Social sharing (Facebook, Twitter, LinkedIn, etc.) -->
+    <meta name="title" content="{{title}}">
+    <meta property="og:title" content="{{title}}">
+    <meta property="twitter:title" content="{{title}}">
+    <meta property="og:type" content="website">
+{% if sharing.description %}
+    <meta name="description" content="{{sharing.description}}">
+    <meta property="og:description" content="{{sharing.description}}">
+    <meta property="twitter:description" content="{{sharing.description}}">
+{% endif %}
+{% if sharing.image %}
+    <meta property="og:image" content="{{sharing.image}}">
+    <meta property="twitter:image" content="{{sharing.image}}">
+    <meta property="twitter:card" content="summary_large_image">
+{% else %}
+    <meta property="twitter:card" content="summary">
+{% endif %}
   </head>
   <body>
 

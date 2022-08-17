@@ -18,6 +18,7 @@
    :blog-author "Quick Blogger"
    :blog-description "A blog about blogging quickly"
    :blog-root "https://github.com/borkdude/quickblog"
+   :blog-image nil      ; image URL; see Features > Social sharing in README
    :about-link nil      ; example: "https://github.com/borkdude/quickblog"
    :discuss-link nil    ; example: "https://github.com/borkdude/quickblog/issues"
    :twitter-handle nil  ; example: "quickblogger"
@@ -117,8 +118,8 @@
       (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
       (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
-(defn- gen-tags [{:keys [blog-title modified-tags posts
-                         out-dir tags-dir]
+(defn- gen-tags [{:keys [blog-title blog-description blog-image
+                         modified-tags posts out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
@@ -130,7 +131,10 @@
                        {:skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
-                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))})
+                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))
+                        :sharing {:image (lib/blog-link opts blog-image)
+                                  :description (format "Tags - %s"
+                                                       blog-description)}})
       (doseq [tag-and-posts posts-by-tag]
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
@@ -155,8 +159,9 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title cached-posts deleted-posts modified-posts num-index-posts
-           out-dir posts]
+  [{:keys [blog-title blog-description blog-image
+           posts cached-posts deleted-posts modified-posts num-index-posts
+           out-dir]
     :as opts}]
   (let [index-posts #(->> (vals %)
                           lib/sort-posts
@@ -174,11 +179,14 @@
         (lib/write-page! opts out-file
                          (base-html opts)
                          {:title blog-title
-                          :body body})))))
+                          :body body
+                          :sharing {:description blog-description
+                                    :image (lib/blog-link opts blog-image)}})))))
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title modified-metadata out-dir posts] :as opts}]
+(defn- spit-archive [{:keys [blog-title blog-description blog-image
+                             modified-metadata posts out-dir] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
                    (not (fs/exists? out-file)))]
@@ -189,7 +197,10 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" posts))})))))
+                          :body (hiccup/html (lib/post-links "Archive" posts))
+                          :sharing {:image (lib/blog-link opts blog-image)
+                                    :description (format "Archive - %s"
+                                                         blog-description)}})))))
 
 ;;;; Generate atom feeds
 
@@ -210,12 +221,12 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [blog-title blog-author blog-root]} posts]
+  [{:keys [blog-title blog-author blog-root] :as opts} posts]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
         [::atom/title blog-title]
-        [::atom/link {:href (str blog-root "atom.xml") :rel "self"}]
+        [::atom/link {:href (lib/blog-link opts "atom.xml") :rel "self"}]
         [::atom/link {:href blog-root}]
         [::atom/updated (rfc-3339-now)]
         [::atom/id blog-root]
@@ -224,7 +235,7 @@
         (for [{:keys [title date file preview html]} posts
               :when (not preview)
               :let [html-file (str/replace file ".md" ".html")
-                    link (str blog-root html-file)]]
+                    link (lib/blog-link opts html-file)]]
           [::atom/entry
            [::atom/id link]
            [::atom/link {:href link}]
