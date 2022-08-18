@@ -369,6 +369,7 @@
     (selmer/render template template-vars)))
 
 (defn write-post! [{:keys [blog-root
+                           twitter-handle
                            discuss-fallback
                            cache-dir
                            out-dir
@@ -378,8 +379,9 @@
                            posts-dir]
                     :as opts}
                    {:keys [file title date discuss tags html
-                           description image]
-                    :or {discuss discuss-fallback}}]
+                           description image image-alt]
+                    :or {discuss discuss-fallback}
+                    :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
         markdown-file (fs/file posts-dir file)
         cached-file (fs/file cache-dir (cache-file file))
@@ -388,13 +390,20 @@
                                            :date date
                                            :discuss discuss
                                            :tags tags})
+        author (-> (:twitter-handle post-metadata) (or twitter-handle))
         image (when image (if (re-matches #"^https?://.+" image)
                             image
                             (blog-link opts image)))
+        url (blog-link opts (html-file file))
         rendered-html (render-page opts page-template
                                    {:title title
                                     :body body
-                                    :sharing (->map description image)})]
+                                    :sharing (->map description
+                                                    author
+                                                    twitter-handle
+                                                    image
+                                                    image-alt
+                                                    url)})]
     (println "Writing post:" (str out-file))
     (spit out-file rendered-html)))
 
@@ -404,7 +413,8 @@
   (->> (render-page opts template template-vars)
        (spit out-file)))
 
-(defn write-tag! [{:keys [blog-title blog-description blog-image
+(defn write-tag! [{:keys [blog-title blog-description
+                          blog-image blog-image-alt twitter-handle
                           modified-tags] :as opts}
                   tags-out-dir
                   template
@@ -417,6 +427,10 @@
                     :relative-path "../"
                     :body (hiccup/html (post-links (str "Tag - " tag) posts
                                                    {:relative-path "../"}))
-                    :sharing {:image (blog-link opts blog-image)
-                              :description (format "Posts tagged \"%s\" - %s"
-                                                   tag blog-description)}}))))
+                    :sharing {:description (format "Posts tagged \"%s\" - %s"
+                                                   tag blog-description)
+                              :author twitter-handle
+                              :twitter-handle twitter-handle
+                              :image (blog-link opts blog-image)
+                              :image-alt blog-image-alt
+                              :url (blog-link opts "tags/index.html")}}))))

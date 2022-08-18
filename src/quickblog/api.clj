@@ -118,7 +118,8 @@
       (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
       (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
-(defn- gen-tags [{:keys [blog-title blog-description blog-image
+(defn- gen-tags [{:keys [blog-title blog-description
+                         blog-image blog-image-alt twitter-handle
                          modified-tags posts out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
@@ -132,9 +133,13 @@
                         :title (str blog-title " - Tags")
                         :relative-path "../"
                         :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))
-                        :sharing {:image (lib/blog-link opts blog-image)
-                                  :description (format "Tags - %s"
-                                                       blog-description)}})
+                        :sharing {:description (format "Tags - %s"
+                                                       blog-description)
+                                  :author twitter-handle
+                                  :twitter-handle twitter-handle
+                                  :image (lib/blog-link opts blog-image)
+                                  :image-alt blog-image-alt
+                                  :url (lib/blog-link opts "tags/index.html")}})
       (doseq [tag-and-posts posts-by-tag]
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
@@ -159,7 +164,7 @@
        (str/join "\n")))
 
 (defn- spit-index
-  [{:keys [blog-title blog-description blog-image
+  [{:keys [blog-title blog-description blog-image blog-image-alt twitter-handle
            posts cached-posts deleted-posts modified-posts num-index-posts
            out-dir]
     :as opts}]
@@ -181,11 +186,16 @@
                          {:title blog-title
                           :body body
                           :sharing {:description blog-description
-                                    :image (lib/blog-link opts blog-image)}})))))
+                                    :author twitter-handle
+                                    :twitter-handle twitter-handle
+                                    :image (lib/blog-link opts blog-image)
+                                    :image-alt blog-image-alt
+                                    :url (lib/blog-link opts "index.html")}})))))
 
 ;;;; Generate archive page with links to all posts
 
-(defn- spit-archive [{:keys [blog-title blog-description blog-image
+(defn- spit-archive [{:keys [blog-title blog-description
+                             blog-image blog-image-alt twitter-handle
                              modified-metadata posts out-dir] :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
@@ -198,9 +208,13 @@
                          {:skip-archive true
                           :title title
                           :body (hiccup/html (lib/post-links "Archive" posts))
-                          :sharing {:image (lib/blog-link opts blog-image)
-                                    :description (format "Archive - %s"
-                                                         blog-description)}})))))
+                          :sharing {:description (format "Archive - %s"
+                                                         blog-description)
+                                    :author twitter-handle
+                                    :twitter-handle twitter-handle
+                                    :image (lib/blog-link opts blog-image)
+                                    :image-alt blog-image-alt
+                                    :url (lib/blog-link opts "archive.html")}})))))
 
 ;;;; Generate atom feeds
 
@@ -365,15 +379,13 @@
 (defn watch
   "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
   server using `serve`."
-  [{:keys [posts-dir templates-dir watch-script]
-    :or {posts-dir (:posts-dir default-opts)
-         templates-dir (:templates-dir default-opts)
-         watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"}
-    :as opts}]
-  (let [opts (-> opts
-                 (assoc :watch watch-script
-                        :posts-dir posts-dir)
-                 render)]
+  [opts]
+  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
+         :as opts}
+        (-> opts
+            apply-default-opts
+            (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
+            render)]
     (reset! posts-cache (:posts opts))
     (serve opts)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
@@ -412,5 +424,15 @@
                  (let [opts (-> opts
                                 (dissoc :cached-posts :posts)
                                 render)]
-                   (reset! posts-cache (:posts opts))))))))
+                   (reset! posts-cache (:posts opts)))))
+
+        (watch assets-dir
+               (fn [{:keys [path type]}]
+                 (println "Asset change detected:"
+                          (name type) (str path))
+                 (when (contains? #{:remove :rename} type)
+                   (let [file (fs/file assets-out-dir (fs/file-name path))]
+                     (println "Removing deleted asset:" (str file))
+                     (fs/delete-if-exists file)))
+                 (lib/copy-tree-modified assets-dir assets-out-dir))))))
   @(promise))

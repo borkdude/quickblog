@@ -188,7 +188,8 @@
           (is (fs/exists? (fs/file out-dir "tags" "not-clojure.html")))
           (is (not (fs/exists? (fs/file out-dir "tags" "clojure.html")))))))))
 
-(defn- test-sharing [filename {:keys [title description image]}]
+(defn- test-sharing [filename {:keys [title description image image-alt
+                                      author twitter-handle]}]
   (let [meta (->> (slurp filename)
                   (re-seq #"<meta (?:name|property)=\"([^\"]+)\" content=\"([^\"]+)\">")
                   (map (fn [[_ k v]] [k v]))
@@ -202,7 +203,10 @@
     (is (= description (meta "og:description")))
     (is (= description (meta "twitter:description")))
     (is (= image (meta "og:image")))
-    (is (= image (meta "twitter:image")))))
+    (is (= image (meta "twitter:image")))
+    (is (= image-alt (meta "og:image:alt")))
+    (is (= author (meta "twitter:creator")))
+    (is (= twitter-handle (meta "twitter:site")))))
 
 (deftest social-sharing
   (with-dirs [assets-dir
@@ -213,17 +217,25 @@
     (let [blog-title "quickblog"
           blog-description "A blog about blogging quickly"
           blog-root "http://localhost:1888"
-          blog-image "assets/blog-preview.png"]
+          blog-image "assets/blog-preview.png"
+          blog-image-alt "A shimmering sunset"
+          twitter-handle "quickblogger"]
       (write-test-file posts-dir "test.md"
-                       (format "Title: %s\nDate: %s\nTags: %s\nDescription: %s\nImage: %s\n\n%s"
-                               "Test post" "2022-01-02" "clojure"
-                               "Something or other"
-                               "assets/post-preview.png"
-                               "This is a test post"))
+                       (str "Title: Test post\n"
+                            "Date: 2022-01-02\n"
+                            "Tags: clojure\n"
+                            "Twitter-Handle: guestblogger\n"
+                            "Description: Something or other\n"
+                            "Image: assets/post-preview.png\n"
+                            "Image-Alt: A leather-bound notebook lies open on a writing desk\n"
+                            "\n"
+                            "This is a test post"))
       (api/render {:blog-title blog-title
                    :blog-description blog-description
                    :blog-root blog-root
                    :blog-image blog-image
+                   :blog-image-alt blog-image-alt
+                   :twitter-handle twitter-handle
                    :assets-dir assets-dir
                    :posts-dir posts-dir
                    :templates-dir templates-dir
@@ -232,23 +244,38 @@
       (test-sharing (fs/file out-dir "test.html")
                     {:title "Test post"
                      :description "Something or other"
-                     :image "http://localhost:1888/assets/post-preview.png"})
+                     :image "http://localhost:1888/assets/post-preview.png"
+                     :image-alt "A leather-bound notebook lies open on a writing desk"
+                     :author "guestblogger"
+                     :twitter-handle "quickblogger"})
       (test-sharing (fs/file out-dir "index.html")
                     {:title blog-title
                      :description blog-description
-                     :image (format "%s/%s" blog-root blog-image)})
+                     :image (format "%s/%s" blog-root blog-image)
+                     :image-alt blog-image-alt
+                     :author twitter-handle
+                     :twitter-handle twitter-handle})
       (test-sharing (fs/file out-dir "archive.html")
                     {:title (str blog-title " - Archive")
                      :description (str "Archive - " blog-description)
-                     :image (format "%s/%s" blog-root blog-image)})
+                     :image (format "%s/%s" blog-root blog-image)
+                     :image-alt blog-image-alt
+                     :author twitter-handle
+                     :twitter-handle twitter-handle})
       (test-sharing (fs/file out-dir "tags" "index.html")
                     {:title (str blog-title " - Tags")
                      :description (str "Tags - " blog-description)
-                     :image (format "%s/%s" blog-root blog-image)})
+                     :image (format "%s/%s" blog-root blog-image)
+                     :image-alt blog-image-alt
+                     :author twitter-handle
+                     :twitter-handle twitter-handle})
       (test-sharing (fs/file out-dir "tags" "clojure.html")
                     {:title (str blog-title " - Tag - clojure")
                      :description (str "Posts tagged &quot;clojure&quot; - " blog-description)
-                     :image (format "%s/%s" blog-root blog-image)}))))
+                     :image (format "%s/%s" blog-root blog-image)
+                     :image-alt blog-image-alt
+                     :author twitter-handle
+                     :twitter-handle twitter-handle}))))
 
 (deftest refresh-templates
   (with-dirs [templates-dir]
@@ -258,8 +285,8 @@
           mtimes (->> (concat default-templates custom-templates)
                       (map #(let [filename %
                                   file (fs/file templates-dir filename)]
-                             (spit file filename)
-                             [filename (str (fs/last-modified-time file))]))
+                              (spit file filename)
+                              [filename (str (fs/last-modified-time file))]))
                       (into {}))]
       (api/refresh-templates {:templates-dir templates-dir})
       (doseq [filename default-templates
