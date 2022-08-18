@@ -1,49 +1,46 @@
-{:deps {org.babashka/cli {:mvn/version "0.3.35"}
-        io.github.borkdude/quickblog {:local/root "."}
-        #_"You use the newest SHA here:"
-        #_{:git/sha "b69c11f4292702f78a8ac0a9f32379603bebf2af"}
-        }
+{:deps {io.github.borkdude/quickblog {:local/root "."}}
  :paths ["."]
 
  :bbin/bin {quickblog {:ns-default quickblog.api}}
 
  :tasks
+ {:requires ([babashka.fs :as fs]
+             [quickblog.cli :as cli])
+  :init (do
+          (def opts {:blog-title "REPL adventures"
+                     :blog-description "A blog about blogging quickly"
+                     :blog-root "http://localhost:1888"
+                     :about-link "https://github.com/borkdude/quickblog"
+                     :twitter-handle "quickblog"
+                     :out-dir "public"})
+          (defn- run-command [cmd-name opts]
+            (apply cli/dispatch opts cmd-name *command-line-args*)))
 
- {:init (def opts (merge {:blog-title "REPL adventures"
-                          :blog-description "A blog about blogging quickly"
-                          :blog-root "http://localhost:1888"
-                          :about-link "https://github.com/borkdude/quickblog"
-                          :twitter-handle "quickblog"
-                          :out-dir "public"}
-                         (cli/parse-opts *command-line-args*)))
-
-  :requires ([babashka.fs :as fs]
-             [quickblog.api :as qb]
-             [babashka.cli :as cli])
+  quickblog {:doc "Start blogging quickly! Run `bb quickblog help` for details."
+             :task (cli/dispatch opts)}
 
   new {:doc "Create new blog article"
-       :task (qb/new opts)}
+       :task (run-command "new" opts)}
 
   migrate {:doc "Migrate away from posts.edn to metadata in post files"
-           :task (qb/migrate opts)}
+           :task (run-command "migrate" opts)}
 
   refresh-templates
   {:doc "Update to latest templates. NOTE: this is a destructive operation, as it will overwrite any templates you have in your `:templates-dir`. You should ensure that your templates are backed up or under revision control before running this command!"
-   :task (qb/refresh-templates opts)}
+   :task (run-command "refresh-templates" opts)}
 
   render {:doc "Render blog"
-          :task (qb/render opts)}
+          :task (run-command "render" opts)}
 
   watch  {:doc "Watch posts and templates and render file changes"
-          :task (qb/watch opts)}
+          :task (run-command "watch" opts)}
+
+  clean {:doc "Remove cache and output directories"
+         :task (run-command "clean" opts)}
 
   publish {:doc "Publish blog"
            :depends [render]
            :task (shell "rsync -a --delete public/ user@yourdomain:~/blog")}
-
-  clean {:doc "Remove cache and output directories"
-         :task (do (fs/delete-tree ".work")
-                   (fs/delete-tree "public"))}
 
   test {:doc "Run tests"
         :task (apply clojure "-M:test" *command-line-args*)}

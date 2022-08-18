@@ -10,39 +10,6 @@
    [quickblog.internal :as lib]
    [selmer.parser :as selmer]))
 
-;; all values should be strings for consistency with command line args
-(def ^:private default-opts
-  {
-   ;; about the blog
-   :blog-title "quickblog"
-   :blog-author "Quick Blogger"
-   :blog-description "A blog about blogging quickly"
-   :blog-root "https://github.com/borkdude/quickblog"
-   :blog-image nil      ; image URL; see Features > Social sharing in README
-   :about-link nil      ; example: "https://github.com/borkdude/quickblog"
-   :discuss-link nil    ; example: "https://github.com/borkdude/quickblog/issues"
-   :twitter-handle nil  ; example: "quickblogger"
-   ;; config
-   :default-metadata {}
-   :num-index-posts 3
-   :posts-file "posts.edn"  ; deprecated, but used for `migrate`
-   :rendering-system-files ["bb.edn" "deps.edn" *file*]
-   ;; features
-   :favicon "false"
-   ;; options
-   :force-render "false"
-   ;; directories
-   :assets-dir "assets"
-   :assets-out-dir "assets"
-   :blog-dir (fs/file ".")
-   :cache-dir ".work"
-   :favicon-dir (fs/file "assets" "favicon")
-   :favicon-out-dir (fs/file "assets" "favicon")
-   :out-dir "public"
-   :posts-dir "posts"
-   :tags-dir "tags"
-   :templates-dir "templates"})
-
 (defn- update-out-dirs
   [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]
   (let [out-dir-ify (fn [dir]
@@ -53,13 +20,10 @@
            :assets-out-dir (out-dir-ify assets-out-dir)
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
-(defn- apply-default-opts [opts]
-  (let [opts (merge default-opts opts)]
-    (-> opts
-        (update :favicon #(and % (not= "false" %)))
-        (update :force-render #(and % (not= "false" %)))
-        (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
-        update-out-dirs)))
+(defn- update-opts [opts]
+  (-> opts
+      (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
+      update-out-dirs))
 
 (def ^:private favicon-assets
   ["android-chrome-192x192.png"
@@ -294,7 +258,7 @@
                 posts-file
                 templates-dir]
          :as opts}
-        (-> opts apply-default-opts lib/refresh-cache)]
+        (-> opts update-opts lib/refresh-cache)]
     (when (empty? (:posts opts))
       (if (fs/exists? posts-file)
         (println (format "Run `bb migrate` to move metadata from `%s` to post files"
@@ -331,7 +295,6 @@
   "Creates new `file` in posts dir."
   [{:keys [file title help
            posts-dir]
-    :or {posts-dir (:posts-dir default-opts)}
     :as opts}]
   (let [_opts (assoc opts :posts-dir posts-dir)
         usage "Usage: bb new --file [POST_FILENAME] --title [POST_TITLE]"]
@@ -350,10 +313,18 @@
               (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
                       title (now)))))))
 
+(defn clean
+  "Removes cache and output directories"
+  [opts]
+  (let [{:keys [cache-dir out-dir]} (update-opts opts)]
+    (doseq [dir [cache-dir out-dir]]
+      (println "Removing dir:" dir)
+      (fs/delete-tree dir))))
+
 (defn migrate
   "Migrates from `posts.edn` to post-local metadata"
   [opts]
-  (let [{:keys [posts-file] :as opts} (apply-default-opts opts)]
+  (let [{:keys [posts-file] :as opts} (update-opts opts)]
     (if (fs/exists? posts-file)
       (do
         (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
@@ -366,13 +337,11 @@
 (defn refresh-templates
   "Updates to latest default templates"
   [opts]
-  (lib/refresh-templates (apply-default-opts opts)))
+  (lib/refresh-templates (update-opts opts)))
 
 (defn serve
   "Runs file-server on `port`."
-  [{:keys [port out-dir]
-    :or {port 1888
-         out-dir (:out-dir default-opts)}}]
+  [{:keys [port out-dir] :as opts}]
   (let [serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
             :dir out-dir})))
@@ -380,13 +349,13 @@
 (def ^:private posts-cache (atom nil))
 
 (defn watch
-  "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
-  server using `serve`."
+  "Watches posts, templates, and assets for changes. Runs file server using
+  `serve`."
   [opts]
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
          :as opts}
         (-> opts
-            apply-default-opts
+            update-opts
             (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
             render)]
     (reset! posts-cache (:posts opts))
