@@ -1,4 +1,4 @@
-{:deps {org.babashka/cli {:mvn/version "0.3.31"}
+{:deps {org.babashka/cli {:mvn/version "0.3.35"}
         io.github.borkdude/quickblog {:local/root "."}
         #_"You use the newest SHA here:"
         #_{:git/sha "b69c11f4292702f78a8ac0a9f32379603bebf2af"}
