@@ -311,5 +311,13 @@ Options:
                  (or args
                      (seq *command-line-args*)))))
 
+(defn run
+  "Meant to be called using `clj -M:quickblog`; see Quickstart > Clojure in README"
+  [default-opts]
+  ;; *command-line-args* will start with `(quickblog.cli run ...)`, so we need to
+  ;; get rid of the first two items to get at what we care about
+  (let [args (drop 2 *command-line-args*)]
+    (apply dispatch default-opts args)))
+
 (defn -main [& args]
   (apply dispatch {} args))
