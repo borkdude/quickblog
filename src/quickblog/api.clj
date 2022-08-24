@@ -1,4 +1,162 @@
 (ns quickblog.api
+  {:org.babashka/cli
+   {:spec
+    {
+     ;; Blog metadata
+     :blog-title
+     {:desc "Title of the blog"
+      :ref "<title>"
+      :default "quickblog"
+      :require true
+      :group :blog-metadata}
+
+     :blog-author
+     {:desc "Author's name"
+      :ref "<name>"
+      :default "Quick Blogger"
+      :require true
+      :group :blog-metadata}
+
+     :blog-description
+     {:desc "Blog description for subtitle and RSS feeds"
+      :ref "<text>"
+      :default "A blog about blogging quickly"
+      :require true
+      :group :blog-metadata}
+
+     :blog-root
+     {:desc "Base URL of the blog"
+      :ref "<url>"
+      :default "https://github.com/borkdude/quickblog"
+      :require true
+      :group :blog-metadata}
+
+     ;; Optional metadata
+     :about-link
+     {:desc "Link to about the author page"
+      :ref "<url>"
+      :group :optional-metadata}
+
+     :discuss-link
+     {:desc "Link to discussion forum for posts"
+      :ref "<url>"
+      :group :optional-metadata}
+
+     :twitter-handle
+     {:desc "Author's Twitter handle"
+      :ref "<handle>"
+      :group :optional-metadata}
+
+     ;; Post config
+     :default-metadata
+     {:desc "Default metadata to add to posts"
+      :default {}
+      :group :post-config}
+
+     :num-index-posts
+     {:desc "Number of most recent posts to show on the index page"
+      :ref "<num>"
+      :default 3
+      :group :post-config}
+
+     :posts-file
+     {:desc "File containing deprecated post metadata (used only for `migrate`)"
+      :ref "<file>"
+      :default "posts.edn"
+      :group :post-config}
+
+     ;; Input directories
+     :assets-dir
+     {:desc "Directory to copy assets (images, etc.) from"
+      :ref "<dir>"
+      :default "assets"
+      :require true
+      :group :input-directories}
+
+     :posts-dir
+     {:desc "Directory to read posts from"
+      :ref "<dir>"
+      :default "posts"
+      :require true
+      :group :input-directories}
+
+     :templates-dir
+     {:desc "Directory to read templates from; see Templates section in README"
+      :ref "<dir>"
+      :default "templates"
+      :require true
+      :group :input-directories}
+
+     ;; Output directories
+     :out-dir
+     {:desc "Base directory for outputting static site"
+      :ref "<dir>"
+      :default "public"
+      :require true
+      :group :output-directories}
+
+     :assets-out-dir
+     {:desc "Directory to write assets to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "assets"
+      :require true
+      :group :output-directories}
+
+     :tags-dir
+     {:desc "Directory to write tags to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "tags"
+      :require true
+      :group :output-directories}
+
+     ;; Caching
+     :force-render
+     {:desc "If true, pages will be re-rendered regardless of cache status"
+      :default false
+      :group :caching}
+
+     :cache-dir
+     {:desc "Directory to use for caching"
+      :ref "<dir>"
+      :default ".work"
+      :require true
+      :group :caching}
+
+     :rendering-system-files
+     {:desc "Files involved in rendering pages (only set if you know what you're doing!)"
+      :ref "<file1> <file2>..."
+      :default ["bb.edn" "deps.edn"]
+      :coerce []
+      :require true
+      :group :caching}
+
+     ;; Social sharing
+     :blog-image
+     {:desc "Blog thumbnail image URL; see Features > Social sharing in README"
+      :ref "<url>"
+      :group :social-sharing}
+
+     ;; Favicon
+     :favicon
+     {:desc "If true, favicon will be added to all pages"
+      :default false
+      :group :favicon}
+
+     :favicon-dir
+     {:desc "Directory to read favicon assets from"
+      :ref "<dir>"
+      :default "assets/favicon"
+      :group :favicon}
+
+     :favicon-out-dir
+     {:desc "Directory to write favicon assets to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "assets/favicon"
+      :group :favicon}
+
+     ;; Command-specific opts
+
+     }}}
   (:require
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
@@ -293,6 +451,17 @@
 
 (defn new
   "Creates new `file` in posts dir."
+  {:org.babashka/cli
+   {:spec
+    {:file
+     {:desc "Filename of post (relative to posts-dir)"
+      :ref "<filename>"
+      :require true}
+
+     :title
+     {:desc "Title of post"
+      :ref "<title>"
+      :require true}}}}
   [{:keys [file title help
            posts-dir]
     :as opts}]
@@ -341,6 +510,12 @@
 
 (defn serve
   "Runs file-server on `port`."
+  {:org.babashka/cli
+   {:spec
+    {:port
+     {:desc "Port for HTTP server to listen on"
+      :ref "<port>"
+      :default 1888}}}}
   [{:keys [port out-dir] :as opts}]
   (let [serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
@@ -351,6 +526,12 @@
 (defn watch
   "Watches posts, templates, and assets for changes. Runs file server using
   `serve`."
+  {:org.babashka/cli
+   {:spec
+    {:port
+     {:desc "Port for HTTP server to listen on"
+      :ref "<port>"
+      :default 1888}}}}
   [opts]
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
          :as opts}
