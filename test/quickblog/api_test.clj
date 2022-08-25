@@ -1,5 +1,6 @@
 (ns quickblog.api-test
   (:require
+   [clojure.data.xml :as xml]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [babashka.fs :as fs]
@@ -186,7 +187,87 @@
             (is (not= (map str [filename mtime])
                       (map str [filename (fs/last-modified-time filename)]))))
           (is (fs/exists? (fs/file out-dir "tags" "not-clojure.html")))
-          (is (not (fs/exists? (fs/file out-dir "tags" "clojure.html")))))))))
+          (is (not (fs/exists? (fs/file out-dir "tags" "clojure.html"))))))))
+
+  (testing "feeds"
+    (with-dirs [assets-dir
+                posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (let [render #(api/render {:assets-dir assets-dir
+                                 :posts-dir posts-dir
+                                 :templates-dir templates-dir
+                                 :cache-dir cache-dir
+                                 :out-dir out-dir})
+            ->mtimes (fn [dir filenames]
+                       (->> filenames
+                            (map #(let [filename (fs/file dir %)]
+                                    [filename (fs/last-modified-time filename)]))
+                            (into {})))
+            elem-tagged? (fn [tag el]
+                           (let [tag (keyword (str "xmlns.http%3A%2F%2Fwww.w3.org%2F2005%2FAtom/" (name tag)))]
+                             (and (instance? clojure.data.xml.node.Element el)
+                                  (= tag (:tag el)))))
+            post-ids (fn [filename]
+                       (->> (xml/parse-str (slurp filename))
+                            :content
+                            (filter (partial elem-tagged? :entry))
+                            (mapcat (fn [el]
+                                      (->> (:content el)
+                                           (filter (partial elem-tagged? :id))
+                                           (map (comp #(str/replace % #".+/" "")
+                                                      first
+                                                      :content)))))
+                            set))]
+        (write-test-post posts-dir {:file "clojure1.md"
+                                    :tags #{"clojure" "something"}})
+        (write-test-post posts-dir {:file "clojurescript1.md"
+                                    :tags #{"clojurescript" "something-else"}})
+        (write-test-post posts-dir {:file "random1.md"
+                                    :tags #{"something-else"}})
+        (render)
+        (is (= #{"clojure1.html"
+                 "clojurescript1.html"
+                 "random1.html"}
+               (post-ids (fs/file out-dir "atom.xml"))))
+        (is (= #{"clojure1.html"
+                 "clojurescript1.html"}
+               (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (write-test-post posts-dir {:file "clojure2.md"
+                                    :tags #{"clojure"}})
+        (write-test-post posts-dir {:file "random2.md"
+                                    :tags #{"something"}})
+        (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
+              _ (render)
+              mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
+          (doseq [[filename mtime] mtimes-after]
+            (is (not= [filename mtime] [filename (mtimes filename)]))))
+        (is (= #{"clojure1.html"
+                 "clojure2.html"
+                 "clojurescript1.html"
+                 "random1.html"
+                 "random2.html"}
+               (post-ids (fs/file out-dir "atom.xml"))))
+        (is (= #{"clojure1.html"
+                 "clojure2.html"
+                 "clojurescript1.html"}
+               (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
+              _ (render)
+              mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
+          (doseq [[filename mtime] mtimes-after]
+            (is (= [filename mtime] [filename (mtimes filename)]))))
+        (is (= #{"clojure1.html"
+                 "clojure2.html"
+                 "clojurescript1.html"
+                 "random1.html"
+                 "random2.html"}
+               (post-ids (fs/file out-dir "atom.xml"))))
+        (is (= #{"clojure1.html"
+                 "clojure2.html"
+                 "clojurescript1.html"}
+               (post-ids (fs/file out-dir "planetclojure.xml"))))))))
 
 (defn- test-sharing [filename {:keys [title description image image-alt
                                       author twitter-handle]}]

@@ -262,13 +262,16 @@
 (defn- spit-feeds [{:keys [out-dir modified-posts posts] :as opts}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
-        clojure-posts (->> modified-posts
-                           (map posts)
+        all-posts (lib/sort-posts (vals posts))
+        clojure-posts (->> (vals posts)
                            (filter (fn [{:keys [tags]}]
                                      (some tags ["clojure" "clojurescript"])))
                            lib/sort-posts)
-        all-posts (lib/sort-posts (vals posts))]
-    (if (and (empty? clojure-posts) (fs/exists? clojure-feed-file))
+        clojure-posts-modified? (->> modified-posts
+                                     (map posts)
+                                     (some (fn [{:keys [tags]}]
+                                             (some tags ["clojure" "clojurescript"]))))]
+    (if (and (not clojure-posts-modified?) (fs/exists? clojure-feed-file))
       (println "No Clojure posts modified; skipping Clojure feed")
       (do
         (println "Writing Clojure feed" (str clojure-feed-file))
