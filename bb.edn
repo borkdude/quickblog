@@ -5,6 +5,8 @@
         }
  :paths ["."]
 
+ :bbin/bin {quickblog {:ns-default quickblog.api}}
+
  :tasks
 
  {:init (def opts (merge {:blog-title "REPL adventures"
