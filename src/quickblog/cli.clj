@@ -83,8 +83,8 @@ Options:
            (case cause
              :require
              (println
-              (format "Missing required argument %s:\n%s"
-                      option
+              (format "Missing required argument --%s:\n%s"
+                      (name option)
                       (cli/format-opts {:spec cmd-opts})))
              (println msg))
            (System/exit 1))
