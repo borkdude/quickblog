@@ -12,31 +12,33 @@ Includes hot-reload. See it in action [here](https://twitter.com/borkdude/status
 
 ### Babashka
 
-Copy the config from `bb.edn` in this project to your local `bb.edn`. Then run `bb tasks`:
+quickblog is meant to be used as a library from your Babashka project. The
+easiest way to use it is to add a task to your project's `bb.edn`.
 
-```
-$ bb tasks
-The following tasks are available:
+This example assumes a basic `bb.edn` like this:
 
-new       Create new blog article
-delete    Delete blog article
-quickblog Render blog
-watch     Watch posts and templates and render file changes
-publish   Publish blog
-clean     Remove cache and output directories
-migrate   Migrate away from `posts.edn` to metadata in post files
+``` clojure
+{:deps {io.github.borkdude/quickblog
+        #_"You use the newest SHA here:"
+        {:git/sha "389833f393e04d4176ef3eaa5047fa307a5ff2e8"}}
+ :tasks
+ {:requires ([quickblog.cli :as cli])
+  :init (def opts {:blog-title "REPL adventures"
+                   :blog-description "A blog about blogging quickly"})
+  quickblog {:doc "Start blogging quickly! Run `bb quickblog help` for details."
+             :task (cli/dispatch opts)}}}
 ```
 
 To create a new blog post:
 
 ``` clojure
-$ bb new :file "test.md" :title "Test"
+$ bb quickblog new --file "test.md" --title "Test"
 ```
 
-To watch:
+To start an HTTP server and re-render on changes to files:
 
 ```
-$ bb watch
+$ bb quickblog watch
 ```
 
 ### Clojure
@@ -45,25 +47,26 @@ Quickblog can be used in Clojure with the exact same API as the bb tasks.
 Default options can be configured in `:exec-args`.
 
 ``` clojure
-:quickblog {:deps {io.github.borkdude/quickblog
-                   {:git/sha "b69c11f4292702f78a8ac0a9f32379603bebf2af"}
-                   org.babashka/cli {:mvn/version "0.3.31"}}
-            :main-opts ["-m" "babashka.cli.exec" "quickblog.api"]
-            :exec-args {:blog-title "REPL adventures"
-                        :out-dir "public"
-                        :blog-root "https://blog.michielborkent.nl/"}}
+:quickblog
+{:deps {io.github.borkdude/quickblog
+        #_"You use the newest SHA here:"
+        {:git/sha "389833f393e04d4176ef3eaa5047fa307a5ff2e8"}
+        org.babashka/cli {:mvn/version "0.3.35"}}
+ :main-opts ["-m" "babashka.cli.exec" "quickblog.cli" "run"]
+ :exec-args {:blog-title "REPL adventures"
+             :blog-description "A blog about blogging quickly"}}
 ```
 
 After configuring this, you can call:
 
 ```
-clj -M:quickblog new :file "test.md" :title "Test"
+$ clj -M:quickblog new --file "test.md" --title "Test"
 ```
 
 To watch:
 
 ```
-clj -M:quickblog watch
+$ clj -M:quickblog watch
 ```
 
 etc.
@@ -73,7 +76,8 @@ etc.
 ### favicon
 
 **NOTE:** when enabling or disabling a favicon, you must do a full re-render of
-your site by running `bb clean` and then your `bb render` command.
+your site by running `bb quickblog clean` and then your `bb quickblog render`
+command.
 
 To enable a [favicon](https://en.wikipedia.org/wiki/Favicon), add `:favicon
 true` to your quickblog opts (or use `--favicon true` on the command line).
@@ -181,9 +185,8 @@ templates to suit your needs and preferences.
 
 The default templates are occasionally modified to support new features. When
 this happens, you won't be able to use the new feature without making the same
-modifications to your local templates. The easiest way to do this is to copy the
-`refresh-templates` task from quickblog's `bb.edn` into your own `bb.edn` and
-run `bb refresh-templates`.
+modifications to your local templates. The easiest way to do this is to run `bb
+quickblog refresh-templates`.
 
 ## Breaking changes
 
@@ -191,7 +194,7 @@ run `bb refresh-templates`.
 
 quickblog now keeps metadata for each blog post in the post file itself. It used
 to use a `posts.edn` file for this purpose. If you are upgrading from a version
-that used `posts.edn`, you should run `bb migrate` and then remove the
+that used `posts.edn`, you should run `bb quickblog migrate` and then remove the
 `posts.edn` file.
 
 ## Improvements

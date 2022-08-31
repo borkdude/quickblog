@@ -4,15 +4,33 @@
 
 
 
-## `new`
+## `clean`
 ``` clojure
 
-(new {:keys [file title posts-dir], :or {posts-dir (:posts-dir default-opts)}, :as opts})
+(clean opts)
 ```
 
 
-Creates new entry in `posts.edn` and creates `file` in `posts` dir.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L226-L245)</sub>
+Removes cache and output directories
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L493-L499)</sub>
+## `migrate`
+``` clojure
+
+(migrate opts)
+```
+
+
+Migrates from `posts.edn` to post-local metadata
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L501-L512)</sub>
+## `new`
+``` clojure
+
+(new opts)
+```
+
+
+Creates new `file` in posts dir.
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L466-L491)</sub>
 ## `quickblog`
 ``` clojure
 
@@ -21,40 +39,71 @@ Creates new entry in `posts.edn` and creates `file` in `posts` dir.
 
 
 Alias for `render`
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L217-L220)</sub>
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L457-L460)</sub>
+## `refresh-templates`
+``` clojure
+
+(refresh-templates opts)
+```
+
+
+Updates to latest default templates
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L514-L517)</sub>
 ## `render`
 ``` clojure
 
-(render
- {:keys [blog-title cache-dir out-dir posts-dir discuss-link],
-  :or {cache-dir (:cache-dir default-opts), out-dir (:out-dir default-opts), posts-dir (:posts-dir default-opts)},
-  :as opts})
+(render opts)
 ```
 
 
 Renders posts declared in `posts.edn` to `out-dir`.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L174-L214)</sub>
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L421-L455)</sub>
 ## `serve`
 ``` clojure
 
-(serve {:keys [port out-dir], :or {port 1888, out-dir (:out-dir default-opts)}})
+(serve opts)
 ```
 
 
 Runs file-server on `port`.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L247-L254)</sub>
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L519-L532)</sub>
 ## `watch`
 ``` clojure
 
-(watch
- {:keys [posts-dir watch-script],
-  :or
-  {posts-dir (:posts-dir default-opts),
-   watch-script "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>"},
-  :as opts})
+(watch opts)
 ```
 
 
-Watches `posts.edn`, `posts` and `templates` for changes. Runs file
-  server using `serve`.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L256-L285)</sub>
+Watches posts, templates, and assets for changes. Runs file server using
+  `serve`.
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L536-L601)</sub>
+# quickblog.cli 
+
+
+
+
+
+## `-main`
+``` clojure
+
+(-main & args)
+```
+
+<sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/cli.clj#L143-L144)</sub>
+## `dispatch`
+``` clojure
+
+(dispatch)
+(dispatch default-opts & args)
+```
+
+<sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/cli.clj#L127-L133)</sub>
+## `run`
+``` clojure
+
+(run default-opts)
+```
+
+
+Meant to be called using `clj -M:quickblog`; see Quickstart > Clojure in README
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/cli.clj#L135-L141)</sub>
