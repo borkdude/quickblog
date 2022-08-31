@@ -18,10 +18,8 @@
    :main-opts ["-m" "babashka.cli.exec" "quickblog.cli" "run"]
    :exec-args {:blog-title "REPL adventures"
                :blog-description "A blog about blogging quickly"
-               :blog-root "http://localhost:1888"
                :about-link "https://github.com/borkdude/quickblog"
-               :twitter-handle "quickblog"
-               :out-dir "public"}}
+               :twitter-handle "quickblog"}}
   :test
   {:extra-paths ["test"]
    :extra-deps {io.github.cognitect-labs/test-runner

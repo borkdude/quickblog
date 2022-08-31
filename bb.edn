@@ -9,10 +9,8 @@
   :init (do
           (def opts {:blog-title "REPL adventures"
                      :blog-description "A blog about blogging quickly"
-                     :blog-root "http://localhost:1888"
                      :about-link "https://github.com/borkdude/quickblog"
-                     :twitter-handle "quickblog"
-                     :out-dir "public"})
+                     :twitter-handle "quickblog"})
           (defn- run-command [cmd-name opts]
             (apply cli/dispatch opts cmd-name *command-line-args*)))
 
