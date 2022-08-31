@@ -83,8 +83,9 @@ Options:
            (case cause
              :require
              (println
-              (format "Missing required argument:\n%s"
-                      (cli/format-opts {:spec (select-keys global-specs [option])})))
+              (format "Missing required argument %s:\n%s"
+                      option
+                      (cli/format-opts {:spec cmd-opts})))
              (println msg))
            (System/exit 1))
          (throw (ex-info msg data))))
