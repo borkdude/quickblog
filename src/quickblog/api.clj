@@ -183,6 +183,20 @@
       (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
       update-out-dirs))
 
+(defn- get-defaults [metadata]
+  (->> (get-in metadata [:org.babashka/cli :spec])
+       (filter (fn [[_ m]] (contains? m :default)))
+       (map (fn [[k m]] [k (:default m)]))
+       (into {})))
+
+(defn- apply-default-opts [opts]
+  (let [defaults (get-defaults (meta (the-ns 'quickblog.api)))]
+    (-> (->> defaults
+             (map (fn [[k default]] [k (if (contains? opts k) (opts k) default)]))
+             (into {}))
+        (merge opts)
+        update-opts)))
+
 (def ^:private favicon-assets
   ["android-chrome-192x192.png"
    "android-chrome-512x512.png"
@@ -416,7 +430,7 @@
                 posts-file
                 templates-dir]
          :as opts}
-        (-> opts update-opts lib/refresh-cache)]
+        (-> opts apply-default-opts lib/refresh-cache)]
     (when (empty? (:posts opts))
       (if (fs/exists? posts-file)
         (println (format "Run `bb migrate` to move metadata from `%s` to post files"
@@ -462,16 +476,10 @@
      {:desc "Title of post"
       :ref "<title>"
       :require true}}}}
-  [{:keys [file title help
-           posts-dir]
-    :as opts}]
-  (let [_opts (assoc opts :posts-dir posts-dir)
-        usage "Usage: bb new --file [POST_FILENAME] --title [POST_TITLE]"]
-    (when help
-      (println usage)
-      (System/exit 0))
-    (assert file (format "Missing required argument: --file\n\n%s" usage))
-    (assert title (format "Missing required argument: --title\n\n%s" usage))
+  [opts]
+  (let [{:keys [file title posts-dir] :as opts} (apply-default-opts opts)]
+    (doseq [k [:file :title]]
+      (assert (contains? opts k) (format "Missing required option: %s" k)))
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
                  file
                  (str file ".md"))
@@ -485,7 +493,7 @@
 (defn clean
   "Removes cache and output directories"
   [opts]
-  (let [{:keys [cache-dir out-dir]} (update-opts opts)]
+  (let [{:keys [cache-dir out-dir]} (apply-default-opts opts)]
     (doseq [dir [cache-dir out-dir]]
       (println "Removing dir:" dir)
       (fs/delete-tree dir))))
@@ -493,7 +501,7 @@
 (defn migrate
   "Migrates from `posts.edn` to post-local metadata"
   [opts]
-  (let [{:keys [posts-file] :as opts} (update-opts opts)]
+  (let [{:keys [posts-file] :as opts} (apply-default-opts opts)]
     (if (fs/exists? posts-file)
       (do
         (doseq [post (->> (slurp posts-file) (format "[%s]") edn/read-string)]
@@ -506,7 +514,7 @@
 (defn refresh-templates
   "Updates to latest default templates"
   [opts]
-  (lib/refresh-templates (update-opts opts)))
+  (lib/refresh-templates (apply-default-opts opts)))
 
 (defn serve
   "Runs file-server on `port`."
@@ -516,8 +524,10 @@
      {:desc "Port for HTTP server to listen on"
       :ref "<port>"
       :default 1888}}}}
-  [{:keys [port out-dir] :as opts}]
-  (let [serve (requiring-resolve 'babashka.http-server/serve)]
+  [opts]
+  (let [{:keys [port out-dir] :as opts} (merge (get-defaults (meta #'serve))
+                                               (apply-default-opts opts))
+        serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
             :dir out-dir})))
 
@@ -536,7 +546,7 @@
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
          :as opts}
         (-> opts
-            update-opts
+            apply-default-opts
             (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
             render)]
     (reset! posts-cache (:posts opts))
