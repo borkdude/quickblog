@@ -6,13 +6,21 @@
         org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}
         selmer/selmer {:mvn/version "1.12.53"}
         markdown-clj/markdown-clj {:mvn/version "1.11.2"}
+        org.babashka/cli {:mvn/version "0.3.35"}
         org.babashka/http-server {:mvn/version "0.1.11"}
         babashka/babashka.pods {:git/url "https://github.com/babashka/pods"
                                 :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}}
- :quickblog {:deps {org.babashka/cli {:mvn/version "0.3.31"}}
-             :main-opts ["-m" "babashka.cli.exec" "quickblog.api"]}
  :aliases
- {:test
+ {:quickblog
+  {:deps {io.github.borkdude/quickblog
+          {:local/root "."}
+          org.babashka/cli {:mvn/version "0.3.35"}}
+   :main-opts ["-m" "babashka.cli.exec" "quickblog.cli" "run"]
+   :exec-args {:blog-title "REPL adventures"
+               :blog-description "A blog about blogging quickly"
+               :about-link "https://github.com/borkdude/quickblog"
+               :twitter-handle "quickblog"}}
+  :test
   {:extra-paths ["test"]
    :extra-deps {io.github.cognitect-labs/test-runner
                 {:git/tag "v0.5.1" :git/sha "dfb30dd"}}

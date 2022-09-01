@@ -1,4 +1,162 @@
 (ns quickblog.api
+  {:org.babashka/cli
+   {:spec
+    {
+     ;; Blog metadata
+     :blog-title
+     {:desc "Title of the blog"
+      :ref "<title>"
+      :default "quickblog"
+      :require true
+      :group :blog-metadata}
+
+     :blog-author
+     {:desc "Author's name"
+      :ref "<name>"
+      :default "Quick Blogger"
+      :require true
+      :group :blog-metadata}
+
+     :blog-description
+     {:desc "Blog description for subtitle and RSS feeds"
+      :ref "<text>"
+      :default "A blog about blogging quickly"
+      :require true
+      :group :blog-metadata}
+
+     :blog-root
+     {:desc "Base URL of the blog"
+      :ref "<url>"
+      :default "https://github.com/borkdude/quickblog"
+      :require true
+      :group :blog-metadata}
+
+     ;; Optional metadata
+     :about-link
+     {:desc "Link to about the author page"
+      :ref "<url>"
+      :group :optional-metadata}
+
+     :discuss-link
+     {:desc "Link to discussion forum for posts"
+      :ref "<url>"
+      :group :optional-metadata}
+
+     :twitter-handle
+     {:desc "Author's Twitter handle"
+      :ref "<handle>"
+      :group :optional-metadata}
+
+     ;; Post config
+     :default-metadata
+     {:desc "Default metadata to add to posts"
+      :default {}
+      :group :post-config}
+
+     :num-index-posts
+     {:desc "Number of most recent posts to show on the index page"
+      :ref "<num>"
+      :default 3
+      :group :post-config}
+
+     :posts-file
+     {:desc "File containing deprecated post metadata (used only for `migrate`)"
+      :ref "<file>"
+      :default "posts.edn"
+      :group :post-config}
+
+     ;; Input directories
+     :assets-dir
+     {:desc "Directory to copy assets (images, etc.) from"
+      :ref "<dir>"
+      :default "assets"
+      :require true
+      :group :input-directories}
+
+     :posts-dir
+     {:desc "Directory to read posts from"
+      :ref "<dir>"
+      :default "posts"
+      :require true
+      :group :input-directories}
+
+     :templates-dir
+     {:desc "Directory to read templates from; see Templates section in README"
+      :ref "<dir>"
+      :default "templates"
+      :require true
+      :group :input-directories}
+
+     ;; Output directories
+     :out-dir
+     {:desc "Base directory for outputting static site"
+      :ref "<dir>"
+      :default "public"
+      :require true
+      :group :output-directories}
+
+     :assets-out-dir
+     {:desc "Directory to write assets to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "assets"
+      :require true
+      :group :output-directories}
+
+     :tags-dir
+     {:desc "Directory to write tags to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "tags"
+      :require true
+      :group :output-directories}
+
+     ;; Caching
+     :force-render
+     {:desc "If true, pages will be re-rendered regardless of cache status"
+      :default false
+      :group :caching}
+
+     :cache-dir
+     {:desc "Directory to use for caching"
+      :ref "<dir>"
+      :default ".work"
+      :require true
+      :group :caching}
+
+     :rendering-system-files
+     {:desc "Files involved in rendering pages (only set if you know what you're doing!)"
+      :ref "<file1> <file2>..."
+      :default ["bb.edn" "deps.edn"]
+      :coerce []
+      :require true
+      :group :caching}
+
+     ;; Social sharing
+     :blog-image
+     {:desc "Blog thumbnail image URL; see Features > Social sharing in README"
+      :ref "<url>"
+      :group :social-sharing}
+
+     ;; Favicon
+     :favicon
+     {:desc "If true, favicon will be added to all pages"
+      :default false
+      :group :favicon}
+
+     :favicon-dir
+     {:desc "Directory to read favicon assets from"
+      :ref "<dir>"
+      :default "assets/favicon"
+      :group :favicon}
+
+     :favicon-out-dir
+     {:desc "Directory to write favicon assets to (relative to :out-dir)"
+      :ref "<dir>"
+      :default "assets/favicon"
+      :group :favicon}
+
+     ;; Command-specific opts
+
+     }}}
   (:require
    [babashka.fs :as fs]
    [clojure.data.xml :as xml]
@@ -10,39 +168,6 @@
    [quickblog.internal :as lib]
    [selmer.parser :as selmer]))
 
-;; all values should be strings for consistency with command line args
-(def ^:private default-opts
-  {
-   ;; about the blog
-   :blog-title "quickblog"
-   :blog-author "Quick Blogger"
-   :blog-description "A blog about blogging quickly"
-   :blog-root "https://github.com/borkdude/quickblog"
-   :blog-image nil      ; image URL; see Features > Social sharing in README
-   :about-link nil      ; example: "https://github.com/borkdude/quickblog"
-   :discuss-link nil    ; example: "https://github.com/borkdude/quickblog/issues"
-   :twitter-handle nil  ; example: "quickblogger"
-   ;; config
-   :default-metadata {}
-   :num-index-posts 3
-   :posts-file "posts.edn"  ; deprecated, but used for `migrate`
-   :rendering-system-files ["bb.edn" "deps.edn" *file*]
-   ;; features
-   :favicon "false"
-   ;; options
-   :force-render "false"
-   ;; directories
-   :assets-dir "assets"
-   :assets-out-dir "assets"
-   :blog-dir (fs/file ".")
-   :cache-dir ".work"
-   :favicon-dir (fs/file "assets" "favicon")
-   :favicon-out-dir (fs/file "assets" "favicon")
-   :out-dir "public"
-   :posts-dir "posts"
-   :tags-dir "tags"
-   :templates-dir "templates"})
-
 (defn- update-out-dirs
   [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]
   (let [out-dir-ify (fn [dir]
@@ -53,13 +178,24 @@
            :assets-out-dir (out-dir-ify assets-out-dir)
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
+(defn- update-opts [opts]
+  (-> opts
+      (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
+      update-out-dirs))
+
+(defn- get-defaults [metadata]
+  (->> (get-in metadata [:org.babashka/cli :spec])
+       (filter (fn [[_ m]] (contains? m :default)))
+       (map (fn [[k m]] [k (:default m)]))
+       (into {})))
+
 (defn- apply-default-opts [opts]
-  (let [opts (merge default-opts opts)]
-    (-> opts
-        (update :favicon #(and % (not= "false" %)))
-        (update :force-render #(and % (not= "false" %)))
-        (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
-        update-out-dirs)))
+  (let [defaults (get-defaults (meta (the-ns 'quickblog.api)))]
+    (-> (->> defaults
+             (map (fn [[k default]] [k (if (contains? opts k) (opts k) default)]))
+             (into {}))
+        (merge opts)
+        update-opts)))
 
 (def ^:private favicon-assets
   ["android-chrome-192x192.png"
@@ -329,17 +465,21 @@
 
 (defn new
   "Creates new `file` in posts dir."
-  [{:keys [file title help
-           posts-dir]
-    :or {posts-dir (:posts-dir default-opts)}
-    :as opts}]
-  (let [_opts (assoc opts :posts-dir posts-dir)
-        usage "Usage: bb new --file [POST_FILENAME] --title [POST_TITLE]"]
-    (when help
-      (println usage)
-      (System/exit 0))
-    (assert file (format "Missing required argument: --file\n\n%s" usage))
-    (assert title (format "Missing required argument: --title\n\n%s" usage))
+  {:org.babashka/cli
+   {:spec
+    {:file
+     {:desc "Filename of post (relative to posts-dir)"
+      :ref "<filename>"
+      :require true}
+
+     :title
+     {:desc "Title of post"
+      :ref "<title>"
+      :require true}}}}
+  [opts]
+  (let [{:keys [file title posts-dir] :as opts} (apply-default-opts opts)]
+    (doseq [k [:file :title]]
+      (assert (contains? opts k) (format "Missing required option: %s" k)))
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
                  file
                  (str file ".md"))
@@ -349,6 +489,14 @@
         (spit (fs/file posts-dir file)
               (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
                       title (now)))))))
+
+(defn clean
+  "Removes cache and output directories"
+  [opts]
+  (let [{:keys [cache-dir out-dir]} (apply-default-opts opts)]
+    (doseq [dir [cache-dir out-dir]]
+      (println "Removing dir:" dir)
+      (fs/delete-tree dir))))
 
 (defn migrate
   "Migrates from `posts.edn` to post-local metadata"
@@ -370,18 +518,30 @@
 
 (defn serve
   "Runs file-server on `port`."
-  [{:keys [port out-dir]
-    :or {port 1888
-         out-dir (:out-dir default-opts)}}]
-  (let [serve (requiring-resolve 'babashka.http-server/serve)]
+  {:org.babashka/cli
+   {:spec
+    {:port
+     {:desc "Port for HTTP server to listen on"
+      :ref "<port>"
+      :default 1888}}}}
+  [opts]
+  (let [{:keys [port out-dir] :as opts} (merge (get-defaults (meta #'serve))
+                                               (apply-default-opts opts))
+        serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
             :dir out-dir})))
 
 (def ^:private posts-cache (atom nil))
 
 (defn watch
-  "Watches `posts.edn`, `posts` and `templates` for changes. Runs file
-  server using `serve`."
+  "Watches posts, templates, and assets for changes. Runs file server using
+  `serve`."
+  {:org.babashka/cli
+   {:spec
+    {:port
+     {:desc "Port for HTTP server to listen on"
+      :ref "<port>"
+      :default 1888}}}}
   [opts]
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
          :as opts}
