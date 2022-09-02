@@ -360,7 +360,7 @@
    [:ul.index
     (for [[tag posts] tags]
       [:li [:span
-            [:a {:href (str tag ".html")} tag]
+            [:a {:href (str (escape-tag tag) ".html")} tag]
             " - "
             (count posts)
             " posts"]])]])
