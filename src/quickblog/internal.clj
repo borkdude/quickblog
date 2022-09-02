@@ -97,9 +97,12 @@
 (defn cache-file [file]
   (str file ".pre-template.html"))
 
+(defn escape-tag [tag]
+  (str/replace tag #"[^A-z0-9]" "-"))
+
 (defn tag-file [tag]
   (-> tag
-      (str/replace #"[^A-z0-9]" "-")
+      escape-tag
       (str ".html")))
 
 (defn transform-metadata

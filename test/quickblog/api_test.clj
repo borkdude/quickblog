@@ -77,7 +77,7 @@
                 templates-dir
                 cache-dir
                 out-dir]
-      (write-test-post posts-dir)
+      (write-test-post posts-dir {:tags #{"clojure" "tag with spaces"}})
       (write-test-file assets-dir "asset.txt" "something")
       (api/render {:assets-dir assets-dir
                    :posts-dir posts-dir
@@ -91,8 +91,11 @@
       (doseq [filename ["test.html" "index.html" "archive.html"
                         (fs/file "tags" "index.html")
                         (fs/file "tags" "clojure.html")
+                        (fs/file "tags" "tag-with-spaces.html")
                         "atom.xml" "planetclojure.xml"]]
-        (is (fs/exists? (fs/file out-dir filename))))))
+        (is (fs/exists? (fs/file out-dir filename))))
+      (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                         "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))))
 
   (testing "with favicon"
     (with-dirs [favicon-dir
