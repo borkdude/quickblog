@@ -475,9 +475,17 @@
      :title
      {:desc "Title of post"
       :ref "<title>"
+      :require true}
+
+     :tags
+     {:desc "Comma separated list of tags"
+      :ref "<tags>"
+      :default "clojure"
       :require true}}}}
   [opts]
-  (let [{:keys [file title posts-dir] :as opts} (apply-default-opts opts)]
+  (let [{:keys [file title posts-dir tags]
+         :or {tags "clojure"}
+         :as opts} (apply-default-opts opts)]
     (doseq [k [:file :title]]
       (assert (contains? opts k) (format "Missing required option: %s" k)))
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
@@ -487,8 +495,8 @@
       (when-not (fs/exists? post-file)
         (fs/create-dirs posts-dir)
         (spit (fs/file posts-dir file)
-              (format "Title: %s\nDate: %s\nTags: clojure\n\nWrite a blog post here!"
-                      title (now)))))))
+              (format "Title: %s\nDate: %s\nTags: %s\n\nWrite a blog post here!"
+                      title (now) tags))))))
 
 (defn clean
   "Removes cache and output directories"
