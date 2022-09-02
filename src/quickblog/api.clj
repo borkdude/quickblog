@@ -166,7 +166,12 @@
    [hiccup2.core :as hiccup]
    [markdown.core :as md]
    [quickblog.internal :as lib]
-   [selmer.parser :as selmer]))
+   [selmer.parser :as selmer]
+   [selmer.filters :as filters]))
+
+;; Add filter for tag page links; see:
+;; https://github.com/yogthos/Selmer#filters
+(filters/add-filter! :escape-tag lib/escape-tag)
 
 (defn- update-out-dirs
   [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]
