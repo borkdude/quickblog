@@ -50,10 +50,11 @@
     (with-redefs [api/now (constantly "2022-01-02")]
       (api/new {:posts-dir posts-dir
                 :file "test.md"
-                :title "Test post"})
+                :title "Test post"
+                :tags ["clojure" "some other tag"]})
       (let [post-file (fs/file posts-dir "test.md")]
         (is (fs/exists? post-file))
-        (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"
+        (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure,some other tag\n\nWrite a blog post here!"
                (slurp post-file)))))))
 
 (deftest migrate
@@ -95,7 +96,9 @@
                         "atom.xml" "planetclojure.xml"]]
         (is (fs/exists? (fs/file out-dir filename))))
       (is (str/includes? (slurp (fs/file out-dir "test.html"))
-                         "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))))
+                         "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                         "<a href=\"tag-with-spaces.html\">tag with spaces</a>"))))
 
   (testing "with favicon"
     (with-dirs [favicon-dir
