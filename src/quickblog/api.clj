@@ -483,13 +483,13 @@
       :require true}
 
      :tags
-     {:desc "Comma separated list of tags"
+     {:desc "List of tags (example: --tag tag1 tag2 \"tag3 has spaces\")"
       :ref "<tags>"
-      :default "clojure"
+      :default ["clojure"]
       :require true}}}}
   [opts]
   (let [{:keys [file title posts-dir tags]
-         :or {tags "clojure"}
+         :or {tags ["clojure"]}
          :as opts} (apply-default-opts opts)]
     (doseq [k [:file :title]]
       (assert (contains? opts k) (format "Missing required option: %s" k)))
@@ -501,7 +501,7 @@
         (fs/create-dirs posts-dir)
         (spit (fs/file posts-dir file)
               (format "Title: %s\nDate: %s\nTags: %s\n\nWrite a blog post here!"
-                      title (now) tags))))))
+                      title (now) (str/join "," tags)))))))
 
 (defn clean
   "Removes cache and output directories"
