@@ -95,7 +95,9 @@
                         "atom.xml" "planetclojure.xml"]]
         (is (fs/exists? (fs/file out-dir filename))))
       (is (str/includes? (slurp (fs/file out-dir "test.html"))
-                         "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))))
+                         "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                         "<a href=\"tag-with-spaces.html\">tag with spaces</a>"))))
 
   (testing "with favicon"
     (with-dirs [favicon-dir
