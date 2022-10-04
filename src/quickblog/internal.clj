@@ -371,23 +371,17 @@
                              :favicon-tags (load-favicon template-vars))]
     (selmer/render template template-vars)))
 
-(defn write-post! [{:keys [blog-root
-                           twitter-handle
-                           discuss-fallback
-                           cache-dir
+(defn write-post! [{:keys [twitter-handle
+                           discuss-link
                            out-dir
-                           force-render
                            page-template
-                           post-template
-                           posts-dir]
+                           post-template]
                     :as opts}
                    {:keys [file title date discuss tags html
                            description image image-alt]
-                    :or {discuss discuss-fallback}
+                    :or {discuss discuss-link}
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
-        markdown-file (fs/file posts-dir file)
-        cached-file (fs/file cache-dir (cache-file file))
         body (selmer/render post-template {:body @html
                                            :title title
                                            :date date
