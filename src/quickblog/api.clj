@@ -437,11 +437,12 @@
          :as opts}
         (-> opts apply-default-opts lib/refresh-cache)]
     (when (empty? (:posts opts))
-      (if (fs/exists? posts-file)
-        (println (format "Run `bb migrate` to move metadata from `%s` to post files"
-                         posts-file))
-        (println "No posts found; run `bb new` to create one"))
-      (System/exit 1))
+      (throw (ex-info
+              (if (fs/exists? posts-file)
+                (format "Run `bb migrate` to move metadata from `%s` to post files"
+                        posts-file)
+                "No posts found; run `bb new` to create one")
+              {:babashka/exit 1})))
     (lib/ensure-template opts "style.css")
     (ensure-favicon-assets opts)
     (when (fs/exists? assets-dir)
