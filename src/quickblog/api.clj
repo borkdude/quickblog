@@ -436,28 +436,29 @@
                 templates-dir]
          :as opts}
         (-> opts apply-default-opts lib/refresh-cache)]
-    (when (empty? (:posts opts))
-      (throw (ex-info
-              (if (fs/exists? posts-file)
-                (format "Run `bb migrate` to move metadata from `%s` to post files"
-                        posts-file)
-                "No posts found; run `bb new` to create one")
-              {:babashka/exit 1})))
-    (lib/ensure-template opts "style.css")
-    (ensure-favicon-assets opts)
-    (when (fs/exists? assets-dir)
-      (lib/copy-tree-modified assets-dir assets-out-dir))
-    (when (fs/exists? favicon-dir)
-      (lib/copy-tree-modified favicon-dir favicon-out-dir))
-    (doseq [file (fs/glob templates-dir "*.{css,svg}")]
-      (lib/copy-modified file (fs/file out-dir (.getFileName file))))
-    (fs/create-dirs (fs/file cache-dir))
-    (gen-posts opts)
-    (gen-tags opts)
-    (spit-archive opts)
-    (spit-index opts)
-    (spit-feeds opts)
-    (lib/write-cache! opts)
+    (if (empty? (:posts opts))
+      (binding [*out* *err*]
+        (println
+         (if (fs/exists? posts-file)
+           (format "Run `bb migrate` to move metadata from `%s` to post files"
+                   posts-file)
+           "No posts found; run `bb new` to create one")))
+      (do
+        (lib/ensure-template opts "style.css")
+        (ensure-favicon-assets opts)
+        (when (fs/exists? assets-dir)
+          (lib/copy-tree-modified assets-dir assets-out-dir))
+        (when (fs/exists? favicon-dir)
+          (lib/copy-tree-modified favicon-dir favicon-out-dir))
+        (doseq [file (fs/glob templates-dir "*.{css,svg}")]
+          (lib/copy-modified file (fs/file out-dir (.getFileName file))))
+        (fs/create-dirs (fs/file cache-dir))
+        (gen-posts opts)
+        (gen-tags opts)
+        (spit-archive opts)
+        (spit-index opts)
+        (spit-feeds opts)
+        (lib/write-cache! opts)))
     opts))
 
 (defn quickblog
