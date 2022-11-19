@@ -198,20 +198,22 @@
     true))
 
 (defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
-  (let [cache-file (fs/file cache-dir cache-filename)
-        post-paths (set (fs/glob posts-dir "*.md"))
-        modified-post-paths (if (empty? cached-posts)
-                              (set post-paths)
-                              (set (fs/modified-since cache-file post-paths)))
-        cached-post-paths (set/difference post-paths modified-post-paths)]
-    (merge (->> cached-posts
-                (map (fn [[file post]]
-                       [file (assoc post :html (read-cached-post opts file))]))
-                (into {}))
-           (->> modified-post-paths
-                (map (juxt ->filename (partial load-post opts)))
-                (remove (partial has-error? opts))
-                (into {})))))
+  (if (fs/exists? posts-dir)
+    (let [cache-file (fs/file cache-dir cache-filename)
+          post-paths (set (fs/glob posts-dir "*.md"))
+          modified-post-paths (if (empty? cached-posts)
+                                (set post-paths)
+                                (set (fs/modified-since cache-file post-paths)))
+          cached-post-paths (set/difference post-paths modified-post-paths)]
+      (merge (->> cached-posts
+                  (map (fn [[file post]]
+                         [file (assoc post :html (read-cached-post opts file))]))
+                  (into {}))
+             (->> modified-post-paths
+                  (map (juxt ->filename (partial load-post opts)))
+                  (remove (partial has-error? opts))
+                  (into {}))))
+    {}))
 
 (defn only-metadata [posts]
   (->> posts

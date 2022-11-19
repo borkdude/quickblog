@@ -79,16 +79,15 @@ Options:
      :error-fn
      (fn [{:keys [type cause msg option] :as data}]
        (if (= :org.babashka/cli type)
-         (do
-           (case cause
-             :require
-             (println
-              (format "Missing required argument --%s:\n%s"
-                      (name option)
-                      (cli/format-opts {:spec cmd-opts})))
-             (println msg))
-           (System/exit 1))
-         (throw (ex-info msg data))))
+         (throw (ex-info
+                 (case cause
+                   :require
+                   (format "Missing required argument --%s:\n%s"
+                           (name option)
+                           (cli/format-opts {:spec cmd-opts}))
+                   msg)
+                 {:babashka/exit 1}))
+         (throw (ex-info msg (assoc data :babashka/exit 1)))))
      :fn (fn [{:keys [opts]}]
            (when (:help opts)
              (print-command-help cmd-name global-specs cmd-opts)
