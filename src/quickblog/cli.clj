@@ -93,8 +93,10 @@ Options:
            (when (:help opts)
              (print-command-help cmd-name global-specs cmd-opts)
              (System/exit 0))
-           ;; We need to deref the var to get the function out
-           (@fn-var opts))}))
+           ;; If we have a var, we need to deref it to get the function out
+           (if (var? fn-var)
+             (@fn-var opts)
+             (fn-var opts)))}))
 
 (defn- mk-table [default-opts]
   (let [global-specs (apply-defaults default-opts specs)
@@ -108,7 +110,18 @@ Options:
                 #'api/new]
                ["serve"
                 "Run HTTP server for rendered site"
-                #'api/serve]
+                ;; api/serve returns immediately, so we'll wait on a promise
+                ;; after calling it to prevent the process from exiting. In
+                ;; order for the help text to work, we need to grab the metadata
+                ;; from the api/serve var and attach it to our fn. This is
+                ;; admittedly gross and I should be scolded severely for this
+                ;; nonsense. Send a pull request along the scolding, if you
+                ;; don't mind!
+                (with-meta
+                  (fn [opts]
+                    (api/serve opts)
+                    @(promise))
+                  (meta #'api/serve))]
                ["watch"
                 "Run HTTP server, watching posts, templates, and assets for changes"
                 #'api/watch]
