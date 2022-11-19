@@ -603,13 +603,14 @@
                                 render)]
                    (reset! posts-cache (:posts opts)))))
 
-        (watch assets-dir
-               (fn [{:keys [path type]}]
-                 (println "Asset change detected:"
-                          (name type) (str path))
-                 (when (contains? #{:remove :rename} type)
-                   (let [file (fs/file assets-out-dir (fs/file-name path))]
-                     (println "Removing deleted asset:" (str file))
-                     (fs/delete-if-exists file)))
-                 (lib/copy-tree-modified assets-dir assets-out-dir))))))
+        (when (fs/exists? assets-dir)
+          (watch assets-dir
+                 (fn [{:keys [path type]}]
+                   (println "Asset change detected:"
+                            (name type) (str path))
+                   (when (contains? #{:remove :rename} type)
+                     (let [file (fs/file assets-out-dir (fs/file-name path))]
+                       (println "Removing deleted asset:" (str file))
+                       (fs/delete-if-exists file)))
+                   (lib/copy-tree-modified assets-dir assets-out-dir)))))))
   @(promise))
