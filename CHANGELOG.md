@@ -2,6 +2,7 @@
 
 ## Unreleased:
 
+- Support wiki-style links (see README for details)
 - Add command line interface
 - Watch assets dir for changes in watch mode
 - Added `refresh-templates` task to update to latest templates

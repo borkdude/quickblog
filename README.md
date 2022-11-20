@@ -73,6 +73,36 @@ etc.
 
 ## Features
 
+### Markdown
+
+Posts are written in Markdown (powered by
+[markdown-clj](https://github.com/yogthos/markdown-clj), which implements the
+[MultiMarkdown](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide)
+flavour).
+
+Quickblog implements the following extensions:
+- Support for link titles extending over multiple lines
+- Wiki-style links; see below.
+
+### Wiki-style links
+
+Let's say you have a post in a file `test1.md`, which has a title of `This is a
+test post`. If you want to link to that post from another post, you could use a
+standard Markdown link like this:
+
+``` markdown
+[This is a test post](test1.html)
+```
+
+You can also use a wiki-style link to a post, which sets the link text to the
+title of the target post:
+
+``` markdown
+[[test1]]
+```
+
+This will expand to the same link as in the standard Markdown example.
+
 ### favicon
 
 **NOTE:** when enabling or disabling a favicon, you must do a full re-render of
