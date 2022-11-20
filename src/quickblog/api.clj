@@ -592,6 +592,7 @@
                              opts (-> opts
                                       (assoc :cached-posts @posts-cache
                                              :posts posts)
+                                      lib/update-cur-opts
                                       render)]
                          (reset! posts-cache (:posts opts))))))))
 

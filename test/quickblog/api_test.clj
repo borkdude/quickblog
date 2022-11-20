@@ -78,7 +78,11 @@
                 templates-dir
                 cache-dir
                 out-dir]
-      (write-test-post posts-dir {:tags #{"clojure" "tag with spaces"}})
+      (write-test-post posts-dir {:file "test.md"
+                                  :tags #{"clojure" "tag with spaces"}
+                                  :content "A very simple link to [[test2]]"})
+      (write-test-post posts-dir {:file "test2.md"
+                                  :title "A second test post"})
       (write-test-file assets-dir "asset.txt" "something")
       (api/render {:assets-dir assets-dir
                    :posts-dir posts-dir
@@ -97,6 +101,9 @@
         (is (fs/exists? (fs/file out-dir filename))))
       (is (str/includes? (slurp (fs/file out-dir "test.html"))
                          "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))
+      ;; markdown-clj uses single quotes for links for some reason
+      (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                         "<a href='test2.html'>A second test post</a>"))
       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
                          "<a href=\"tag-with-spaces.html\">tag with spaces</a>"))))
 

@@ -117,29 +117,46 @@
         (into {})
         (merge default-metadata))))
 
-(defn pre-process-markdown [markdown]
-  (-> markdown
-      (str/replace #"--" (fn [_] "$$NDASH$$"))
-      (str/replace #"\[[^\]]+\n"
-                   (fn [match]
-                     (str/replace match "\n" "$$RET$$")))))
+(defn find-wiki-links [opts markdown]
+  (->> (re-seq #"\[\[([^]]+)\]\]" markdown)
+       (map (fn [[link id]]
+              (let [{:keys [posts]} opts
+                    file (format "%s.md" id)
+                    html-file (html-file file)
+                    title (get-in posts [file :title])]
+                (when title
+                  (->map link html-file title)))))
+       (remove nil?)))
 
-(defn post-process-markdown [html]
+(defn pre-process-markdown [opts markdown]
+  (let [wiki-links (find-wiki-links opts markdown)
+        markdown (-> markdown
+                     (str/replace #"--" (fn [_] "$$NDASH$$"))
+                     (str/replace #"\[[^\]]+\n"
+                                  (fn [match]
+                                    (str/replace match "\n" "$$RET$$"))))]
+    (reduce (fn [markdown {:keys [link html-file title]}]
+              (str/replace markdown link (format "[%s](%s)" title html-file)))
+            markdown wiki-links)))
+
+(defn post-process-markdown [opts html]
   (-> html
       (str/replace "$$NDASH$$" "--")
       (str/replace "$$RET$$" "\n")))
 
-(defn markdown->html [file]
-  (let [markdown (slurp file)]
+(defn markdown->html [opts file]
+  (let [markdown (slurp file)
+        pre-process (partial pre-process-markdown opts)
+        post-process (partial post-process-markdown opts)]
     (println "Processing markdown for file:" (str file))
     (-> markdown
-        pre-process-markdown
+        pre-process
         (md/md-to-html-string-with-meta :reference-links? true
                                         :code-style
                                         (fn [lang]
                                           (format "class=\"lang-%s\"" lang)))
         :html
-        post-process-markdown)))
+        post-process)))
 
 (defn sort-posts [posts]
   (sort-by :date (comp - compare) posts))
@@ -162,7 +179,8 @@
       (slurp cached-file))))
 
 (defn load-post [{:keys [cache-dir default-metadata
-                         force-render rendering-system-files]
+                         force-render rendering-system-files
+                         cur-opts]
                   :as opts}
                  path]
   (let [path (fs/file path)
@@ -179,7 +197,7 @@
                  :html (if stale?
                          (delay
                            (println "Parsing Markdown for post:" (str file))
-                           (let [html (markdown->html path)]
+                           (let [html (markdown->html @cur-opts path)]
                              (println "Caching post to file:" (str cached-file))
                              (spit cached-file html)
                              html))
@@ -275,15 +293,25 @@
        (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
        (apply set/union)))
 
+(defn update-cur-opts [{:keys [cur-opts] :as opts}]
+  ;; We need to dissoc :cur-opts to prevent infinite recursion
+  (reset! cur-opts (dissoc opts :cur-opts))
+  opts)
+
 (defn refresh-cache [{:keys [force-render
                              cache-dir
                              cached-posts
+                             cur-opts
                              posts
                              rendering-system-files]
                       :as opts}]
-  ;; watch mode manages caching manually, so if cached-posts and posts are
-  ;; already set, use them as is
-  (let [cached-posts (if cached-posts
+  (let [;; In order for rendering to have access to all post metadata, we need to
+        ;; stash the current opts in an atom inside itself. The atom may already
+        ;; be present in watch mode, so don't overwrite it.
+        opts (assoc opts :cur-opts (or cur-opts (atom nil)))
+        ;; watch mode manages caching manually, so if cached-posts and posts are
+        ;; already set, use them as is
+        cached-posts (if cached-posts
                        cached-posts
                        (load-cache opts))
         opts (assoc opts :cached-posts cached-posts)
@@ -293,10 +321,12 @@
         opts (assoc opts :posts posts)
         opts (assoc opts
                     :modified-metadata (modified-metadata opts))]
-    (assoc opts
-           :deleted-posts (deleted-posts opts)
-           :modified-posts (modified-posts opts)
-           :modified-tags (modified-tags opts))))
+    (-> opts
+        (assoc :deleted-posts (deleted-posts opts)
+               :modified-posts (modified-posts opts)
+               :modified-tags (modified-tags opts))
+        ;; Update current opts after loading all posts
+        update-cur-opts)))
 
 (defn migrate-post [{:keys [default-metadata posts-dir] :as opts}
                     {:keys [file title date tags categories legacy]}]
