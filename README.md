@@ -73,6 +73,31 @@ etc.
 
 ## Features
 
+### Markdown
+
+Posts are written in Markdown and processed by
+[markdown-clj](https://github.com/yogthos/markdown-clj), which implements the
+[MultiMarkdown](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide)
+flavour of Markdown.
+
+### Metadata
+
+Post metadata is specified in the post file using [MultiMarkdown's metadata
+tags](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide#metadata).
+quickblog expects three pieces of metadata in each post:
+- `Title` - the title of the post
+- `Date` - the date when the post will be published (used for sorting posts, so
+  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) datetimes are recommended)
+- `Tags` - a comma-separated list of tags
+
+`quickblog new` requires the title to be specified and provides sensible
+defaults for `Date` and `Tags`.
+
+You can add any metadata fields to posts that you want. See the [Social
+sharing](#social-sharing) section below for some useful suggestions.
+
+**Note: metadata may not include newlines!**
+
 ### favicon
 
 **NOTE:** when enabling or disabling a favicon, you must do a full re-render of
@@ -117,8 +142,10 @@ website](https://dev.to/mishmanners/how-to-add-a-social-media-share-card-to-any-
 by Michelle Mannering) and typically contain a title, description / summary, and
 preview image.
 
-By default, quickblog adds tags for the page title for all pages and
-descriptions for the following pages:
+quickblog's [base
+template](https://github.com/borkdude/quickblog/blob/389833f393e04d4176ef3eaa5047fa307a5ff2e8/resources/quickblog/templates/base.html)
+adds meta tags for the page title for all pages and descriptions for the
+following pages:
 - Index: `{{blog-description}}`
 - Archive: Archive - `{{blog-description}}`
 - Tags: Tags - `{{blog-description}}`
@@ -129,8 +156,8 @@ index, archive, tags, and tag pages. The URL should point to an image; for best
 results, the image should be 1200x630 and maximum 5MB in size. It may either be
 an absolute URL or a URL relative to `:blog-root`.
 
-For post pages, meta tags will be populated from `Description`, `Image`,
-`Image-Alt`, and `Twitter-Handle` metadata in the document.
+For post pages, meta tags will be populated from `Title`, `Description`,
+`Image`, `Image-Alt`, and `Twitter-Handle` metadata in the document.
 
 If not specified, `Twitter-Handle` defaults to the `:twitter-handle` option to
 quickblog. The idea is that the `:twitter-handle` option is the Twitter handle
