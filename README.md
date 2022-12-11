@@ -8,6 +8,16 @@ Compatible with [babashka](#babashka) and [Clojure](#clojure).
 
 Includes hot-reload. See it in action [here](https://twitter.com/borkdude/status/1547912740156583936).
 
+## Blogs using quickblog
+
+Instances of quickblog can be seen here:
+
+- [Michiel Borkent's blog](https://blog.michielborkent.nl)
+- [Josh Glover's blog](https://jmglov.net/blog)
+- [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
+
+Feel free to PR yours.
+
 ## Quickstart
 
 ### Babashka
