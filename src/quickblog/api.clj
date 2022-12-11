@@ -485,14 +485,14 @@
       :require true}
 
      :tags
-     {:desc "List of tags (example: --tag tag1 tag2 \"tag3 has spaces\")"
+     {:desc "List of tags (default: 'clojure'; example: --tags tag1 tag2 \"tag3 has spaces\")"
       :ref "<tags>"
-      :default ["clojure"]
+      :coerce []
       :require true}}}}
   [opts]
   (let [{:keys [file title posts-dir tags]
-         :or {tags ["clojure"]}
-         :as opts} (apply-default-opts opts)]
+         :as opts} (apply-default-opts opts)
+        tags (if (empty? tags) ["clojure"] tags)]
     (doseq [k [:file :title]]
       (assert (contains? opts k) (format "Missing required option: %s" k)))
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
