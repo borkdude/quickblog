@@ -142,8 +142,10 @@ website](https://dev.to/mishmanners/how-to-add-a-social-media-share-card-to-any-
 by Michelle Mannering) and typically contain a title, description / summary, and
 preview image.
 
-By default, quickblog adds tags for the page title for all pages and
-descriptions for the following pages:
+quickblog's [base
+template](https://github.com/borkdude/quickblog/blob/389833f393e04d4176ef3eaa5047fa307a5ff2e8/resources/quickblog/templates/base.html)
+adds meta tags for the page title for all pages and descriptions for the
+following pages:
 - Index: `{{blog-description}}`
 - Archive: Archive - `{{blog-description}}`
 - Tags: Tags - `{{blog-description}}`
@@ -154,8 +156,8 @@ index, archive, tags, and tag pages. The URL should point to an image; for best
 results, the image should be 1200x630 and maximum 5MB in size. It may either be
 an absolute URL or a URL relative to `:blog-root`.
 
-For post pages, meta tags will be populated from `Description`, `Image`,
-`Image-Alt`, and `Twitter-Handle` metadata in the document.
+For post pages, meta tags will be populated from `Title`, `Description`,
+`Image`, `Image-Alt`, and `Twitter-Handle` metadata in the document.
 
 If not specified, `Twitter-Handle` defaults to the `:twitter-handle` option to
 quickblog. The idea is that the `:twitter-handle` option is the Twitter handle
