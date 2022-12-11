@@ -73,6 +73,31 @@ etc.
 
 ## Features
 
+### Markdown
+
+Posts are written in Markdown and processed by
+[markdown-clj](https://github.com/yogthos/markdown-clj), which implements the
+[MultiMarkdown](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide)
+flavour of Markdown.
+
+### Metadata
+
+Post metadata is specified in the post file using [MultiMarkdown's metadata
+tags](https://github.com/fletcher/MultiMarkdown/wiki/MultiMarkdown-Syntax-Guide#metadata).
+quickblog expects three pieces of metadata in each post:
+- `Title` - the title of the post
+- `Date` - the date when the post will be published (used for sorting posts, so
+  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) datetimes are recommended)
+- `Tags` - a comma-separated list of tags
+
+`quickblog new` requires the title to be specified and provides sensible
+defaults for `Date` and `Tags`.
+
+You can add any metadata fields to posts that you want. See the [Social
+sharing](#social-sharing) section below for some useful suggestions.
+
+**Note: metadata may not include newlines!**
+
 ### favicon
 
 **NOTE:** when enabling or disabling a favicon, you must do a full re-render of
