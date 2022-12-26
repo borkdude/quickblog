@@ -487,8 +487,7 @@
      :tags
      {:desc "List of tags (default: 'clojure'; example: --tags tag1 tag2 \"tag3 has spaces\")"
       :ref "<tags>"
-      :coerce []
-      :require true}}}}
+      :coerce []}}}}
   [opts]
   (let [{:keys [file title posts-dir tags]
          :as opts} (apply-default-opts opts)
