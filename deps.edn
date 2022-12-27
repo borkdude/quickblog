@@ -14,7 +14,7 @@
  {:quickblog
   {:deps {io.github.borkdude/quickblog
           {:local/root "."}
-          org.babashka/cli {:mvn/version "0.3.35"}}
+          org.babashka/cli {:mvn/version "0.6.41"}}
    :main-opts ["-m" "babashka.cli.exec" "quickblog.cli" "run"]
    :exec-args {:blog-title "REPL adventures"
                :blog-description "A blog about blogging quickly"
