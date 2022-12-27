@@ -18,7 +18,7 @@
 
 (def ^:private metadata-transformers
   {:default first
-   :tags #(-> % first (str/split #",\s*") set)})
+   :tags #(if (empty? %) #{} (-> % first (str/split #",\s*") set))})
 
 (def ^:private required-metadata
   #{:date
