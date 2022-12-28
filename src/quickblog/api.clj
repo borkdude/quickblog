@@ -50,7 +50,7 @@
      ;; Post config
      :default-metadata
      {:desc "Default metadata to add to posts"
-      :default {}
+      :default {:tags ["clojure"]}
       :group :post-config}
 
      :num-index-posts
@@ -489,9 +489,11 @@
       :ref "<tags>"
       :coerce []}}}}
   [opts]
-  (let [{:keys [file title posts-dir tags]
+  (let [{:keys [file title posts-dir tags default-metadata]
          :as opts} (apply-default-opts opts)
-        tags (if (empty? tags) ["clojure"] tags)]
+        tags (cond (empty? tags)   (:tags default-metadata)
+                   (= tags [true]) [] ;; `--tags` without arguments
+                   :else tags)]
     (doseq [k [:file :title]]
       (assert (contains? opts k) (format "Missing required option: %s" k)))
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
