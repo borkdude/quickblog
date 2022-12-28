@@ -74,6 +74,7 @@
                    (fs/file templates-resource-dir template-name)))
 
 (defn refresh-templates [{:keys [templates-dir] :as opts}]
+  (prn :refresh-templates (map str (map fs/file (fs/glob templates-dir "*"))))
   (doseq [template (map fs/file (fs/glob templates-dir "*"))
           :let [template-name (fs/file-name template)
                 resource (fs/file resource-path templates-resource-dir template-name)]]
@@ -84,7 +85,7 @@
         (ensure-template opts template-name))
       (println "Skipping custom template:" (str template)))))
 
-(defn blog-link [{:keys [blog-root] :as opts} relative-url]
+(defn blog-link [{:keys [blog-root]} relative-url]
   (when relative-url
     (format "%s%s%s"
             blog-root
