@@ -84,7 +84,7 @@
         (ensure-template opts template-name))
       (println "Skipping custom template:" (str template)))))
 
-(defn blog-link [{:keys [blog-root] :as opts} relative-url]
+(defn blog-link [{:keys [blog-root]} relative-url]
   (when relative-url
     (format "%s%s%s"
             blog-root

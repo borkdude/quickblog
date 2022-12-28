@@ -541,7 +541,7 @@
       :ref "<port>"
       :default 1888}}}}
   [opts]
-  (let [{:keys [port out-dir] :as opts} (merge (get-defaults (meta #'serve))
+  (let [{:keys [port out-dir]} (merge (get-defaults (meta #'serve))
                                                (apply-default-opts opts))
         serve (requiring-resolve 'babashka.http-server/serve)]
     (serve {:port port
