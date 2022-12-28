@@ -122,7 +122,8 @@
         (is (str/includes? (slurp (fs/file out-dir "index.html"))
                            "favicon-16x16.png"))))))
 
-(deftest caching
+;; disabled, flaky in CI, cc @jmglov
+#_(deftest caching
   (testing "assets"
     (with-dirs [assets-dir
                 posts-dir
