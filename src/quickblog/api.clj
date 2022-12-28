@@ -528,7 +528,6 @@
 (defn refresh-templates
   "Updates to latest default templates"
   [opts]
-  (prn :refresh-templates!!!!!)
   (lib/refresh-templates (apply-default-opts opts)))
 
 (defn serve

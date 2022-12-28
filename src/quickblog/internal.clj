@@ -74,7 +74,6 @@
                    (fs/file templates-resource-dir template-name)))
 
 (defn refresh-templates [{:keys [templates-dir] :as opts}]
-  (prn :refresh-templates (map str (map fs/file (fs/glob templates-dir "*"))))
   (doseq [template (map fs/file (fs/glob templates-dir "*"))
           :let [template-name (fs/file-name template)
                 resource (fs/file resource-path templates-resource-dir template-name)]]
