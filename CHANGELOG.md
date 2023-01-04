@@ -11,6 +11,7 @@ Instances of quickblog can be seen here:
 ## [Unreleased]
 
 - Improve visualization on mobile screens
+- Enable use of metadata in templates
 - Replace workaround that copies metadata from `api/serve`
 
 ## 0.1.0 (2022-12-11)
