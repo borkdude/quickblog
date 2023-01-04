@@ -8,9 +8,10 @@ Instances of quickblog can be seen here:
 - [Josh Glover's blog](https://jmglov.net/blog)
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 
-## 0.1.1 (2022-12-15)
+## [Unreleased]
 
 - Improve visualization on mobile screens
+- Enable use of metadata in templates
 
 ## 0.1.0 (2022-12-11)
 
