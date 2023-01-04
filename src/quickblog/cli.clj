@@ -109,18 +109,7 @@ Options:
                 #'api/new]
                ["serve"
                 "Run HTTP server for rendered site"
-                ;; api/serve returns immediately, so we'll wait on a promise
-                ;; after calling it to prevent the process from exiting. In
-                ;; order for the help text to work, we need to grab the metadata
-                ;; from the api/serve var and attach it to our fn. This is
-                ;; admittedly gross and I should be scolded severely for this
-                ;; nonsense. Send a pull request along the scolding, if you
-                ;; don't mind!
-                (with-meta
-                  (fn [opts]
-                    (api/serve opts)
-                    @(promise))
-                  (meta #'api/serve))]
+                #'api/serve]
                ["watch"
                 "Run HTTP server, watching posts, templates, and assets for changes"
                 #'api/watch]
