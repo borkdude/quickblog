@@ -379,30 +379,24 @@
                            page-template
                            post-template]
                     :as opts}
-                   {:keys [file title date discuss tags html
-                           description image image-alt]
-                    :or {discuss discuss-link}
+                   {:keys [file html description image image-alt]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
-        body (selmer/render post-template {:body @html
-                                           :title title
-                                           :date date
-                                           :discuss discuss
-                                           :tags tags})
+        post-metadata (merge {:discuss discuss-link} (assoc post-metadata :body @html))
+        body (selmer/render post-template post-metadata)
         author (-> (:twitter-handle post-metadata) (or twitter-handle))
         image (when image (if (re-matches #"^https?://.+" image)
                             image
                             (blog-link opts image)))
         url (blog-link opts (html-file file))
-        rendered-html (render-page opts page-template
-                                   {:title title
-                                    :body body
-                                    :sharing (->map description
-                                                    author
-                                                    twitter-handle
-                                                    image
-                                                    image-alt
-                                                    url)})]
+        post-metadata (merge {:sharing (->map description
+                                              author
+                                              twitter-handle
+                                              image
+                                              image-alt
+                                              url)}
+                             (assoc post-metadata :body body))
+        rendered-html (render-page opts page-template post-metadata)]
     (println "Writing post:" (str out-file))
     (spit out-file rendered-html)))
 
