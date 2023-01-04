@@ -540,12 +540,14 @@
      {:desc "Port for HTTP server to listen on"
       :ref "<port>"
       :default 1888}}}}
-  [opts]
-  (let [{:keys [port out-dir]} (merge (get-defaults (meta #'serve))
-                                               (apply-default-opts opts))
-        serve (requiring-resolve 'babashka.http-server/serve)]
-    (serve {:port port
-            :dir out-dir})))
+  ([opts] (serve opts true))
+  ([opts block?]
+   (let [{:keys [port out-dir]} (merge (get-defaults (meta #'serve))
+                                       (apply-default-opts opts))
+         serve (requiring-resolve 'babashka.http-server/serve)]
+     (serve {:port port
+             :dir out-dir})
+     (when block? @(promise)))))
 
 (def ^:private posts-cache (atom nil))
 
@@ -566,7 +568,7 @@
             (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
             render)]
     (reset! posts-cache (:posts opts))
-    (serve opts)
+    (serve opts false)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.3")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
