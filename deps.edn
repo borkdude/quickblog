@@ -5,7 +5,7 @@
         org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}
         selmer/selmer {:mvn/version "1.12.53"}
-        markdown-clj/markdown-clj {:mvn/version "1.11.2"}
+        markdown-clj/markdown-clj {:mvn/version "1.11.4"}
         org.babashka/cli {:mvn/version "0.6.41"}
         org.babashka/http-server {:mvn/version "0.1.11"}
         babashka/babashka.pods {:git/url "https://github.com/babashka/pods"

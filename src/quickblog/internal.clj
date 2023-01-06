@@ -119,14 +119,13 @@
 
 (defn pre-process-markdown [markdown]
   (-> markdown
-      (str/replace #"--" (fn [_] "$$NDASH$$"))
+      ;; allow multiline link title
       (str/replace #"\[[^\]]+\n"
                    (fn [match]
                      (str/replace match "\n" "$$RET$$")))))
 
 (defn post-process-markdown [html]
   (-> html
-      (str/replace "$$NDASH$$" "--")
       (str/replace "$$RET$$" "\n")))
 
 (defn markdown->html [file]
