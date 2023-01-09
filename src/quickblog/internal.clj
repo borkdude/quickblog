@@ -355,16 +355,13 @@
              " - "
              date]])]]))
 
-(defn tag-links [title tags]
-  [:div {:style "width: 600px;"}
-   [:h1 title]
-   [:ul.index
-    (for [[tag posts] tags]
-      [:li [:span
-            [:a {:href (str (escape-tag tag) ".html")} tag]
-            " - "
-            (count posts)
-            " posts"]])]])
+(defn tag-links [title tags templates-dir]
+  (let [tags-template (ensure-resource (fs/file templates-dir "tags.html"))
+        tags (map (fn [[tag posts]] {:url (str (escape-tag tag) ".html")
+                                     :tag tag
+                                     :count (count posts)}) tags)]
+    (selmer/render (slurp tags-template) {:title title
+                                          :tags tags})))
 
 (defn render-page [opts template template-vars]
   (let [template-vars (merge opts template-vars)

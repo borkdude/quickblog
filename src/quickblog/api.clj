@@ -261,7 +261,8 @@
 
 (defn- gen-tags [{:keys [blog-title blog-description
                          blog-image blog-image-alt twitter-handle
-                         modified-tags posts out-dir tags-dir]
+                         modified-tags posts out-dir tags-dir
+                         templates-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
@@ -273,7 +274,7 @@
                        {:skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
-                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))
+                        :body (lib/tag-links "Tags" posts-by-tag templates-dir)
                         :sharing {:description (format "Tags - %s"
                                                        blog-description)
                                   :author twitter-handle
