@@ -163,8 +163,6 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hiccup2.core :as hiccup]
-   [markdown.core :as md]
    [quickblog.internal :as lib]
    [selmer.parser :as selmer]
    [selmer.filters :as filters]))

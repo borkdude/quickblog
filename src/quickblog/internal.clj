@@ -7,7 +7,6 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hiccup2.core :as hiccup]
    [markdown.core :as md]
    [selmer.parser :as selmer]))
 
