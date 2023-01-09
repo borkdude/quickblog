@@ -338,7 +338,8 @@
 
 (defn- spit-archive [{:keys [blog-title blog-description
                              blog-image blog-image-alt twitter-handle
-                             modified-metadata posts out-dir] :as opts}]
+                             templates-dir modified-metadata posts out-dir]
+                      :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
                    (not (fs/exists? out-file)))]
@@ -349,7 +350,7 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" posts))
+                          :body (lib/post-links "Archive" posts templates-dir)
                           :sharing {:description (format "Archive - %s"
                                                          blog-description)
                                     :author twitter-handle

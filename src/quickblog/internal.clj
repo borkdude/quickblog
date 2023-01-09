@@ -341,19 +341,17 @@
         (selmer/render opts))))
 
 (defn post-links
-  ([title posts]
-   (post-links title posts {}))
-  ([title posts {:keys [relative-path]}]
-   [:div {:style "width: 600px;"}
-    [:h1 title]
-    [:ul.index
-     (for [{:keys [file title date preview]} posts
-           :when (not preview)]
-       [:li [:span
-             [:a {:href (str relative-path (str/replace file ".md" ".html"))}
-              title]
-             " - "
-             date]])]]))
+  ([title posts templates-dir]
+   (post-links title posts templates-dir {}))
+  ([title posts templates-dir {:keys [relative-path]}]
+   (let [post-links-template (ensure-resource (fs/file templates-dir "post-links.html"))
+         post-links (for [{:keys [file title date preview]} posts
+                          :when (not preview)]
+                      {:url (str relative-path (str/replace file ".md" ".html"))
+                       :title title
+                       :date date})]
+     (selmer/render (slurp post-links-template) {:title title
+                                                 :post-links post-links}))))
 
 (defn tag-links [title tags templates-dir]
   (let [tags-template (ensure-resource (fs/file templates-dir "tags.html"))
@@ -404,7 +402,7 @@
 
 (defn write-tag! [{:keys [blog-title blog-description
                           blog-image blog-image-alt twitter-handle
-                          modified-tags] :as opts}
+                          templates-dir modified-tags] :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
@@ -414,8 +412,8 @@
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
-                    :body (hiccup/html (post-links (str "Tag - " tag) posts
-                                                   {:relative-path "../"}))
+                    :body (post-links (str "Tag - " tag) posts
+                                      templates-dir {:relative-path "../"})
                     :sharing {:description (format "Posts tagged \"%s\" - %s"
                                                    tag blog-description)
                               :author twitter-handle
