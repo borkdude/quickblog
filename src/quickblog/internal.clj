@@ -125,6 +125,9 @@
 
 (defn post-process-markdown [html]
   (-> html
+      ;; restore comments
+      (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
+      ;; restore newline in multiline link titles
       (str/replace "$$RET$$" "\n")))
 
 (defn markdown->html [file]
