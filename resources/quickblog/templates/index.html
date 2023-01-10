@@ -1,0 +1,23 @@
+{% for post in posts %}
+    <div>
+        <h1><a href="{{post.post-link}}">{{post.title}}</a></h1>
+        {{post.body | safe}}
+        {% if post.truncated %}
+            <p><a href="{{post.post-link}}">Continue reading</a></p>
+        {% endif %}
+        {% if post.discuss %}
+            <p>Discuss this post <a href="{{post.discuss}}">here</a>.</p>
+        {% endif %}
+        <p><i>Published: {{post.date}}</i></p>
+        {% if post.tags %}
+            <p><i>
+                Tagged:
+                {% for tag in post.tags %}
+                    <span class="tag">
+                        <a href="tags/{{tag|escape-tag}}.html">{{tag}}</a>
+                    </span>
+                {% endfor %}
+            </i></p>
+        {% endif %}
+    </div>
+{% endfor %}

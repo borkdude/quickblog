@@ -288,20 +288,17 @@
         (println "Deleting removed tag:" (str tag-filename))
         (fs/delete-if-exists tag-filename)))))
 
-;;;; Generate index page with last 3 posts
+;;;; Generate index page with last `num-index-posts` posts
 
-(defn- index [{:keys [posts discuss-link templates-dir]}]
-  (->> posts
-       (map (fn [{:keys [file title date tags preview discuss html]
-                  :or {discuss discuss-link}
-                  :as post}]
-              (let [post-template (lib/ensure-resource (fs/file templates-dir "post.html"))]
-                (->> (selmer/render (slurp post-template)
-                                    (assoc post
-                                           :post-link (str/replace file ".md" ".html")
-                                           :body @html))
-                     (format "<div>\n%s\n</div>")))))
-       (str/join "\n")))
+(defn- index [{:keys [posts templates-dir]}]
+  (let [posts (for [{:keys [file html] :as post} posts
+                    :let [preview (first (str/split @html #"<!-- end-of-preview -->" 2))]]
+                (assoc post
+                       :post-link (str/replace file ".md" ".html")
+                       :body preview
+                       :truncated (not= preview @html)))
+        index-template (lib/ensure-resource (fs/file templates-dir "index.html"))]
+    (selmer/render (slurp index-template) {:posts posts})))
 
 (defn- spit-index
   [{:keys [blog-title blog-description blog-image blog-image-alt twitter-handle
