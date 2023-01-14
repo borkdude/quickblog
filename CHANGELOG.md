@@ -13,6 +13,9 @@ Instances of quickblog can be seen here:
 - Improve visualization on mobile screens
 - Enable use of metadata in templates
 - Replace workaround that copies metadata from `api/serve`
+- Add templates that allow control over layout and styling of index page, pages with tags, and archive
+- Preserve HTML comments
+- Support showing previews of posts on index page
 
 ## 0.1.0 (2022-12-11)
 
