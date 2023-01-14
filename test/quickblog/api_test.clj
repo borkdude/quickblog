@@ -121,7 +121,34 @@
           (is (fs/exists? (fs/file favicon-dir filename)))
           (is (fs/exists? (fs/file favicon-out-dir filename))))
         (is (str/includes? (slurp (fs/file out-dir "index.html"))
-                           "favicon-16x16.png"))))))
+                           "favicon-16x16.png")))))
+
+  (testing "multiline links"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "multiline.md"
+                                  :content "[a \n\n multiline \n\n link](www.example.org)"})
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
+                         "<a href='www.example.org'>a \n\n multiline \n\n link</a>"))))
+  
+  (testing "comments"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "comments.md"
+                                  :content "<!-- a comment -->"})
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (str/includes? (slurp (fs/file out-dir "comments.html")) "<!-- a comment -->")))))
 
 ;; disabled, flaky in CI, cc @jmglov
 #_(deftest caching
