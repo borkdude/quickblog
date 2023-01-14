@@ -227,7 +227,7 @@
                            (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [deleted-posts modified-posts posts
-                          cache-dir posts-dir out-dir templates-dir]
+                          cache-dir out-dir templates-dir]
                    :as opts}]
   (let [posts-to-write (set/union modified-posts
                                   (lib/modified-post-pages opts))
