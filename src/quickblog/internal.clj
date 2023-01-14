@@ -342,21 +342,18 @@
         slurp
         (selmer/render opts))))
 
-(defn post-links
-  ([title posts templates-dir]
-   (post-links title posts templates-dir {}))
-  ([title posts templates-dir {:keys [relative-path]}]
-   (let [post-links-template (ensure-resource (fs/file templates-dir "post-links.html"))
-         post-links (for [{:keys [file title date preview]} posts
-                          :when (not preview)]
-                      {:url (str relative-path (str/replace file ".md" ".html"))
-                       :title title
-                       :date date})]
-     (selmer/render (slurp post-links-template) {:title title
-                                                 :post-links post-links}))))
+(defn post-links [title posts {:keys [relative-path] :as opts}]
+  (let [post-links-template (ensure-template opts "post-links.html")
+        post-links (for [{:keys [file title date preview]} posts
+                         :when (not preview)]
+                     {:url (str relative-path (str/replace file ".md" ".html"))
+                      :title title
+                      :date date})]
+    (selmer/render (slurp post-links-template) {:title title
+                                                :post-links post-links})))
 
-(defn tag-links [title tags templates-dir]
-  (let [tags-template (ensure-resource (fs/file templates-dir "tags.html"))
+(defn tag-links [title tags opts]
+  (let [tags-template (ensure-template opts "tags.html")
         tags (map (fn [[tag posts]] {:url (str (escape-tag tag) ".html")
                                      :tag tag
                                      :count (count posts)}) tags)]
@@ -404,7 +401,7 @@
 
 (defn write-tag! [{:keys [blog-title blog-description
                           blog-image blog-image-alt twitter-handle
-                          templates-dir modified-tags] :as opts}
+                          modified-tags] :as opts}
                   tags-out-dir
                   template
                   [tag posts]]
@@ -415,7 +412,7 @@
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
                     :body (post-links (str "Tag - " tag) posts
-                                      templates-dir {:relative-path "../"})
+                                      (assoc opts :relative-path "../"))
                     :sharing {:description (format "Posts tagged \"%s\" - %s"
                                                    tag blog-description)
                               :author twitter-handle

@@ -227,7 +227,7 @@
                            (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [deleted-posts modified-posts posts
-                          cache-dir out-dir templates-dir]
+                          cache-dir out-dir]
                    :as opts}]
   (let [posts-to-write (set/union modified-posts
                                   (lib/modified-post-pages opts))
@@ -259,8 +259,7 @@
 
 (defn- gen-tags [{:keys [blog-title blog-description
                          blog-image blog-image-alt twitter-handle
-                         modified-tags posts out-dir tags-dir
-                         templates-dir]
+                         modified-tags posts out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
@@ -272,7 +271,7 @@
                        {:skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
-                        :body (lib/tag-links "Tags" posts-by-tag templates-dir)
+                        :body (lib/tag-links "Tags" posts-by-tag opts)
                         :sharing {:description (format "Tags - %s"
                                                        blog-description)
                                   :author twitter-handle
@@ -290,14 +289,14 @@
 
 ;;;; Generate index page with last `num-index-posts` posts
 
-(defn- index [{:keys [posts templates-dir]}]
+(defn- index [{:keys [posts] :as opts}]
   (let [posts (for [{:keys [file html] :as post} posts
                     :let [preview (first (str/split @html #"<!-- end-of-preview -->" 2))]]
                 (assoc post
                        :post-link (str/replace file ".md" ".html")
                        :body preview
                        :truncated (not= preview @html)))
-        index-template (lib/ensure-resource (fs/file templates-dir "index.html"))]
+        index-template (lib/ensure-template opts "index.html")]
     (selmer/render (slurp index-template) {:posts posts})))
 
 (defn- spit-index
@@ -333,7 +332,7 @@
 
 (defn- spit-archive [{:keys [blog-title blog-description
                              blog-image blog-image-alt twitter-handle
-                             templates-dir modified-metadata posts out-dir]
+                             modified-metadata posts out-dir]
                       :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
@@ -345,7 +344,7 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (lib/post-links "Archive" posts templates-dir)
+                          :body (lib/post-links "Archive" posts opts)
                           :sharing {:description (format "Archive - %s"
                                                          blog-description)
                                     :author twitter-handle
