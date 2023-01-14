@@ -214,6 +214,12 @@ quickblog uses the following templates in site generation:
 - `style.css` - Styles for all pages.
 - `favicon.html` - If `:favicon true`, used to include favicon in the `<head>`
   of all pages.
+- `tags.html` - Tag overview page.
+- `post-links.html` - Used to render lists of blog posts in the archive and
+  each page corresponding to a single tag.
+- `index.html` - Index page. Posts containing the marker comment
+  `<!-- end-of-preview -->` are included on the index page up until the first
+  occurrence of that comment.
 
 quickblog looks for these templates in your `:templates-dir`, and if it doesn't
 find them, will copy a default template into that directory. It is recommended
