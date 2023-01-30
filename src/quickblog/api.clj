@@ -163,8 +163,6 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hiccup2.core :as hiccup]
-   [markdown.core :as md]
    [quickblog.internal :as lib]
    [selmer.parser :as selmer]
    [selmer.filters :as filters]))
@@ -229,7 +227,7 @@
                            (fs/file "assets" "favicon" asset)))))
 
 (defn- gen-posts [{:keys [deleted-posts modified-posts posts
-                          cache-dir posts-dir out-dir templates-dir]
+                          cache-dir out-dir]
                    :as opts}]
   (let [posts-to-write (set/union modified-posts
                                   (lib/modified-post-pages opts))
@@ -273,7 +271,7 @@
                        {:skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
-                        :body (hiccup/html (lib/tag-links "Tags" posts-by-tag))
+                        :body (lib/tag-links "Tags" posts-by-tag opts)
                         :sharing {:description (format "Tags - %s"
                                                        blog-description)
                                   :author twitter-handle
@@ -289,20 +287,17 @@
         (println "Deleting removed tag:" (str tag-filename))
         (fs/delete-if-exists tag-filename)))))
 
-;;;; Generate index page with last 3 posts
+;;;; Generate index page with last `num-index-posts` posts
 
-(defn- index [{:keys [posts discuss-link templates-dir]}]
-  (->> posts
-       (map (fn [{:keys [file title date tags preview discuss html]
-                  :or {discuss discuss-link}
-                  :as post}]
-              (let [post-template (lib/ensure-resource (fs/file templates-dir "post.html"))]
-                (->> (selmer/render (slurp post-template)
-                                    (assoc post
-                                           :post-link (str/replace file ".md" ".html")
-                                           :body @html))
-                     (format "<div>\n%s\n</div>")))))
-       (str/join "\n")))
+(defn- index [{:keys [posts] :as opts}]
+  (let [posts (for [{:keys [file html] :as post} posts
+                    :let [preview (first (str/split @html #"<!-- end-of-preview -->" 2))]]
+                (assoc post
+                       :post-link (str/replace file ".md" ".html")
+                       :body preview
+                       :truncated (not= preview @html)))
+        index-template (lib/ensure-template opts "index.html")]
+    (selmer/render (slurp index-template) {:posts posts})))
 
 (defn- spit-index
   [{:keys [blog-title blog-description blog-image blog-image-alt twitter-handle
@@ -337,7 +332,8 @@
 
 (defn- spit-archive [{:keys [blog-title blog-description
                              blog-image blog-image-alt twitter-handle
-                             modified-metadata posts out-dir] :as opts}]
+                             modified-metadata posts out-dir]
+                      :as opts}]
   (let [out-file (fs/file out-dir "archive.html")
         stale? (or (some not-empty (vals modified-metadata))
                    (not (fs/exists? out-file)))]
@@ -348,7 +344,7 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (hiccup/html (lib/post-links "Archive" posts))
+                          :body (lib/post-links "Archive" posts opts)
                           :sharing {:description (format "Archive - %s"
                                                          blog-description)
                                     :author twitter-handle

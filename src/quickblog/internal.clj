@@ -7,7 +7,6 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hiccup2.core :as hiccup]
    [markdown.core :as md]
    [selmer.parser :as selmer]))
 
@@ -126,6 +125,9 @@
 
 (defn post-process-markdown [html]
   (-> html
+      ;; restore comments
+      (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
+      ;; restore newline in multiline link titles
       (str/replace "$$RET$$" "\n")))
 
 (defn markdown->html [file]
@@ -340,31 +342,23 @@
         slurp
         (selmer/render opts))))
 
-(defn post-links
-  ([title posts]
-   (post-links title posts {}))
-  ([title posts {:keys [relative-path]}]
-   [:div {:style "width: 600px;"}
-    [:h1 title]
-    [:ul.index
-     (for [{:keys [file title date preview]} posts
-           :when (not preview)]
-       [:li [:span
-             [:a {:href (str relative-path (str/replace file ".md" ".html"))}
-              title]
-             " - "
-             date]])]]))
+(defn post-links [title posts {:keys [relative-path] :as opts}]
+  (let [post-links-template (ensure-template opts "post-links.html")
+        post-links (for [{:keys [file title date preview]} posts
+                         :when (not preview)]
+                     {:url (str relative-path (str/replace file ".md" ".html"))
+                      :title title
+                      :date date})]
+    (selmer/render (slurp post-links-template) {:title title
+                                                :post-links post-links})))
 
-(defn tag-links [title tags]
-  [:div {:style "width: 600px;"}
-   [:h1 title]
-   [:ul.index
-    (for [[tag posts] tags]
-      [:li [:span
-            [:a {:href (str (escape-tag tag) ".html")} tag]
-            " - "
-            (count posts)
-            " posts"]])]])
+(defn tag-links [title tags opts]
+  (let [tags-template (ensure-template opts "tags.html")
+        tags (map (fn [[tag posts]] {:url (str (escape-tag tag) ".html")
+                                     :tag tag
+                                     :count (count posts)}) tags)]
+    (selmer/render (slurp tags-template) {:title title
+                                          :tags tags})))
 
 (defn render-page [opts template template-vars]
   (let [template-vars (merge opts template-vars)
@@ -417,8 +411,8 @@
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
-                    :body (hiccup/html (post-links (str "Tag - " tag) posts
-                                                   {:relative-path "../"}))
+                    :body (post-links (str "Tag - " tag) posts
+                                      (assoc opts :relative-path "../"))
                     :sharing {:description (format "Posts tagged \"%s\" - %s"
                                                    tag blog-description)
                               :author twitter-handle

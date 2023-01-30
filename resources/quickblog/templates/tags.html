@@ -1,0 +1,8 @@
+<div style="width: 600px">
+    <h1>{{title}}</h1>
+    <ul class="index">
+        {% for tag in tags %}
+            <li><span><a href="{{tag.url}}">{{tag.tag}}</a> - {{tag.count}} post{{tag.count|pluralize}}</span></li>
+        {% endfor %}
+    </ul>
+</div>
