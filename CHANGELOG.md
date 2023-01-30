@@ -8,13 +8,14 @@ Instances of quickblog can be seen here:
 - [Josh Glover's blog](https://jmglov.net/blog)
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 
-## [Unreleased]
+## 0.2.3 (2023-01-30)
 
-- Improve visualization on mobile screens
-- Enable use of metadata in templates
+- Improve visualization on mobile screens ([@MatKurianski](https://github.com/MatKurianski))
+- [#51](https://github.com/borkdude/quickblog/issues/51): Enable custom default tags or no tags ([@formsandlines](https://github.com/formsandlines))
+- Enable use of metadata in templates ([@ljpengelen](https://github.com/ljpengelen))
 - Replace workaround that copies metadata from `api/serve`
-- Add templates that allow control over layout and styling of index page, pages with tags, and archive
-- Preserve HTML comments
+- [#61](https://github.com/borkdude/quickblog/issues/61): Add templates that allow control over layout and styling of index page, pages with tags, and archive ([@ljpengelen](https://github.com/ljpengelen))
+- Preserve HTML comments ([@ljpengelen](https://github.com/ljpengelen))
 - Support showing previews of posts on index page
 
 ## 0.1.0 (2022-12-11)
