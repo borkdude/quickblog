@@ -8,6 +8,10 @@ Instances of quickblog can be seen here:
 - [Josh Glover's blog](https://jmglov.net/blog)
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 
+## Unreleased
+
+- Support capitalization of tags
+
 ## 0.2.3 (2023-01-30)
 
 - Improve visualization on mobile screens ([@MatKurianski](https://github.com/MatKurianski))
