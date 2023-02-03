@@ -154,7 +154,38 @@
                    :out-dir out-dir})
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
                          "<a href='www.example.org'>a \n\n multiline \n\n link</a>"))))
+
+  (testing "tag with capitals"
+    (with-dirs [assets-dir
+                posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:content "Post about ClojureScript"
+                                  :tags #{"ClojureScript"}})
+      (api/render {:assets-dir assets-dir
+                   :posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about ClojureScript"))))
   
+    (testing "non-Clojure tag"
+      (with-dirs [assets-dir
+                  posts-dir
+                  templates-dir
+                  cache-dir
+                  out-dir]
+        (write-test-post posts-dir {:content "Post about Elixir"
+                                    :tags #{"elixir"}})
+        (api/render {:assets-dir assets-dir
+                     :posts-dir posts-dir
+                     :templates-dir templates-dir
+                     :cache-dir cache-dir
+                     :out-dir out-dir})
+        (is (fs/exists? (fs/file out-dir "planetclojure.xml")))
+        (is (not (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about Elixir")))))
+
   (testing "comments"
     (with-dirs [posts-dir
                 templates-dir
