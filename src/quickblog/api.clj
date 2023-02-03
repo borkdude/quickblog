@@ -396,18 +396,21 @@
             [:-cdata @html]]])])
       xml/indent-str))
 
+(defn- clojure-post? [{:keys [tags]}]
+  (let [clojure-tags #{"clojure" "clojurescript"}
+        lowercase-tags (map str/lower-case tags)]
+    (some clojure-tags lowercase-tags)))
+
 (defn- spit-feeds [{:keys [out-dir modified-posts posts] :as opts}]
   (let [feed-file (fs/file out-dir "atom.xml")
         clojure-feed-file (fs/file out-dir "planetclojure.xml")
         all-posts (lib/sort-posts (vals posts))
         clojure-posts (->> (vals posts)
-                           (filter (fn [{:keys [tags]}]
-                                     (some tags ["clojure" "clojurescript"])))
+                           (filter clojure-post?)
                            lib/sort-posts)
         clojure-posts-modified? (->> modified-posts
                                      (map posts)
-                                     (some (fn [{:keys [tags]}]
-                                             (some tags ["clojure" "clojurescript"]))))]
+                                     (some clojure-post?))]
     (if (and (not clojure-posts-modified?) (fs/exists? clojure-feed-file))
       (println "No Clojure posts modified; skipping Clojure feed")
       (do
