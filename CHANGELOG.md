@@ -7,6 +7,8 @@ Instances of quickblog can be seen here:
 - [Michiel Borkent's blog](https://blog.michielborkent.nl)
 - [Josh Glover's blog](https://jmglov.net/blog)
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
+- [Luc Engelen's blog](https://blog.cofx.nl/)
+- [Rattlin.blog](https://rattlin.blog/)
 
 ## Unreleased
 
