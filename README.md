@@ -17,6 +17,7 @@ Instances of quickblog can be seen here:
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 - [Luc Engelen's blog](https://blog.cofx.nl/) - ([source](https://github.com/cofx22/blog))
 - [Rattlin.blog](https://rattlin.blog/)
+- [REP‘ti’L‘e’](https://kuna.us/)
 
 Feel free to PR yours.
 
