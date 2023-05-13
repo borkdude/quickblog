@@ -13,6 +13,7 @@ Instances of quickblog can be seen here:
 ## Unreleased
 
 - Support capitalization of tags
+- [#66](https://github.com/borkdude/quickblog/issues/66): Unambigous ordering of posts, sorting by date (descending), post title, and then file name.  ([@UnwarySage](https://github.com/UnwarySage))
 
 ## 0.2.3 (2023-01-30)
 
