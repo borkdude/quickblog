@@ -142,8 +142,26 @@
         :html
         post-process-markdown)))
 
+(defn post-compare [a-post b-post]
+  (let [date-a (:date a-post)
+        title-a (:title a-post)
+        file-a (:file a-post)
+        date-b (:date b-post)
+        title-b (:title b-post)
+        file-b (:file b-post)]
+    
+    (cond
+      (not= date-a date-b)
+      (- (compare date-a date-b))
+      
+      (not= title-a title-b)
+      (compare title-a title-b)
+
+      (not= file-a file-b)
+      (compare file-a file-b))))
+
 (defn sort-posts [posts]
-  (sort-by :date (comp - compare) posts))
+  (sort post-compare posts))
 
 (defn modified-since? [target src]
   (seq (fs/modified-since target src)))
