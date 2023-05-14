@@ -143,22 +143,12 @@
         post-process-markdown)))
 
 (defn post-compare [a-post b-post]
-  (let [date-a (:date a-post)
-        title-a (:title a-post)
-        file-a (:file a-post)
-        date-b (:date b-post)
-        title-b (:title b-post)
-        file-b (:file b-post)]
-    
-    (cond
-      (not= date-a date-b)
-      (- (compare date-a date-b))
-      
-      (not= title-a title-b)
-      (compare title-a title-b)
-
-      (not= file-a file-b)
-      (compare file-a file-b))))
+  (if (= (:date a-post)
+         (:date b-post))
+    (compare [(:title a-post) (:file a-post)]
+             [(:title b-post) (:file b-post)])
+    (- (compare (:date a-post)
+                (:date b-post)))))
 
 (defn sort-posts [posts]
   (sort post-compare posts))
