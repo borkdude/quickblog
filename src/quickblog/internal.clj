@@ -142,8 +142,13 @@
         :html
         post-process-markdown)))
 
+(defn post-compare [a-post b-post]
+  ;; Compare dates opposite the other values to force desending order
+    (compare [(:date b-post) (:title a-post) (:file a-post)]
+             [(:date a-post) (:title b-post) (:file b-post)]))
+
 (defn sort-posts [posts]
-  (sort-by :date (comp - compare) posts))
+  (sort post-compare posts))
 
 (defn modified-since? [target src]
   (seq (fs/modified-since target src)))
