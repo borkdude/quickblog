@@ -143,12 +143,9 @@
         post-process-markdown)))
 
 (defn post-compare [a-post b-post]
-  (if (= (:date a-post)
-         (:date b-post))
-    (compare [(:title a-post) (:file a-post)]
-             [(:title b-post) (:file b-post)])
-    (- (compare (:date a-post)
-                (:date b-post)))))
+  ;; Compare dates opposite the other values to force desending order
+    (compare [(:date b-post) (:title a-post) (:file a-post)]
+             [(:date a-post) (:title b-post) (:file b-post)]))
 
 (defn sort-posts [posts]
   (sort post-compare posts))
