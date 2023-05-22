@@ -70,12 +70,12 @@ Options:
      (format "Usage: bb %s %s <options>\n\n%sGlobal options:\n\n%s"
              main-cmd-name cmd-name opts-str (format-opts specs)))))
 
-(defn- mk-cmd [global-specs [cmd-name desc fn-var]]
+(defn- mk-cmd [global-specs default-opts [cmd-name desc fn-var]]
   (let [cmd-opts (get-in (meta fn-var) [:org.babashka/cli :spec])]
     {:cmds [cmd-name]
      :cmd-opts cmd-opts
      :desc desc
-     :spec (merge global-specs cmd-opts)
+     :spec (merge global-specs (apply-defaults default-opts cmd-opts))
      :error-fn
      (fn [{:keys [type cause msg option] :as data}]
        (if (= :org.babashka/cli type)
@@ -100,7 +100,7 @@ Options:
 (defn- mk-table [default-opts]
   (let [global-specs (apply-defaults default-opts specs)
         cmds
-        (mapv (partial mk-cmd global-specs)
+        (mapv (partial mk-cmd global-specs default-opts)
               [["render"
                 "Render the blog"
                 #'api/render]
