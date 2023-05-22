@@ -169,6 +169,7 @@
         file (fs/file-name path)
         cached-file (fs/file cache-dir (cache-file file))
         stale? (or force-render
+                   (not (fs/exists? cached-file))
                    (rendering-modified? cached-file (cons path rendering-system-files)))]
     (println "Reading metadata for post:" (str file))
     (try
