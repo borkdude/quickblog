@@ -478,6 +478,10 @@
       :ref "<filename>"
       :require true}
 
+     :preview
+     {:desc "Create post as preview (won't be published to index, tags, or feeds)"
+      :default false}
+
      :title
      {:desc "Title of post"
       :ref "<title>"
@@ -488,7 +492,7 @@
       :ref "<tags>"
       :coerce []}}}}
   [opts]
-  (let [{:keys [file title posts-dir tags default-metadata]
+  (let [{:keys [file preview title posts-dir tags default-metadata]
          :as opts} (apply-default-opts opts)
         tags (cond (empty? tags)   (:tags default-metadata)
                    (= tags [true]) [] ;; `--tags` without arguments
@@ -498,12 +502,13 @@
     (let [file (if (re-matches #"^.+[.][^.]+$" file)
                  file
                  (str file ".md"))
-          post-file (fs/file posts-dir file)]
+          post-file (fs/file posts-dir file)
+          preview-str (if preview "Preview: true\n" "")]
       (when-not (fs/exists? post-file)
         (fs/create-dirs posts-dir)
         (spit (fs/file posts-dir file)
-              (format "Title: %s\nDate: %s\nTags: %s\n\nWrite a blog post here!"
-                      title (now) (str/join "," tags)))))))
+              (format "Title: %s\nDate: %s\nTags: %s\n%s\nWrite a blog post here!"
+                      title (now) (str/join "," tags) preview-str))))))
 
 (defn clean
   "Removes cache and output directories"
