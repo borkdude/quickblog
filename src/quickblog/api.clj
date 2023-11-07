@@ -305,6 +305,7 @@
            out-dir]
     :as opts}]
   (let [index-posts #(->> (vals %)
+                          lib/remove-previews
                           lib/sort-posts
                           (take num-index-posts))
         posts (index-posts posts)
