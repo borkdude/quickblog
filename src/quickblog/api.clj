@@ -564,7 +564,8 @@
          :as opts}
         (-> opts
             apply-default-opts
-            (assoc :watch "<script type=\"text/javascript\" src=\"https://livejs.com/live.js\"></script>")
+            (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
+                                  lib/live-reload-script))
             render)]
     (reset! posts-cache (:posts opts))
     (serve opts false)

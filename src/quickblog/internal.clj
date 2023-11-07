@@ -10,6 +10,9 @@
    [markdown.core :as md]
    [selmer.parser :as selmer]))
 
+;; Script used for live reloading in watch mode
+(def live-reload-script "https://livejs.com/live.js")
+
 (def ^:private cache-filename "cache.edn")
 (def ^:private resource-path "quickblog")
 (def ^:private templates-resource-dir "templates")
@@ -273,7 +276,10 @@
                        post-file (fs/file posts-dir file)]
                    (or force-render
                        (rendering-modified? out-file
-                                            (cons post-file rendering-system-files))))))
+                                            (cons post-file rendering-system-files))
+                       ;; watch mode adds a live reloading script, which should be
+                       ;; removed on subsequent renders
+                       (str/includes? (slurp out-file) live-reload-script)))))
        (map first)
        set))
 
