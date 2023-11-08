@@ -12,6 +12,8 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- [#76](https://github.com/borkdude/quickblog/pull/76): Remove livejs script tag
+  on render. ([@jmglov](https://github.com/jmglov))
 - [#75](https://github.com/borkdude/quickblog/pull/75): Omit preview posts from
   index. ([@jmglov](https://github.com/jmglov))
 - Support capitalization of tags

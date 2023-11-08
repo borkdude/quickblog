@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [babashka.fs :as fs]
-   [quickblog.api :as api])
+   [quickblog.api :as api]
+   [quickblog.internal :as lib])
   (:import (java.util UUID)))
 
 (def test-dir ".test")
@@ -208,7 +209,25 @@
                    :templates-dir templates-dir
                    :cache-dir cache-dir
                    :out-dir out-dir})
-      (is (str/includes? (slurp (fs/file out-dir "comments.html")) "<!-- a comment -->")))))
+      (is (str/includes? (slurp (fs/file out-dir "comments.html")) "<!-- a comment -->"))))
+
+  (testing "remove live reloading on render"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir)
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir
+                   :watch lib/live-reload-script})
+      (is (str/includes? (slurp (fs/file out-dir "test.html")) lib/live-reload-script))
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (not (str/includes? (slurp (fs/file out-dir "test.html")) lib/live-reload-script))))))
 
 ;; disabled, flaky in CI, cc @jmglov
 #_(deftest caching
