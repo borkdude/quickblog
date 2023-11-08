@@ -142,6 +142,14 @@
         :html
         post-process-markdown)))
 
+(defn remove-previews [posts]
+  (->> posts
+       (remove (fn [{:keys [file preview]}]
+                 (let [preview? (Boolean/valueOf preview)]
+                   (when preview?
+                     (println "Skipping preview post:" file)
+                     true))))))
+
 (defn post-compare [a-post b-post]
   ;; Compare dates opposite the other values to force desending order
     (compare [(:date b-post) (:title a-post) (:file a-post)]
@@ -331,6 +339,7 @@
 
 (defn posts-by-tag [posts]
   (->> (vals posts)
+       remove-previews
        (sort-by :date)
        (mapcat (fn [{:keys [tags] :as post}]
                  (map (fn [tag] [tag post]) tags)))
