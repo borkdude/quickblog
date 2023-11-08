@@ -12,6 +12,8 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- [#76](https://github.com/borkdude/quickblog/pull/76): Remove livejs script tag
+  on render. ([@jmglov](https://github.com/jmglov))
 - Support capitalization of tags
 - [#66](https://github.com/borkdude/quickblog/issues/66): Unambigous ordering of posts, sorting by date (descending), post title, and then file name.  ([@UnwarySage](https://github.com/UnwarySage))
 
