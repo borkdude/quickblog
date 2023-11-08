@@ -20,6 +20,7 @@ Instances of quickblog can be seen here:
 - [Rattlin.blog](https://rattlin.blog/)
 - [REP‘ti’L‘e’](https://kuna.us/)
 - [Søren Sjørup's blog](https://zoren.dk)
+- [Henry Widd's blog](https://widdindustries.com/blog)
 
 Feel free to PR yours.
 
