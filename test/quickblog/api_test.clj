@@ -36,15 +36,16 @@
 (defn- write-test-post
   ([posts-dir]
    (write-test-post posts-dir {}))
-  ([posts-dir {:keys [file title date tags content]
+  ([posts-dir {:keys [file title date tags content preview?]
                :or {file "test.md"
                     title "Test post"
                     date "2022-01-02"
                     tags #{"clojure"}
                     content "Write a blog post here!"}}]
-   (write-test-file posts-dir file
-                    (format "Title: %s\nDate: %s\nTags: %s\n\n%s"
-                            title date (str/join "," tags) content))))
+   (let [preview-str (if preview? "Preview: true\n" "")]
+     (write-test-file posts-dir file
+                      (format "Title: %s\nDate: %s\nTags: %s\n%s\n%s"
+                              title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
   (with-dirs [posts-dir]
@@ -81,6 +82,10 @@
                 cache-dir
                 out-dir]
       (write-test-post posts-dir {:tags #{"clojure" "tag with spaces"}})
+      (write-test-post posts-dir {:file "preview.md"
+                                  :title "This is a preview"
+                                  :tags #{"preview"}
+                                  :preview? true})
       (write-test-file assets-dir "asset.txt" "something")
       (api/render {:assets-dir assets-dir
                    :posts-dir posts-dir
@@ -91,7 +96,8 @@
       (doseq [filename ["base.html" "post.html" "style.css"]]
         (is (fs/exists? (fs/file templates-dir filename))))
       (is (fs/exists? (fs/file cache-dir "test.md.pre-template.html")))
-      (doseq [filename ["test.html" "index.html" "archive.html"
+      (is (fs/exists? (fs/file cache-dir "preview.md.pre-template.html")))
+      (doseq [filename ["test.html" "preview.html" "index.html" "archive.html"
                         (fs/file "tags" "index.html")
                         (fs/file "tags" "clojure.html")
                         (fs/file "tags" "tag-with-spaces.html")
@@ -100,7 +106,12 @@
       (is (str/includes? (slurp (fs/file out-dir "test.html"))
                          "<a href=\"tags/tag-with-spaces.html\">tag with spaces</a>"))
       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
-                         "<a href=\"tag-with-spaces.html\">tag with spaces</a>"))))
+                         "<a href=\"tag-with-spaces.html\">tag with spaces</a>"))
+      ;; Preview posts should be omitted from index, tags, and feeds
+      (is (not (fs/exists? (fs/file out-dir "tags" "preview.html"))))
+      (doseq [filename ["index.html" "atom.xml" "planetclojure.xml"]]
+        (is (not (str/includes? (slurp (fs/file out-dir filename))
+                                "preview.html"))))))
 
   (testing "with favicon"
     (with-dirs [favicon-dir
