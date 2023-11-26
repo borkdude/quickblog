@@ -47,7 +47,7 @@
     <div class="site-header">
       <div class="wrapper">
         <div class="site-nav">
-          <a class="page-link" href="{{relative-path | safe}}archive.html">Archive</a>
+          <a class="page-link" href="{{relative-path | safe}}archive{{page-suffix}}">Archive</a>
           <a class="page-link" href="{{relative-path | safe}}tags/index.html">Tags</a>
           <a class="page-link" href="{{discuss-link}}">Discuss</a>
 	  <a class="page-link" href="{{relative-path | safe}}atom.xml">
@@ -77,7 +77,7 @@
 
       {% if not skip-archive %}
       <div style="margin-bottom: 20px; float: right;">
-        <a class="page-link" href="{{relative-path | safe}}archive.html">Archive</a>
+        <a class="page-link" href="{{relative-path | safe}}archive{{page-suffix}}">Archive</a>
       </div>
       {% endif %}
     </div>

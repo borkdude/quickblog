@@ -113,6 +113,31 @@
         (is (not (str/includes? (slurp (fs/file out-dir filename))
                                 "preview.html"))))))
 
+  (testing "with blank page suffix"
+    (with-dirs [posts-dir
+                templates-dir
+                out-dir]
+       (write-test-post posts-dir {:tags #{"foobar" "tag with spaces"}})
+       (api/render {:page-suffix ""
+                    :posts-dir posts-dir
+                    :templates-dir templates-dir
+                    :out-dir out-dir})
+       (doseq [filename ["test.html" "index.html" "archive.html"
+                         (fs/file "tags" "index.html")
+                         (fs/file "tags" "tag-with-spaces.html")
+                         "atom.xml" "planetclojure.xml"]]
+         (is (fs/exists? (fs/file out-dir filename))))
+       (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                          "<a class=\"page-link\" href=\"archive\">Archive</a>"))
+       (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                          "<a href=\"tags/foobar\">foobar</a>"))
+       (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                          "<a href=\"tags/tag-with-spaces\">tag with spaces</a>"))
+       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                          "<a href=\"foobar\">foobar</a>"))
+       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                          "<a href=\"tag-with-spaces\">tag with spaces</a>"))))
+
   (testing "with favicon"
     (with-dirs [favicon-dir
                 posts-dir
@@ -152,7 +177,7 @@
       (is (str/includes? (slurp (fs/file out-dir "preview.html")) "<p>only part of full post</p>"))
       (is (str/includes? (slurp (fs/file out-dir "index.html")) "<p>always included</p>"))
       (is (not (str/includes? (slurp (fs/file out-dir "index.html")) "<p>only part of full post</p>")))))
-  
+
   (testing "multiline links"
     (with-dirs [posts-dir
                 templates-dir
@@ -181,7 +206,7 @@
                    :cache-dir cache-dir
                    :out-dir out-dir})
       (is (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about ClojureScript"))))
-  
+
     (testing "non-Clojure tag"
       (with-dirs [assets-dir
                   posts-dir
