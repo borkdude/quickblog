@@ -21,7 +21,7 @@ Instances of quickblog can be seen here:
 - [REP‘ti’L‘e’](https://kuna.us/)
 - [Søren Sjørup's blog](https://zoren.dk)
 - [Henry Widd's blog](https://widdindustries.com/blog)
-- [Anders means different](https://www.eknert.com/blog/bronchitis)
+- [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
 Feel free to PR yours.
 

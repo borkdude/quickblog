@@ -7,11 +7,17 @@ Instances of quickblog can be seen here:
 - [Michiel Borkent's blog](https://blog.michielborkent.nl)
 - [Josh Glover's blog](https://jmglov.net/blog)
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
-- [Luc Engelen's blog](https://blog.cofx.nl/) ([source](https://github.com/cofx22/blog))
+- [JP Monetta's blog](https://jpmonettas.github.io/my-blog/public/)
+- [Luc Engelen's blog](https://blog.cofx.nl/) - ([source](https://github.com/cofx22/blog))
 - [Rattlin.blog](https://rattlin.blog/)
+- [REP‘ti’L‘e’](https://kuna.us/)
+- [Søren Sjørup's blog](https://zoren.dk)
+- [Henry Widd's blog](https://widdindustries.com/blog)
+- [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
 ## Unreleased
 
+- [#78](https://github.com/borkdude/quickblog/issues/78): Allow configurable :page-suffix to omit `.html` from page links
 - [#76](https://github.com/borkdude/quickblog/pull/76): Remove livejs script tag
   on render. ([@jmglov](https://github.com/jmglov))
 - [#75](https://github.com/borkdude/quickblog/pull/75): Omit preview posts from

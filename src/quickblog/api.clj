@@ -47,6 +47,12 @@
       :ref "<handle>"
       :group :optional-metadata}
 
+     :page-suffix
+     {:desc "Suffix to use for page links (default .html)"
+      :ref "<suffix>"
+      :default ".html"
+      :group :optional-metadata}
+
      ;; Post config
      :default-metadata
      {:desc "Default metadata to add to posts"
@@ -289,15 +295,15 @@
 
 ;;;; Generate index page with last `num-index-posts` posts
 
-(defn- index [{:keys [posts] :as opts}]
+(defn- index [{:keys [posts page-suffix] :as opts}]
   (let [posts (for [{:keys [file html] :as post} posts
                     :let [preview (first (str/split @html #"<!-- end-of-preview -->" 2))]]
                 (assoc post
-                       :post-link (str/replace file ".md" ".html")
+                       :post-link (str/replace file ".md" page-suffix)
                        :body preview
                        :truncated (not= preview @html)))
         index-template (lib/ensure-template opts "index.html")]
-    (selmer/render (slurp index-template) {:posts posts})))
+    (selmer/render (slurp index-template) (merge opts {:posts posts}))))
 
 (defn- spit-index
   [{:keys [blog-title blog-description blog-image blog-image-alt twitter-handle
@@ -373,7 +379,7 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [blog-title blog-author blog-root] :as opts} posts]
+  [{:keys [blog-title blog-author blog-root page-suffix] :as opts} posts]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
@@ -386,7 +392,7 @@
          [::atom/name blog-author]]
         (for [{:keys [title date file preview html]} posts
               :when (not preview)
-              :let [html-file (str/replace file ".md" ".html")
+              :let [html-file (str/replace file ".md" page-suffix)
                     link (lib/blog-link opts html-file)]]
           [::atom/entry
            [::atom/id link]

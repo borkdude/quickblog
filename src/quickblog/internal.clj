@@ -363,11 +363,11 @@
         slurp
         (selmer/render opts))))
 
-(defn post-links [title posts {:keys [relative-path] :as opts}]
+(defn post-links [title posts {:keys [relative-path page-suffix] :as opts}]
   (let [post-links-template (ensure-template opts "post-links.html")
         post-links (for [{:keys [file title date preview]} posts
                          :when (not preview)]
-                     {:url (str relative-path (str/replace file ".md" ".html"))
+                     {:url (str relative-path (str/replace file ".md" page-suffix))
                       :title title
                       :date date})]
     (selmer/render (slurp post-links-template) {:title title
@@ -375,7 +375,7 @@
 
 (defn tag-links [title tags opts]
   (let [tags-template (ensure-template opts "tags.html")
-        tags (map (fn [[tag posts]] {:url (str (escape-tag tag) ".html")
+        tags (map (fn [[tag posts]] {:url (str (escape-tag tag) (:page-suffix opts))
                                      :tag tag
                                      :count (count posts)}) tags)]
     (selmer/render (slurp tags-template) {:title title
@@ -390,13 +390,14 @@
 (defn write-post! [{:keys [twitter-handle
                            discuss-link
                            out-dir
+                           page-suffix
                            page-template
                            post-template]
                     :as opts}
                    {:keys [file html description image image-alt]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
-        post-metadata (merge {:discuss discuss-link} (assoc post-metadata :body @html))
+        post-metadata (merge {:discuss discuss-link :page-suffix page-suffix} (assoc post-metadata :body @html))
         body (selmer/render post-template post-metadata)
         author (-> (:twitter-handle post-metadata) (or twitter-handle))
         image (when image (if (re-matches #"^https?://.+" image)

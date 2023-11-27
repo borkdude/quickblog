@@ -14,7 +14,7 @@
                 Tagged:
                 {% for tag in post.tags %}
                     <span class="tag">
-                        <a href="tags/{{tag|escape-tag}}.html">{{tag}}</a>
+                        <a href="tags/{{tag|escape-tag}}{{page-suffix}}">{{tag}}</a>
                     </span>
                 {% endfor %}
             </i></p>
