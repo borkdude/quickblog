@@ -23,6 +23,10 @@ Instances of quickblog can be seen here:
 - [Henry Widd's blog](https://widdindustries.com/blog)
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
+### Articles about quickblog
+
+- [Quickblog by Anders Means Different](https://www.eknert.com/blog/quickblog)
+
 Feel free to PR yours.
 
 ## Quickstart
