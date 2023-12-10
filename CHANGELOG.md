@@ -17,6 +17,7 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- [#80](https://github.com/borkdude/quickblog/issues/80): Generate an `about.html` when a template exists
 - [#78](https://github.com/borkdude/quickblog/issues/78): Allow configurable :page-suffix to omit `.html` from page links
 - [#76](https://github.com/borkdude/quickblog/pull/76): Remove livejs script tag
   on render. ([@jmglov](https://github.com/jmglov))

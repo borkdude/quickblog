@@ -335,6 +335,32 @@
                                     :image-alt blog-image-alt
                                     :url (lib/blog-link opts "index.html")}})))))
 
+;;;; Generate about page if template exists
+(defn- about [{:keys [templates-dir] :as opts}]
+  (selmer/render (slurp (fs/file templates-dir "about.html")) opts))
+
+(defn- spit-about [{:keys [blog-title blog-description
+                           blog-image blog-image-alt twitter-handle
+                           modified-metadata out-dir]
+                    :as opts}]
+  (let [out-file (fs/file out-dir "about.html")
+        stale? (or (some not-empty (vals modified-metadata))
+                   (not (fs/exists? out-file)))]
+    (when stale?
+      (let [title (str blog-title " - About")]
+        (lib/write-page! opts out-file
+                         (base-html opts)
+                         {:skip-archive true
+                          :title title
+                          :body (about opts)
+                          :sharing {:description (format "About - %s"
+                                                         blog-description)
+                                    :author twitter-handle
+                                    :twitter-handle twitter-handle
+                                    :image (lib/blog-link opts blog-image)
+                                    :image-alt blog-image-alt
+                                    :url (lib/blog-link opts "about.html")}})))))
+
 ;;;; Generate archive page with links to all posts
 
 (defn- spit-archive [{:keys [blog-title blog-description
@@ -462,6 +488,8 @@
         (gen-posts opts)
         (gen-tags opts)
         (spit-archive opts)
+        (when (fs/exists? (fs/file templates-dir "about.html"))
+          (spit-about opts))
         (spit-index opts)
         (spit-feeds opts)
         (lib/write-cache! opts)))
