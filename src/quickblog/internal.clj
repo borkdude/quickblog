@@ -139,6 +139,7 @@
     (-> markdown
         pre-process-markdown
         (md/md-to-html-string-with-meta :reference-links? true
+                                        :heading-anchors true
                                         :code-style
                                         (fn [lang]
                                           (format "class=\"lang-%s\"" lang)))
