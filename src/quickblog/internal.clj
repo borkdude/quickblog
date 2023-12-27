@@ -212,7 +212,7 @@
 (defn ->filename [path]
   (-> path fs/file fs/file-name))
 
-(defn has-error? [opts [_ {:keys [quickblog/error]}]]
+(defn has-error? [_opts [_ {:keys [quickblog/error]}]]
   (when error
     (println error)
     true))
@@ -224,7 +224,7 @@
           modified-post-paths (if (empty? cached-posts)
                                 (set post-paths)
                                 (set (fs/modified-since cache-file post-paths)))
-          cached-post-paths (set/difference post-paths modified-post-paths)]
+          _cached-post-paths (set/difference post-paths modified-post-paths)]
       (merge (->> cached-posts
                   (map (fn [[file post]]
                          [file (assoc post :html (read-cached-post opts file))]))
@@ -248,17 +248,17 @@
       {}
       (edn/read-string (slurp cache-file)))))
 
-(defn write-cache! [{:keys [cache-dir posts] :as opts}]
+(defn write-cache! [{:keys [cache-dir posts]}]
   (let [cache-file (fs/file cache-dir cache-filename)]
     (fs/create-dirs cache-dir)
     (spit cache-file (only-metadata posts))))
 
-(defn deleted-posts [{:keys [cached-posts posts] :as opts}]
+(defn deleted-posts [{:keys [cached-posts posts]}]
   (->> [cached-posts posts]
        (map (comp set keys))
        (apply set/difference)))
 
-(defn modified-metadata [{:keys [cached-posts posts] :as opts}]
+(defn modified-metadata [{:keys [cached-posts posts]}]
   (let [cached-posts (only-metadata cached-posts)
         posts (only-metadata posts)
         [cached current _] (data/diff cached-posts posts)]
@@ -278,8 +278,7 @@
        set))
 
 (defn modified-posts [{:keys [force-render out-dir posts posts-dir
-                              rendering-system-files]
-                       :as opts}]
+                              rendering-system-files]}]
   (->> posts
        (filter (fn [[file _]]
                  (let [out-file (fs/file out-dir (html-file file))
@@ -293,16 +292,13 @@
        (map first)
        set))
 
-(defn modified-tags [{:keys [modified-metadata] :as opts}]
+(defn modified-tags [{:keys [modified-metadata]}]
   (->> (vals modified-metadata)
        (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
        (apply set/union)))
 
-(defn refresh-cache [{:keys [force-render
-                             cache-dir
-                             cached-posts
-                             posts
-                             rendering-system-files]
+(defn refresh-cache [{:keys [cached-posts
+                             posts]
                       :as opts}]
   ;; watch mode manages caching manually, so if cached-posts and posts are
   ;; already set, use them as is

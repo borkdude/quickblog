@@ -8,7 +8,9 @@
   {% endif %}
 </h1>
 {{body | safe}}
+{% if discuss-link %}
 <p>Discuss this post <a href="{{discuss}}">here</a>.</p>
+{% endif %}
 <p><i>Published: {{date}}</i></p>
 {% if tags %}
 <p>

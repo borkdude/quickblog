@@ -49,7 +49,7 @@
         <div class="site-nav">
           <a class="page-link" href="{{relative-path | safe}}archive{{page-suffix}}">Archive</a>
           <a class="page-link" href="{{relative-path | safe}}tags/index.html">Tags</a>
-          <a class="page-link" href="{{discuss-link}}">Discuss</a>
+          {% if discuss-link %}<a class="page-link" href="{{discuss-link}}">Discuss</a>{% endif %}
 	  <a class="page-link" href="{{relative-path | safe}}atom.xml">
             Feed
           </a>
