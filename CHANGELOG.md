@@ -20,8 +20,8 @@ Instances of quickblog can be seen here:
 - [#86](https://github.com/borkdude/quickblog/issues/86): group archive page by year
 - [#85](https://github.com/borkdude/quickblog/issues/85): don't render discuss links when `:discuss-link` isn't set
 - [#84](https://github.com/borkdude/quickblog/issues/84): sort tags by post count
-- [#80](https://github.com/borkdude/quickblog/issues/80): Generate an `about.html` when a template exists
-- [#78](https://github.com/borkdude/quickblog/issues/78): Allow configurable :page-suffix to omit `.html` from page links
+- [#80](https://github.com/borkdude/quickblog/issues/80): Generate an `about.html` when a template exists ([@elken](https://github.com/elken))
+- [#78](https://github.com/borkdude/quickblog/issues/78): Allow configurable :page-suffix to omit `.html` from page links ([@anderseknert](https://github.com/anderseknert))
 - [#76](https://github.com/borkdude/quickblog/pull/76): Remove livejs script tag
   on render. ([@jmglov](https://github.com/jmglov))
 - [#75](https://github.com/borkdude/quickblog/pull/75): Omit preview posts from
