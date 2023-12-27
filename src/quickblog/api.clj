@@ -377,7 +377,7 @@
                          (base-html opts)
                          {:skip-archive true
                           :title title
-                          :body (lib/post-links "Archive" posts opts)
+                          :body (lib/archive-links "Archive" posts opts)
                           :sharing {:description (format "Archive - %s"
                                                          blog-description)
                                     :author twitter-handle

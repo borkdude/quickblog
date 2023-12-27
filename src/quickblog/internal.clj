@@ -360,6 +360,21 @@
         slurp
         (selmer/render opts))))
 
+(defn archive-links [title posts {:keys [relative-path page-suffix] :as opts}]
+  (let [post-links-template (ensure-template opts "archive.html")
+        post-links (for [{:keys [file title date preview]} posts
+                         :when (not preview)]
+                     {:url (str relative-path (str/replace file ".md" page-suffix))
+                      :title title
+                      :date date})
+        by-year (group-by #(subs (:date %) 0 4) post-links)
+        post-groups (for [[k v] by-year]
+                      {:year (str k)
+                       :post-links v})
+        post-groups (sort-by (comp parse-long :year) > post-groups)]
+    (selmer/render (slurp post-links-template) {:title title
+                                                :post-groups post-groups})))
+
 (defn post-links [title posts {:keys [relative-path page-suffix] :as opts}]
   (let [post-links-template (ensure-template opts "post-links.html")
         post-links (for [{:keys [file title date preview]} posts

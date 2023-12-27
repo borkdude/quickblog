@@ -1,0 +1,11 @@
+<div style="width: 600px">
+    <h1>{{title}}</h1>
+    {% for post-group in post-groups %}
+    <h2>{{post-group.year}}</h2>
+    <ul class="index">
+        {% for post-link in post-group.post-links %}
+            <li><span><a href="{{post-link.url}}">{{post-link.title}}</a> - {{post-link.date}}</span></li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+</div>
