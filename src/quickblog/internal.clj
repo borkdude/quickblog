@@ -356,7 +356,6 @@
                {})))
 
 (defn- load-favicon [{:keys [favicon
-                             favicon-dir
                              templates-dir]
                       :as opts}]
   (when favicon
@@ -381,7 +380,7 @@
                                      :tag tag
                                      :count (count posts)}) tags)]
     (selmer/render (slurp tags-template) {:title title
-                                          :tags tags})))
+                                          :tags (sort-by (comp - :count) tags)})))
 
 (defn render-page [opts template template-vars]
   (let [template-vars (merge opts template-vars)

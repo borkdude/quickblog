@@ -271,7 +271,7 @@
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)]
-    (when (or (not (empty? modified-tags))
+    (when (or (seq modified-tags)
               (not (fs/exists? tags-file)))
       (lib/write-page! opts tags-file template
                        {:skip-archive true
