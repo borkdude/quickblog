@@ -95,8 +95,8 @@
       (is (fs/exists? (fs/file out-dir "assets" "asset.txt")))
       (doseq [filename ["base.html" "post.html" "style.css"]]
         (is (fs/exists? (fs/file templates-dir filename))))
-      (is (fs/exists? (fs/file cache-dir "test.md.pre-template.html")))
-      (is (fs/exists? (fs/file cache-dir "preview.md.pre-template.html")))
+      (is (fs/exists? (fs/file cache-dir "prod" "test.md.pre-template.html")))
+      (is (fs/exists? (fs/file cache-dir "prod" "preview.md.pre-template.html")))
       (doseq [filename ["test.html" "preview.html" "index.html" "archive.html"
                         (fs/file "tags" "index.html")
                         (fs/file "tags" "clojure.html")

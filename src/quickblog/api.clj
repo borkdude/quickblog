@@ -187,10 +187,19 @@
            :assets-out-dir (out-dir-ify assets-out-dir)
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
+(defn update-cache-dir [opts]
+  (let [cache-dir (:cache-dir opts)
+        cache-dir (when cache-dir
+                    (if (:watch opts)
+                      (str (fs/file cache-dir "dev"))
+                      (str (fs/file cache-dir "prod"))))]
+    (assoc opts :cache-dir cache-dir)))
+
 (defn- update-opts [opts]
   (-> opts
       (update :rendering-system-files #(map fs/file (cons (:templates-dir opts) %)))
-      update-out-dirs))
+      update-out-dirs
+      update-cache-dir))
 
 (defn- get-defaults [metadata]
   (->> (get-in metadata [:org.babashka/cli :spec])
