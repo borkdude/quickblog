@@ -278,18 +278,14 @@
        set))
 
 (defn modified-posts [{:keys [force-render out-dir posts posts-dir
-                              rendering-system-files watch]}]
+                              rendering-system-files]}]
   (->> posts
        (filter (fn [[file _]]
                  (let [out-file (fs/file out-dir (html-file file))
                        post-file (fs/file posts-dir file)]
                    (or force-render
                        (rendering-modified? out-file
-                                            (cons post-file rendering-system-files))
-                       ;; watch mode adds a live reloading script, which should be
-                       ;; removed on subsequent renders
-                       (and (str/includes? (slurp out-file) live-reload-script)
-                            (not watch))))))
+                                            (cons post-file rendering-system-files))))))
        (map first)
        set))
 
