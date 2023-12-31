@@ -188,12 +188,14 @@
            :favicon-out-dir (out-dir-ify favicon-out-dir))))
 
 (defn update-cache-dir [opts]
-  (let [cache-dir (:cache-dir opts)
-        cache-dir (when cache-dir
-                    (if (:watch opts)
-                      (str (fs/file cache-dir "dev"))
-                      (str (fs/file cache-dir "prod"))))]
-    (assoc opts :cache-dir cache-dir)))
+  (if (:cache-dir-final opts)
+    opts
+    (let [cache-dir (:cache-dir opts)
+          cache-dir (when cache-dir
+                      (if (:watch opts)
+                        (str (fs/file cache-dir "dev"))
+                        (str (fs/file cache-dir "prod"))))]
+      (assoc opts :cache-dir cache-dir :cache-dir-final true))))
 
 (defn- update-opts [opts]
   (-> opts
@@ -612,9 +614,9 @@
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
          :as opts}
         (-> opts
-            apply-default-opts
             (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
                                   lib/live-reload-script))
+            apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
     (serve opts false)

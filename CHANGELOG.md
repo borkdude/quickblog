@@ -15,6 +15,10 @@ Instances of quickblog can be seen here:
 - [Henry Widd's blog](https://widdindustries.com/blog)
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
+## 0.3.6 (2031-12-31)
+
+- Fix caching (this is hard)
+
 ## 0.3.5 (2023-12-31)
 
 - Better caching when switching between watch and render
