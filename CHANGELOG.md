@@ -15,6 +15,10 @@ Instances of quickblog can be seen here:
 - [Henry Widd's blog](https://widdindustries.com/blog)
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
+## 0.3.4 (2023-12-31)
+
+- Fix caching in watch mode
+
 ## 0.3.3 (2023-12-27)
 
 - [#86](https://github.com/borkdude/quickblog/issues/86): group archive page by year
