@@ -169,7 +169,7 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
-   [quickblog.internal :as lib]
+   [quickblog.internal :as lib :refer [->map]]
    [selmer.parser :as selmer]
    [selmer.filters :as filters]))
 
@@ -519,7 +519,11 @@
   "Creates new `file` in posts dir."
   {:org.babashka/cli
    {:spec
-    {:file
+    {:date
+     {:desc "Date of post (default: today; example: --date 1970-01-01)"
+      :ref "<date>"}
+
+     :file
      {:desc "Filename of post (relative to posts-dir)"
       :ref "<filename>"
       :require true}
@@ -536,10 +540,15 @@
      :tags
      {:desc "List of tags (default: 'clojure'; example: --tags tag1 tag2 \"tag3 has spaces\")"
       :ref "<tags>"
-      :coerce []}}}}
+      :coerce []}
+
+     :template-file
+     {:desc "Filename of Selmer template to use for the new post (see Templates > New posts in README)"
+      :ref "<filename>"}}}}
   [opts]
-  (let [{:keys [file preview title posts-dir tags default-metadata]
+  (let [{:keys [date file tags template-file default-metadata posts-dir]
          :as opts} (apply-default-opts opts)
+        date (or date (now))
         tags (cond (empty? tags)   (:tags default-metadata)
                    (= tags [true]) [] ;; `--tags` without arguments
                    :else tags)]
@@ -549,12 +558,18 @@
                  file
                  (str file ".md"))
           post-file (fs/file posts-dir file)
-          preview-str (if preview "Preview: true\n" "")]
+          template (if template-file
+                     (slurp (fs/file template-file))
+                     (->> ["Title: {{title}}"
+                           "Date: {{date}}"
+                           "Tags: {{tags|join:\",\"}}"
+                           "{% if preview %}Preview: true\n{% endif %}"
+                           "Write a blog post here!"]
+                          (str/join "\n")))]
       (when-not (fs/exists? post-file)
         (fs/create-dirs posts-dir)
         (spit (fs/file posts-dir file)
-              (format "Title: %s\nDate: %s\nTags: %s\n%s\nWrite a blog post here!"
-                      title (now) (str/join "," tags) preview-str))))))
+              (selmer/render template (merge opts (->map file date tags))))))))
 
 (defn clean
   "Removes cache and output directories"

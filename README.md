@@ -242,6 +242,47 @@ this happens, you won't be able to use the new feature without making the same
 modifications to your local templates. The easiest way to do this is to run `bb
 quickblog refresh-templates`.
 
+### New posts
+
+In addition to the HTML templates above, you can also use a template for
+generating new posts. Assuming you have a template `new-post.md` that looks like
+this:
+
+``` markdown
+Title: {{title}}
+Date: {{date}}
+Tags: {{tags|join:\",\"}}
+Image: {% if image %}{{image}}{% else %}{{assets-dir}}/{{file|replace:.md:}}-preview.png{% endif %}
+Image-Alt: {{image-alt|default:FIXME}}
+Discuss: {{discuss|default:FIXME}}
+{% if preview %}Preview: true\n{% endif %}
+Write a blog post here!
+```
+
+you can generate a new post like this:
+
+``` text
+$ bb quickblog new --file "test.md" --title "Test" --preview --template-file new-post.md
+```
+
+And the resulting `posts/test.md` will look like this:
+
+``` markdown
+Title: Test
+Date: 2024-01-19
+Tags: clojure
+Image: assets/test-preview.png
+Image-Alt: FIXME
+Discuss: FIXME
+Preview: true
+
+Write a blog post here!
+```
+
+**It is not recommended to keep your new post template in your templates-dir, as
+any changes to the new post template will cause all of your existing posts to be
+re-rendered, which is probably not what you want!**
+
 ## Breaking changes
 
 ### posts.edn removed

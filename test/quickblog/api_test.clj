@@ -48,15 +48,59 @@
                               title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
-  (with-dirs [posts-dir]
-    (with-redefs [api/now (constantly "2022-01-02")]
+  (testing "happy path"
+    (with-dirs [posts-dir]
       (api/new {:posts-dir posts-dir
+                :date "1970-01-01"
                 :file "test.md"
                 :title "Test post"
                 :tags ["clojure" "some other tag"]})
       (let [post-file (fs/file posts-dir "test.md")]
         (is (fs/exists? post-file))
-        (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure,some other tag\n\nWrite a blog post here!"
+        (is (= "Title: Test post\nDate: 1970-01-01\nTags: clojure,some other tag\n\nWrite a blog post here!"
+               (slurp post-file))))))
+
+  (testing "defaults"
+    (with-dirs [posts-dir]
+      (with-redefs [api/now (constantly "2022-01-02")]
+        (api/new {:posts-dir posts-dir
+                  :file "test.md"
+                  :title "Test post"})
+        (let [post-file (fs/file posts-dir "test.md")]
+          (is (fs/exists? post-file))
+          (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"
+                 (slurp post-file)))))))
+
+  (testing "template"
+    (with-dirs [assets-dir posts-dir tmp-dir]
+      (write-test-file tmp-dir "new-post.md"
+                       (str/join "\n"
+                                 ["Title: {{title}}"
+                                  "Date: {{date}}"
+                                  "Tags: {{tags|join:\",\"}}"
+                                  "Image: {% if image %}{{image}}{% else %}{{assets-dir}}/{{file|replace:.md:.png}}{% endif %}"
+                                  "Image-Alt: {{image-alt|default:FIXME}}"
+                                  "Discuss: {{discuss|default:FIXME}}"
+                                  "{% if preview %}Preview: true\n{% endif %}"
+                                  "Write a blog post here!"]))
+      (api/new {:assets-dir assets-dir
+                :posts-dir posts-dir
+                :date "1970-01-01"
+                :file "test.md"
+                :title "Test post"
+                :tags ["clojure" "some other tag"]
+                :template-file (fs/file tmp-dir "new-post.md")})
+      (let [post-file (fs/file posts-dir "test.md")]
+        (is (fs/exists? post-file))
+        (is (= (str/join "\n"
+                         ["Title: Test post"
+                          "Date: 1970-01-01"
+                          "Tags: clojure,some other tag"
+                          (format "Image: %s/test.png" assets-dir)
+                          "Image-Alt: FIXME"
+                          "Discuss: FIXME"
+                          ""
+                          "Write a blog post here!"])
                (slurp post-file)))))))
 
 (deftest migrate
