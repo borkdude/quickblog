@@ -519,7 +519,11 @@
   "Creates new `file` in posts dir."
   {:org.babashka/cli
    {:spec
-    {:file
+    {:date
+     {:desc "Date of post (default: today; example: --date 1970-01-01)"
+      :ref "<date>"}
+
+     :file
      {:desc "Filename of post (relative to posts-dir)"
       :ref "<filename>"
       :require true}
@@ -538,8 +542,9 @@
       :ref "<tags>"
       :coerce []}}}}
   [opts]
-  (let [{:keys [file preview title posts-dir tags default-metadata]
+  (let [{:keys [date file preview title posts-dir tags default-metadata]
          :as opts} (apply-default-opts opts)
+        date (or date (now))
         tags (cond (empty? tags)   (:tags default-metadata)
                    (= tags [true]) [] ;; `--tags` without arguments
                    :else tags)]
@@ -554,7 +559,7 @@
         (fs/create-dirs posts-dir)
         (spit (fs/file posts-dir file)
               (format "Title: %s\nDate: %s\nTags: %s\n%s\nWrite a blog post here!"
-                      title (now) (str/join "," tags) preview-str))))))
+                      title date (str/join "," tags) preview-str))))))
 
 (defn clean
   "Removes cache and output directories"

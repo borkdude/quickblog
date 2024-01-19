@@ -48,16 +48,28 @@
                               title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
-  (with-dirs [posts-dir]
-    (with-redefs [api/now (constantly "2022-01-02")]
+  (testing "happy path"
+    (with-dirs [posts-dir]
       (api/new {:posts-dir posts-dir
+                :date "1970-01-01"
                 :file "test.md"
                 :title "Test post"
                 :tags ["clojure" "some other tag"]})
       (let [post-file (fs/file posts-dir "test.md")]
         (is (fs/exists? post-file))
-        (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure,some other tag\n\nWrite a blog post here!"
-               (slurp post-file)))))))
+        (is (= "Title: Test post\nDate: 1970-01-01\nTags: clojure,some other tag\n\nWrite a blog post here!"
+               (slurp post-file))))))
+
+  (testing "defaults"
+    (with-dirs [posts-dir]
+      (with-redefs [api/now (constantly "2022-01-02")]
+        (api/new {:posts-dir posts-dir
+                  :file "test.md"
+                  :title "Test post"})
+        (let [post-file (fs/file posts-dir "test.md")]
+          (is (fs/exists? post-file))
+          (is (= "Title: Test post\nDate: 2022-01-02\nTags: clojure\n\nWrite a blog post here!"
+                 (slurp post-file))))))))
 
 (deftest migrate
   (with-dirs [posts-dir]
