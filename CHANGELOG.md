@@ -15,6 +15,12 @@ Instances of quickblog can be seen here:
 - [Henry Widd's blog](https://widdindustries.com/blog)
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
+## Unreleased
+
+- Add `--date` to api/new. ([@jmglov](https://github.com/jmglov))
+- Support Selmer template for new posts in api/new; see [Templates > New
+  posts](README.md#new-posts) in README. ([@jmglov](https://github.com/jmglov))
+
 ## 0.3.6 (2031-12-31)
 
 - Fix caching (this is hard)
