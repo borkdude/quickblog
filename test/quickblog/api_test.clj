@@ -160,12 +160,14 @@
   (testing "with blank page suffix"
     (with-dirs [posts-dir
                 templates-dir
-                out-dir]
+                out-dir
+                cache-dir]
        (write-test-post posts-dir {:tags #{"foobar" "tag with spaces"}})
        (api/render {:page-suffix ""
                     :posts-dir posts-dir
                     :templates-dir templates-dir
-                    :out-dir out-dir})
+                    :out-dir out-dir
+                    :cache-dir cache-dir})
        (doseq [filename ["test.html" "index.html" "archive.html"
                          (fs/file "tags" "index.html")
                          (fs/file "tags" "tag-with-spaces.html")

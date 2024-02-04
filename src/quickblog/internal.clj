@@ -217,6 +217,42 @@
     (println error)
     true))
 
+(defn- delink-prev
+  "Make sure we don't have a chain of previous posts"
+  [post]
+  (update post :prev dissoc :prev))
+
+(defn link-posts-reduce-f [{:keys [posts prev] :as acc} post]
+  (let [cur (when prev
+              (-> prev (assoc :next post) delink-prev))
+        post' (if prev
+                (assoc post :prev prev)
+                post)
+        posts' (if cur
+                 (conj posts cur)
+                 posts)]
+    {:posts posts', :prev post'}))
+
+(defn link-posts
+  "For a map of files to posts, sorts them adds to each post a :prev key pointing
+   to the previous post and a :next key pointing to the next post, where previous
+   and next are defined by the order imposed by `sort-posts`."
+  [posts]
+  (->> (let [ps (->> posts
+                     vals
+                     remove-previews
+                     sort-posts
+                     reverse
+                     (reduce link-posts-reduce-f {:posts [], :prev nil}))]
+         (-> ps :posts (conj (-> ps :prev delink-prev))))
+       (map (fn [{:keys [file] :as post}]
+              [file post]))
+       (into {})
+       ;; We need to merge this with the original posts map because that
+       ;; map might contain preview posts, whereas the linking process
+       ;; intentionally skips preview posts in the ordering
+       (merge posts)))
+
 (defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
   (if (fs/exists? posts-dir)
     (let [cache-file (fs/file cache-dir cache-filename)
@@ -225,19 +261,20 @@
                                 (set post-paths)
                                 (set (fs/modified-since cache-file post-paths)))
           _cached-post-paths (set/difference post-paths modified-post-paths)]
-      (merge (->> cached-posts
-                  (map (fn [[file post]]
-                         [file (assoc post :html (read-cached-post opts file))]))
-                  (into {}))
-             (->> modified-post-paths
-                  (map (juxt ->filename (partial load-post opts)))
-                  (remove (partial has-error? opts))
-                  (into {}))))
+      (->> (merge (->> cached-posts
+                       (map (fn [[file post]]
+                              [file (assoc post :html (read-cached-post opts file))]))
+                       (into {}))
+                  (->> modified-post-paths
+                       (map (juxt ->filename (partial load-post opts)))
+                       (remove (partial has-error? opts))
+                       (into {})))
+           link-posts))
     {}))
 
 (defn only-metadata [posts]
   (->> posts
-       (map (fn [[file post]] [file (dissoc post :html)]))
+       (map (fn [[file post]] [file (dissoc post :html :prev :next)]))
        (into {})))
 
 (defn load-cache [{:keys [cache-dir rendering-system-files]}]
