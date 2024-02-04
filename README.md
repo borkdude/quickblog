@@ -217,6 +217,26 @@ Resources for understanding and testing social sharing:
 - [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/)
 - [Twitter Card Validator](https://cards-dev.twitter.com/validator)
 
+### Post links
+
+quickblog adds `prev` and `next` metadata to each post (where `prev` is the
+previous post and `next` is the next post in date order, oldest to newest). You
+can make use of these by adding something similar to this to your `post.html`
+template:
+
+``` html
+{% if any prev next %}
+  <div class="post-prev-next">
+{% if prev %}
+    <div>⏪ <a href="{{prev.file|replace:.md:.html}}">{{prev.title}}</a></div>
+{% endif %}
+{% if next %}
+    <div><a href="{{next.file|replace:.md:.html}}">{{next.title}}</a> ⏩</div>
+{% endif %}
+  </div>
+{% endif %}
+```
+
 ## Templates
 
 quickblog uses the following templates in site generation:
