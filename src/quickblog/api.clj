@@ -630,7 +630,9 @@
          :as opts}
         (-> opts
             (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
-                                  lib/live-reload-script))
+                                  lib/live-reload-script)
+                   ;; Include preview posts in post linking (prev and next)
+                   :include-preview-posts? true)
             apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
