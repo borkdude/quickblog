@@ -17,6 +17,7 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- Fix argument passing in test runner ([@jmglov](https://github.com/jmglov))
 - Add `--date` to api/new. ([@jmglov](https://github.com/jmglov))
 - Support Selmer template for new posts in api/new; see [Templates > New
   posts](README.md#new-posts) in README. ([@jmglov](https://github.com/jmglov))
