@@ -300,6 +300,46 @@
                    :out-dir out-dir})
       (is (not (str/includes? (slurp (fs/file out-dir "test.html")) lib/live-reload-script))))))
 
+(deftest link-posts
+  (testing "add prev and next posts to post metadata"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "post1.md", :title "post1", :date "2024-02-01"})
+      (write-test-post posts-dir {:file "post2.md", :title "post2", :date "2024-02-02"})
+      (write-test-post posts-dir {:file "post3.md", :title "post3", :date "2024-02-03"
+                                  :preview? true})
+      (write-test-post posts-dir {:file "post4.md", :title "post4", :date "2024-02-04"})
+      (fs/create-dirs templates-dir)
+      (spit (fs/file templates-dir "base.html")
+            "{{body | safe }}")
+      (spit (fs/file templates-dir "post.html")
+            (str "{% if prev %}prev: {{prev.title}}{% endif %}"
+                 "\n"
+                 "{% if next %}next: {{next.title}}{% endif %}"))
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (= (slurp (fs/file out-dir "post1.html"))
+             "\nnext: post2"))
+      (is (= (slurp (fs/file out-dir "post2.html"))
+             "prev: post1\nnext: post4"))
+      (is (= (slurp (fs/file out-dir "post3.html"))
+             "\n"))
+      (is (= (slurp (fs/file out-dir "post4.html"))
+             "prev: post2\n"))
+      (let [cache (lib/load-cache {:cache-dir cache-dir})]
+        (is (nil? (get-in cache ["post1.md" :prev])))
+        (is (= (get-in cache ["post1.md" :next :title "post2"])))
+        (is (= (get-in cache ["post2.md" :prev :title "post1"])))
+        (is (= (get-in cache ["post2.md" :next :title "post4"])))
+        (is (nil? (get-in cache ["post3.md" :prev])))
+        (is (nil? (get-in cache ["post3.md" :next])))
+        (is (= (get-in cache ["post4.md" :prev :title "post2"])))
+        (is (nil? (get-in cache ["post4.md" :next])))))))
+
 ;; disabled, flaky in CI, cc @jmglov
 #_(deftest caching
   (testing "assets"
