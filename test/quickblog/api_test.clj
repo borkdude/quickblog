@@ -310,9 +310,9 @@
                                  :templates-dir templates-dir
                                  :cache-dir cache-dir
                                  :out-dir out-dir})]
+        (Thread/sleep 500)
         (write-test-post posts-dir)
         (write-test-file assets-dir "asset.txt" "something")
-        (Thread/sleep 500)
         (render)
         (let [asset-file (fs/file out-dir "assets" "asset.txt")
               mtime (fs/last-modified-time asset-file)]
@@ -356,15 +356,23 @@
                                              (->mtimes (fs/file out-dir "tags")
                                                        ["clojure.html"]))]
           ;; Shouldn't rewrite anything when post unmodified
-          (Thread/sleep 500)
           (render)
           (doseq [[filename mtime] (merge content-cached clojure-metadata-cached)]
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
-          ;; Should rewrite everything when post modified
-          (write-test-post posts-dir)
-          (println "Posts:" (map str (fs/glob posts-dir "**")))
+          ;; Should rewrite all but metadata-cached files when post modified
           (Thread/sleep 500)
+          (write-test-post posts-dir)
+          (render)
+          (doseq [[filename mtime] content-cached]
+            (is (not= (map str [filename mtime])
+                      (map str [filename (fs/last-modified-time filename)]))))
+          (doseq [[filename mtime] clojure-metadata-cached]
+            (is (= (map str [filename mtime])
+                   (map str [filename (fs/last-modified-time filename)]))))
+          ;; Should rewrite everything when metadata modified
+          (Thread/sleep 500)
+          (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
             (is (not= (map str [filename mtime])
@@ -417,11 +425,11 @@
         (is (= #{"clojure1.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (Thread/sleep 500)
         (write-test-post posts-dir {:file "clojure2.md"
                                     :tags #{"clojure"}})
         (write-test-post posts-dir {:file "random2.md"
                                     :tags #{"something"}})
-        (Thread/sleep 500)
         (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
               _ (render)
               mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
@@ -437,7 +445,6 @@
                  "clojure2.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
-        (Thread/sleep 500)
         (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
               _ (render)
               mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
