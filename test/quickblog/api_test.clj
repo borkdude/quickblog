@@ -12,9 +12,9 @@
 
 (use-fixtures :each
   (fn [test-fn]
-    #_(with-out-str)
-    (test-fn)
-    (fs/delete-tree test-dir)))
+    (with-out-str
+      (test-fn)
+      (fs/delete-tree test-dir))))
 
 (defn- tmp-dir [dir-name]
   (fs/file test-dir
