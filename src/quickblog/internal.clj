@@ -273,15 +273,17 @@
        (map first)
        set))
 
-(defn modified-posts [{:keys [force-render out-dir posts posts-dir
-                              rendering-system-files]}]
+(defn modified-posts
+  [{:keys [force-render out-dir posts cached-posts posts-dir rendering-system-files]}]
   (->> posts
-       (filter (fn [[file _]]
+       (filter (fn [[file post]]
                  (let [out-file (fs/file out-dir (html-file file))
                        post-file (fs/file posts-dir file)]
                    (or force-render
                        (rendering-modified? out-file
-                                            (cons post-file rendering-system-files))))))
+                                            (cons post-file rendering-system-files))
+                       (not= (select-keys post [:prev :next])
+                             (select-keys (cached-posts file) [:prev :next]))))))
        (map first)
        set))
 
@@ -290,9 +292,38 @@
        (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
        (apply set/union)))
 
-(defn refresh-cache [{:keys [cached-posts
-                             posts]
-                      :as opts}]
+(defn assoc-prev-next
+  "If the `:link-prev-next-posts` opt is true, adds to each post a :prev key
+   pointing to the filename of the previous post by date and a :next key pointing
+   to the filename of the next post by date. Preview posts are skipped unless the
+  `:include-preview-posts-in-linking` is true."
+  [{:keys [posts link-prev-next-posts include-preview-posts-in-linking]
+    :as opts}]
+  (if link-prev-next-posts
+    (let [remove-preview-posts (if include-preview-posts-in-linking
+                                 identity
+                                 #(remove (comp :preview val) %))
+          post-keys (->> posts
+                         remove-preview-posts
+                         (sort-by (comp :date val))
+                         (mapv first))]
+      (assoc opts :posts
+             ;; We need to merge the linked posts on top of the original ones
+             ;; so that preview posts are still present even when they're
+             ;; excluded from linking
+             (merge posts
+                    (->> post-keys
+                         (map-indexed
+                          (fn [i k]
+                            [k (assoc (posts k)
+                                      :prev (when (pos? i)
+                                              (post-keys (dec i)))
+                                      :next (when (< i (dec (count post-keys)))
+                                              (post-keys (inc i))))]))
+                         (into {})))))
+    opts))
+
+(defn refresh-cache [{:keys [cached-posts posts] :as opts}]
   ;; watch mode manages caching manually, so if cached-posts and posts are
   ;; already set, use them as is
   (let [cached-posts (if cached-posts
@@ -303,6 +334,7 @@
                 posts
                 (load-posts opts))
         opts (assoc opts :posts posts)
+        opts (assoc-prev-next opts)
         opts (assoc opts
                     :modified-metadata (modified-metadata opts))]
     (assoc opts
@@ -397,12 +429,19 @@
                            out-dir
                            page-suffix
                            page-template
-                           post-template]
+                           post-template
+                           link-prev-next-posts
+                           post-order
+                           posts]
                     :as opts}
-                   {:keys [file html description image image-alt]
+                   {:keys [file html description image image-alt prev next]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
-        post-metadata (merge {:discuss discuss-link :page-suffix page-suffix} (assoc post-metadata :body @html))
+        post-metadata (merge {:discuss discuss-link :page-suffix page-suffix}
+                             (assoc post-metadata :body @html)
+                             (when link-prev-next-posts
+                               {:next (posts next)
+                                :prev (posts prev)}))
         body (selmer/render post-template post-metadata)
         author (-> (:twitter-handle post-metadata) (or twitter-handle))
         image (when image (if (re-matches #"^https?://.+" image)
