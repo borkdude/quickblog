@@ -12,9 +12,9 @@
 
 (use-fixtures :each
   (fn [test-fn]
-    (with-out-str
-      (test-fn)
-      (fs/delete-tree test-dir))))
+    #_(with-out-str)
+    (test-fn)
+    (fs/delete-tree test-dir)))
 
 (defn- tmp-dir [dir-name]
   (fs/file test-dir
@@ -373,6 +373,7 @@
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite everything when metadata modified
           (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
+          (println "Posts:" (map str (fs/glob posts-dir "**")))
           (Thread/sleep 500)
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
