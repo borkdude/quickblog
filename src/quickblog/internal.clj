@@ -31,12 +31,8 @@
   (zipmap (map keyword ks)
           ks))
 
-;; Cons-ing *file* directly in `rendering-modified?` doesn't work for some reason
-(def ^:private this-file (fs/file *file*))
-
 (defn rendering-modified? [target-file rendering-system-files]
-  (let [rendering-system-files (cons this-file rendering-system-files)]
-    (seq (fs/modified-since target-file rendering-system-files))))
+  (seq (fs/modified-since target-file rendering-system-files)))
 
 (defn copy-modified [src target]
   (when (seq (fs/modified-since target src))

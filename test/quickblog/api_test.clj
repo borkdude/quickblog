@@ -298,8 +298,7 @@
                    :out-dir out-dir})
       (is (not (str/includes? (slurp (fs/file out-dir "test.html")) lib/live-reload-script))))))
 
-;; disabled, flaky in CI, cc @jmglov
-#_(deftest caching
+(deftest caching
   (testing "assets"
     (with-dirs [assets-dir
                 posts-dir
@@ -313,6 +312,7 @@
                                  :out-dir out-dir})]
         (write-test-post posts-dir)
         (write-test-file assets-dir "asset.txt" "something")
+        (Thread/sleep 500)
         (render)
         (let [asset-file (fs/file out-dir "assets" "asset.txt")
               mtime (fs/last-modified-time asset-file)]
@@ -332,8 +332,14 @@
       (let [render #(api/render {:posts-dir posts-dir
                                  :templates-dir templates-dir
                                  :cache-dir cache-dir
-                                 :out-dir out-dir})]
+                                 :out-dir out-dir})
+            cache-dir (fs/file cache-dir "prod")]
         (write-test-post posts-dir)
+        (render)
+        ;; We need to render again, since the first render will have written
+        ;; default templates for pages, post links, archive, and index after the
+        ;; post, which means the post will be considered modified relative to
+        ;; the templates dir
         (render)
         (let [->mtimes (fn [dir filenames]
                          (->> filenames
@@ -350,15 +356,16 @@
                                              (->mtimes (fs/file out-dir "tags")
                                                        ["clojure.html"]))]
           ;; Shouldn't rewrite anything when post unmodified
+          (Thread/sleep 500)
           (render)
           (doseq [[filename mtime] (merge content-cached clojure-metadata-cached)]
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite all but metadata-cached files when post modified
           (write-test-post posts-dir)
+          (Thread/sleep 500)
           (render)
-          ;; disabled, flaky, /cc @jmglov
-          #_(doseq [[filename mtime] content-cached]
+          (doseq [[filename mtime] content-cached]
             (is (not= (map str [filename mtime])
                       (map str [filename (fs/last-modified-time filename)]))))
           (doseq [[filename mtime] clojure-metadata-cached]
@@ -366,6 +373,7 @@
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite everything when metadata modified
           (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
+          (Thread/sleep 500)
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
             (is (not= (map str [filename mtime])
@@ -422,6 +430,7 @@
                                     :tags #{"clojure"}})
         (write-test-post posts-dir {:file "random2.md"
                                     :tags #{"something"}})
+        (Thread/sleep 500)
         (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
               _ (render)
               mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
@@ -437,6 +446,7 @@
                  "clojure2.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (Thread/sleep 500)
         (let [mtimes (->mtimes out-dir ["atom.xml" "planetclojure.xml"])
               _ (render)
               mtimes-after (->mtimes out-dir ["atom.xml" "planetclojure.xml"])]
