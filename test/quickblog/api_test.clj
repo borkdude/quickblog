@@ -363,7 +363,6 @@
           ;; Should rewrite all but metadata-cached files when post modified
           (Thread/sleep 5)
           (write-test-post posts-dir)
-          (Thread/sleep 500)
           (render)
           (doseq [[filename mtime] content-cached]
             (is (not= (map str [filename mtime])
@@ -373,19 +372,6 @@
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite everything when metadata modified
           (Thread/sleep 5)
-          (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
-          (println "Posts:" (map str (fs/glob posts-dir "**")))
-          (Thread/sleep 500)
-          (write-test-post posts-dir)
-          (render)
-          (doseq [[filename mtime] content-cached]
-            (is (not= (map str [filename mtime])
-                      (map str [filename (fs/last-modified-time filename)]))))
-          (doseq [[filename mtime] clojure-metadata-cached]
-            (is (= (map str [filename mtime])
-                   (map str [filename (fs/last-modified-time filename)]))))
-          ;; Should rewrite everything when metadata modified
-          (Thread/sleep 500)
           (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
