@@ -310,7 +310,7 @@
                                  :templates-dir templates-dir
                                  :cache-dir cache-dir
                                  :out-dir out-dir})]
-        (Thread/sleep 500)
+        (Thread/sleep 5)
         (write-test-post posts-dir)
         (write-test-file assets-dir "asset.txt" "something")
         (render)
@@ -361,7 +361,7 @@
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite all but metadata-cached files when post modified
-          (Thread/sleep 500)
+          (Thread/sleep 5)
           (write-test-post posts-dir)
           (render)
           (doseq [[filename mtime] content-cached]
@@ -371,7 +371,7 @@
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite everything when metadata modified
-          (Thread/sleep 500)
+          (Thread/sleep 5)
           (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
@@ -425,7 +425,7 @@
         (is (= #{"clojure1.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
-        (Thread/sleep 500)
+        (Thread/sleep 5)
         (write-test-post posts-dir {:file "clojure2.md"
                                     :tags #{"clojure"}})
         (write-test-post posts-dir {:file "random2.md"
