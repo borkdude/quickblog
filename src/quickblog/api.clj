@@ -324,6 +324,7 @@
   (let [index-posts #(->> (vals %)
                           lib/remove-previews
                           lib/sort-posts
+                          (map (partial lib/expand-prev-next-metadata opts))
                           (take num-index-posts))
         posts (index-posts posts)
         cached-posts (index-posts cached-posts)

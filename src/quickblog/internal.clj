@@ -292,6 +292,17 @@
        (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
        (apply set/union)))
 
+(defn expand-prev-next-metadata [{:keys [link-prev-next-posts posts] :as _opts}
+                                 {:keys [prev next] :as post}]
+  (if link-prev-next-posts
+    (let [posts (if (map? posts)
+                  posts
+                  (->> posts
+                       (map (fn [{:keys [file] :as post}] [file post]))
+                       (into {})))]
+      (merge post {:next (posts next), :prev (posts prev)}))
+    post))
+
 (defn assoc-prev-next
   "If the `:link-prev-next-posts` opt is true, adds to each post a :prev key
    pointing to the filename of the previous post by date and a :next key pointing
@@ -437,11 +448,9 @@
                    {:keys [file html description image image-alt prev next]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
-        post-metadata (merge {:discuss discuss-link :page-suffix page-suffix}
-                             (assoc post-metadata :body @html)
-                             (when link-prev-next-posts
-                               {:next (posts next)
-                                :prev (posts prev)}))
+        post-metadata (->> (assoc post-metadata :body @html)
+                           (merge {:discuss discuss-link :page-suffix page-suffix})
+                           (expand-prev-next-metadata opts))
         body (selmer/render post-template post-metadata)
         author (-> (:twitter-handle post-metadata) (or twitter-handle))
         image (when image (if (re-matches #"^https?://.+" image)

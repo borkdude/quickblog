@@ -585,6 +585,13 @@
                            (fs/create-dirs templates-dir)
                            (spit (fs/file templates-dir "base.html")
                                  "{{body | safe }}")
+                           (spit (fs/file templates-dir "index.html")
+                                 (str "{% for post in posts %}"
+                                      "{{post.title}}\n"
+                                      "{% if all forloop.last post.prev %}"
+                                      "prev: {{post.prev.title}}"
+                                      "{% endif %}"
+                                      "{% endfor %}"))
                            (spit (fs/file templates-dir "post.html")
                                  (str "{% if prev %}prev: {{prev.title}}{% endif %}"
                                       "\n"
@@ -602,7 +609,8 @@
                      :templates-dir templates-dir
                      :cache-dir cache-dir
                      :out-dir out-dir
-                     :link-prev-next-posts true})
+                     :link-prev-next-posts true
+                     :num-index-posts 2})
         (is (= (slurp (fs/file out-dir "post1.html"))
                "\nnext: post2"))
         (is (= (slurp (fs/file out-dir "post2.html"))
@@ -610,7 +618,9 @@
         (is (= (slurp (fs/file out-dir "post3.html"))
                "\n"))
         (is (= (slurp (fs/file out-dir "post4.html"))
-               "prev: post2\n"))))
+               "prev: post2\n"))
+        (is (= (slurp (fs/file out-dir "index.html"))
+               (str "post4\npost2\nprev: post1")))))
 
     (testing "include preview posts"
       (with-dirs [posts-dir
