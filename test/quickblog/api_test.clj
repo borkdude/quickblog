@@ -573,3 +573,74 @@
                     mtime (str (fs/last-modified-time file))]]
         (is (= [filename (mtimes filename)]
                [filename mtime]))))))
+
+(deftest link-prev-next-posts
+  (let [posts (->> (range 1 5)
+                   (map (fn [i]
+                          {:file (format "post%s.md" i)
+                           :title (format "post%s" i)
+                           :date (format "2024-02-0%s" i)
+                           :preview? (= 3 i)})))
+        write-templates! (fn [templates-dir]
+                           (fs/create-dirs templates-dir)
+                           (spit (fs/file templates-dir "base.html")
+                                 "{{body | safe }}")
+                           (spit (fs/file templates-dir "index.html")
+                                 (str "{% for post in posts %}"
+                                      "{{post.title}}\n"
+                                      "{% if all forloop.last post.prev %}"
+                                      "prev: {{post.prev.title}}"
+                                      "{% endif %}"
+                                      "{% endfor %}"))
+                           (spit (fs/file templates-dir "post.html")
+                                 (str "{% if prev %}prev: {{prev.title}}{% endif %}"
+                                      "\n"
+                                      "{% if next %}next: {{next.title}}{% endif %}")))]
+
+    (testing "add prev and next posts to post metadata"
+      (with-dirs [posts-dir
+                  templates-dir
+                  cache-dir
+                  out-dir]
+        (doseq [post posts]
+          (write-test-post posts-dir post))
+        (write-templates! templates-dir)
+        (api/render {:posts-dir posts-dir
+                     :templates-dir templates-dir
+                     :cache-dir cache-dir
+                     :out-dir out-dir
+                     :link-prev-next-posts true
+                     :num-index-posts 2})
+        (is (= (slurp (fs/file out-dir "post1.html"))
+               "\nnext: post2"))
+        (is (= (slurp (fs/file out-dir "post2.html"))
+               "prev: post1\nnext: post4"))
+        (is (= (slurp (fs/file out-dir "post3.html"))
+               "\n"))
+        (is (= (slurp (fs/file out-dir "post4.html"))
+               "prev: post2\n"))
+        (is (= (slurp (fs/file out-dir "index.html"))
+               (str "post4\npost2\nprev: post1")))))
+
+    (testing "include preview posts"
+      (with-dirs [posts-dir
+                  templates-dir
+                  cache-dir
+                  out-dir]
+        (doseq [post posts]
+          (write-test-post posts-dir post))
+        (write-templates! templates-dir)
+        (api/render {:posts-dir posts-dir
+                     :templates-dir templates-dir
+                     :cache-dir cache-dir
+                     :out-dir out-dir
+                     :link-prev-next-posts true
+                     :include-preview-posts-in-linking true})
+        (is (= (slurp (fs/file out-dir "post1.html"))
+               "\nnext: post2"))
+        (is (= (slurp (fs/file out-dir "post2.html"))
+               "prev: post1\nnext: post3"))
+        (is (= (slurp (fs/file out-dir "post3.html"))
+               "prev: post2\nnext: post4"))
+        (is (= (slurp (fs/file out-dir "post4.html"))
+               "prev: post3\n"))))))

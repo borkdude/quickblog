@@ -17,6 +17,8 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- Link to previous and next posts; see "Linking to previous and next posts" in
+  the README ([@jmglov](https://github.com/jmglov))
 - Fix flaky caching tests ([@jmglov](https://github.com/jmglov))
 - Fix argument passing in test runner ([@jmglov](https://github.com/jmglov))
 - Add `--date` to api/new. ([@jmglov](https://github.com/jmglov))
