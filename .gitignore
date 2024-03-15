@@ -24,3 +24,7 @@ classes
 /templates/
 /posts/
 .cache
+.clj-kondo
+.nrepl-port
+.direnv
+.envrc

@@ -139,7 +139,10 @@
                                         :footnotes? true
                                         :code-style
                                         (fn [lang]
-                                          (format "class=\"lang-%s\"" lang)))
+                                          (format "class=\"lang-%s language-%s\"" lang lang))
+                                        :pre-style
+                                        (fn [lang]
+                                          (format "class=\"language-%s\"" lang)))
         :html
         post-process-markdown)))
 
