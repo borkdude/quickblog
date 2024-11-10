@@ -24,6 +24,7 @@ Instances of quickblog can be seen here:
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 - [Kira McLean's programming blog](https://codewithkira.com) - ([source](https://github.com/kiramclean/kiramclean.github.io))
 - [Ed Porras' blog](https://digressed.net)
+- [Saket Patel](https://blog.saketpatel.me/)
 
 ### Articles about quickblog
 
