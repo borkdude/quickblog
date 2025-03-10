@@ -46,7 +46,7 @@ This example assumes a basic `bb.edn` like this:
 ``` clojure
 {:deps {io.github.borkdude/quickblog
         #_"You use the newest SHA here:"
-        {:git/sha "389833f393e04d4176ef3eaa5047fa307a5ff2e8"}}
+        {:git/sha "3a1d6aff07f692f6e62606317f3d9e981b1df702"}}
  :tasks
  {:requires ([quickblog.cli :as cli])
   :init (def opts {:blog-title "REPL adventures"
@@ -76,7 +76,7 @@ Default options can be configured in `:exec-args`.
 :quickblog
 {:deps {io.github.borkdude/quickblog
         #_"You use the newest SHA here:"
-        {:git/sha "389833f393e04d4176ef3eaa5047fa307a5ff2e8"}
+        {:git/sha "3a1d6aff07f692f6e62606317f3d9e981b1df702"}
         org.babashka/cli {:mvn/version "0.3.35"}}
  :main-opts ["-m" "babashka.cli.exec" "quickblog.cli" "run"]
  :exec-args {:blog-title "REPL adventures"
