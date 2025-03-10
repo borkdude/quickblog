@@ -25,8 +25,9 @@ Instances of quickblog can be seen here:
 - Support Selmer template for new posts in api/new; see [Templates > New
   posts](README.md#new-posts) in README. ([@jmglov](https://github.com/jmglov))
 - Add 'language-xxx' to pre/code blocks
+- Fix README.md with working version in quickstart example
 
-## 0.3.6 (2031-12-31)
+## 0.3.6 (2023-12-31)
 
 - Fix caching (this is hard)
 
