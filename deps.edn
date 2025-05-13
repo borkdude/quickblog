@@ -4,7 +4,9 @@
         org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}
         selmer/selmer {:mvn/version "1.12.53"}
-        markdown-clj/markdown-clj {:mvn/version "1.12.2"}
+        ;; markdown-clj/markdown-clj {:mvn/version "1.12.2"}
+        io.github.nextjournal/markdown {:local/root "/Users/borkdude/dev/markdown"}
+        #_{:mvn/version "0.6.157"}
         org.babashka/cli {:mvn/version "0.6.50"}
         org.babashka/http-server {:mvn/version "0.1.11"}
         babashka/babashka.pods {:git/url "https://github.com/babashka/pods"

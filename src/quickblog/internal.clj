@@ -7,7 +7,8 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [markdown.core :as md]
+   ;;[markdown.core :as md]
+   [nextjournal.markdown :as md]
    [selmer.parser :as selmer]))
 
 ;; Script used for live reloading in watch mode
