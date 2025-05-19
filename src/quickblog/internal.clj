@@ -149,7 +149,11 @@
                                  :html-inline (fn [_ {:keys [text]}]
                                                 (hiccup/raw text))
                                  :html-block (fn [_ {:keys [text]}]
-                                               (hiccup/raw text))))
+                                               (hiccup/raw text))
+                                 :code (fn [_ {:keys [language] :as m}]
+                                         [:pre
+                                          [:code {:class (str "language-" language)}
+                                           (-> m :content first :text)]])))
              (hiccup/html)
              str
              #_(md/md-to-html-string-with-meta :reference-links? true
