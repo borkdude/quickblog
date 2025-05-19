@@ -4,18 +4,17 @@
  :bbin/bin {quickblog {:ns-default quickblog.api}}
 
  :tasks
- {:requires ([babashka.fs :as fs]
-             [quickblog.cli :as cli])
+ {:requires ([babashka.fs :as fs])
   :init (do
           (def opts {:blog-title "REPL adventures"
                      :blog-description "A blog about blogging quickly"
                      :about-link "https://github.com/borkdude/quickblog"
                      :twitter-handle "quickblog"})
           (defn- run-command [cmd-name opts]
-            (apply cli/dispatch opts cmd-name *command-line-args*)))
+            (apply (requiring-resolve 'quickblog.cli/dispatch) opts cmd-name *command-line-args*)))
 
   quickblog {:doc "Start blogging quickly! Run `bb quickblog help` for details."
-             :task (cli/dispatch opts)}
+             :task ((requiring-resolve 'quickblog.cli/dispatch) opts)}
 
   new {:doc "Create new blog article"
        :task (run-command "new" opts)}
