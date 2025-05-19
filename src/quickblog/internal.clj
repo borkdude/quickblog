@@ -9,6 +9,7 @@
    [clojure.string :as str]
    ;;[markdown.core :as md]
    [nextjournal.markdown :as md]
+   [nextjournal.markdown.transform :as md.transform]
    [hiccup2.core :as hiccup]
    [quickblog.internal.frontmatter :as fm]
    [selmer.parser :as selmer]))
@@ -118,19 +119,21 @@
         (into {})
         (merge default-metadata))))
 
-#_(defn pre-process-markdown [markdown]
-  (-> markdown
-      ;; allow multiline link title
-      (str/replace #"\[[^\]]+\n"
-                   (fn [match]
-                     (str/replace match "\n" "$$RET$$")))))
+(def RET "^RET^")
 
-#_(defn post-process-markdown [html]
-  (-> html
-      ;; restore comments
-      (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
-      ;; restore newline in multiline link titles
-      (str/replace "$$RET$$" "\n")))
+(defn pre-process-markdown [markdown]
+    (-> markdown
+        ;; allow multiline link title
+        (str/replace #"\[[^\]]+\n"
+                     (fn [match]
+                       (str/replace match "\n" RET)))))
+
+(defn post-process-markdown [html]
+    (-> html
+        #_;; restore comments
+        (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
+        ;; restore newline in multiline link titles
+        (str/replace RET "\n")))
 
 (defn markdown->html [file]
   (with-open [rdr (io/reader file)]
@@ -139,23 +142,27 @@
       (let [[_metadata n] (fm/parse-metadata-headers lines)
             lines (drop n lines)
             markdown-text (str/join \newline lines)]
-        (-> markdown-text
-            #_pre-process-markdown
-            #_(md/parse)
-            (md/->hiccup)
-            (hiccup/html)
-            str
-            #_(md/md-to-html-string-with-meta :reference-links? true
-                                              :heading-anchors true
-                                              :footnotes? true
-                                              :code-style
-                                              (fn [lang]
-                                                (format "class=\"lang-%s language-%s\"" lang lang))
-                                              :pre-style
-                                              (fn [lang]
-                                                (format "class=\"language-%s\"" lang)))
-            #_:html
-            #_post-process-markdown)))))
+        (->> markdown-text
+             pre-process-markdown
+             #_(md/parse)
+             (md/->hiccup (assoc md.transform/default-hiccup-renderers
+                                 :html-inline (fn [_ {:keys [text]}]
+                                                (hiccup/raw text))
+                                 :html-block (fn [_ {:keys [text]}]
+                                               (hiccup/raw text))))
+             (hiccup/html)
+             str
+             #_(md/md-to-html-string-with-meta :reference-links? true
+                                               :heading-anchors true
+                                               :footnotes? true
+                                               :code-style
+                                               (fn [lang]
+                                                 (format "class=\"lang-%s language-%s\"" lang lang))
+                                               :pre-style
+                                               (fn [lang]
+                                                 (format "class=\"language-%s\"" lang)))
+             #_:html
+             post-process-markdown)))))
 
 (defn remove-previews [posts]
   (->> posts
@@ -167,8 +174,8 @@
 
 (defn post-compare [a-post b-post]
   ;; Compare dates opposite the other values to force desending order
-    (compare [(:date b-post) (:title a-post) (:file a-post)]
-             [(:date a-post) (:title b-post) (:file b-post)]))
+  (compare [(:date b-post) (:title a-post) (:file a-post)]
+           [(:date a-post) (:title b-post) (:file b-post)]))
 
 (defn sort-posts [posts]
   (sort post-compare posts))
