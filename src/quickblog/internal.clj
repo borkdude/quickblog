@@ -7,10 +7,9 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   ;;[markdown.core :as md]
+   [hiccup2.core :as hiccup]
    [nextjournal.markdown :as md]
    [nextjournal.markdown.transform :as md.transform]
-   [hiccup2.core :as hiccup]
    [quickblog.internal.frontmatter :as fm]
    [selmer.parser :as selmer]))
 
