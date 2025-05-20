@@ -130,8 +130,6 @@
 
 (defn post-process-markdown [html]
     (-> html
-        #_;; restore comments
-        (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
         ;; restore newline in multiline link titles
         (str/replace RET "\n")))
 
@@ -149,23 +147,9 @@
                                  :html-inline (fn [_ {:keys [text]}]
                                                 (hiccup/raw text))
                                  :html-block (fn [_ {:keys [text]}]
-                                               (hiccup/raw text))
-                                 :code (fn [_ {:keys [language] :as m}]
-                                         [:pre
-                                          [:code {:class (str "language-" language)}
-                                           (-> m :content first :text)]])))
+                                               (hiccup/raw text))))
              (hiccup/html)
              str
-             #_(md/md-to-html-string-with-meta :reference-links? true
-                                               :heading-anchors true
-                                               :footnotes? true
-                                               :code-style
-                                               (fn [lang]
-                                                 (format "class=\"lang-%s language-%s\"" lang lang))
-                                               :pre-style
-                                               (fn [lang]
-                                                 (format "class=\"language-%s\"" lang)))
-             #_:html
              post-process-markdown)))))
 
 (defn remove-previews [posts]
