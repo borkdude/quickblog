@@ -290,10 +290,18 @@
        (map first)
        set))
 
-(defn modified-tags [{:keys [modified-metadata]}]
+(defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
   (->> (vals modified-metadata)
-       (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
-       (apply set/union)))
+       (mapcat (partial map (fn [[post opts]]
+                              (when (contains? opts :preview)
+                                post))))))
+
+(defn modified-tags [{:keys [posts modified-metadata modified-drafts]}]
+  (let [tags-from-modified-drafts (map :tags (vals (select-keys posts modified-drafts)))]
+    (->> (vals modified-metadata)
+         (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
+         (concat tags-from-modified-drafts)
+         (apply set/union))))
 
 (defn expand-prev-next-metadata [{:keys [link-prev-next-posts posts] :as _opts}
                                  {:keys [prev next] :as post}]
@@ -340,6 +348,7 @@
 (defn refresh-cache [{:keys [cached-posts posts] :as opts}]
   ;; watch mode manages caching manually, so if cached-posts and posts are
   ;; already set, use them as is
+  (prn :posts posts)
   (let [cached-posts (if cached-posts
                        cached-posts
                        (load-cache opts))
@@ -349,8 +358,9 @@
                 (load-posts opts))
         opts (assoc opts :posts posts)
         opts (assoc-prev-next opts)
-        opts (assoc opts
-                    :modified-metadata (modified-metadata opts))]
+        opts (assoc opts :modified-metadata (modified-metadata opts))
+        modified-drafts (distinct (posts-with-modified-draft-statuses opts))
+        opts (assoc opts :modified-drafts modified-drafts)]
     (assoc opts
            :deleted-posts (deleted-posts opts)
            :modified-posts (modified-posts opts)
@@ -443,12 +453,9 @@
                            out-dir
                            page-suffix
                            page-template
-                           post-template
-                           link-prev-next-posts
-                           post-order
-                           posts]
+                           post-template]
                     :as opts}
-                   {:keys [file html description image image-alt prev next]
+                   {:keys [file html description image image-alt]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
         post-metadata (->> (assoc post-metadata :body @html)
@@ -484,7 +491,7 @@
                   template
                   [tag posts]]
   (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
-    (when (or (modified-tags tag) (not (fs/exists? tag-filename)))
+    (when (or (contains? (set modified-tags) tag) (not (fs/exists? tag-filename)))
       (write-page! opts tag-filename template
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)

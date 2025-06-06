@@ -276,14 +276,15 @@
 
 (defn- gen-tags [{:keys [blog-title blog-description
                          blog-image blog-image-alt twitter-handle
-                         modified-tags posts out-dir tags-dir]
+                         modified-tags modified-drafts posts out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)]
     (when (or (seq modified-tags)
-              (not (fs/exists? tags-file)))
+              (not (fs/exists? tags-file))
+              modified-drafts)
       (lib/write-page! opts tags-file template
                        {:skip-archive true
                         :title (str blog-title " - Tags")
