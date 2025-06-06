@@ -1,0 +1,9 @@
+services:
+  nrepl:
+    build: .
+    ports:
+      - "7888:7888"
+      - "8078:8078"
+    volumes:
+      - .:/app
+    working_dir: /app

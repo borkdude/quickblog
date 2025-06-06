@@ -156,8 +156,8 @@
 
 (defn post-compare [a-post b-post]
   ;; Compare dates opposite the other values to force desending order
-    (compare [(:date b-post) (:title a-post) (:file a-post)]
-             [(:date a-post) (:title b-post) (:file b-post)]))
+  (compare [(:date b-post) (:title a-post) (:file a-post)]
+           [(:date a-post) (:title b-post) (:file b-post)]))
 
 (defn sort-posts [posts]
   (sort post-compare posts))
@@ -290,10 +290,23 @@
        (map first)
        set))
 
-(defn modified-tags [{:keys [modified-metadata]}]
-  (->> (vals modified-metadata)
-       (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
-       (apply set/union)))
+(defn modified-tags [{:keys [modified-metadata posts]}]
+  (let [;; Get tags from posts with any metadata changes
+        tags-from-diff (->> (vals modified-metadata)
+                            (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
+                            (apply set/union))
+        ;; Get ALL tags from posts that have preview changes
+        posts-with-preview-changes (->> (merge (:cached modified-metadata)
+                                               (:current modified-metadata))
+                                        (filter (fn [[file metadata]]
+                                                  (contains? metadata :preview)))
+                                        (map first)
+                                        set)
+        tags-from-preview-changes (->> posts-with-preview-changes
+                                       (map #(get-in posts [% :tags]))
+                                       (apply set/union))]
+    ;; Combine both sets of tags
+    (set/union tags-from-diff tags-from-preview-changes)))
 
 (defn expand-prev-next-metadata [{:keys [link-prev-next-posts posts] :as _opts}
                                  {:keys [prev next] :as post}]
