@@ -13,6 +13,50 @@
 ;; Script used for live reloading in watch mode
 (def live-reload-script "https://livejs.com/live.js")
 
+(set! *warn-on-reflection* true)
+
+(defn- last-modified-1
+  "Returns max last-modified of regular file f. Returns 0 if file does not exist."
+  ^java.nio.file.attribute.FileTime [f]
+  (if (fs/exists? f)
+    (fs/last-modified-time f)
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn max-filetime [filetimes]
+  (if (empty? filetimes)
+    (java.nio.file.attribute.FileTime/fromMillis 0)
+    (reduce #(if (pos? (.compareTo ^java.nio.file.attribute.FileTime %1 ^java.nio.file.attribute.FileTime %2))
+               %1 %2)
+            filetimes)))
+
+(defn- last-modified
+  "Returns max last-modified of f or of all files within f"
+  [f]
+  (if (fs/exists? f)
+    (if (fs/regular-file? f)
+      (last-modified-1 f)
+      (max-filetime
+             (map last-modified-1
+                  (filter fs/regular-file? (file-seq (fs/file f))))))
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn- expand-file-set
+  [file-set]
+  (if (coll? file-set)
+    (mapcat expand-file-set file-set)
+    (filter fs/regular-file? (file-seq (fs/file file-set)))))
+
+(defn modified-since
+  "Returns seq of regular files (non-directories, non-symlinks) from file-set that were modified since the anchor path.
+  The anchor path can be a regular file or directory, in which case
+  the recursive max last modified time stamp is used as the timestamp
+  to compare with.  The file-set may be a regular file, directory or
+  collection of files (e.g. returned by glob). Directories are
+  searched recursively."
+  [anchor file-set]
+  (let [lm (last-modified anchor)]
+    (map fs/path (filter #(pos? (.compareTo (last-modified-1 %) lm)) (expand-file-set file-set)))))
+
 (def ^:private cache-filename "cache.edn")
 (def ^:private resource-path "quickblog")
 (def ^:private templates-resource-dir "templates")
@@ -32,10 +76,10 @@
           ks))
 
 (defn rendering-modified? [target-file rendering-system-files]
-  (seq (fs/modified-since target-file rendering-system-files)))
+  (seq (modified-since target-file rendering-system-files)))
 
 (defn copy-modified [src target]
-  (when (seq (fs/modified-since target src))
+  (when (seq (modified-since target src))
     (println "Writing" (str target))
     (fs/create-dirs (.getParent (fs/file target)))
     (fs/copy src target {:replace-existing true})))
@@ -46,7 +90,7 @@
         num-dirs (->> src-dir .toPath .iterator iterator-seq count)
         from-src-dir (fn [path]
                        (->> path .iterator iterator-seq (drop num-dirs) (apply fs/file)))
-        modified-paths (fs/modified-since target-dir src-dir)
+        modified-paths (modified-since target-dir src-dir)
         new-paths (->> (fs/glob src-dir "**")
                        (remove #(fs/exists? (fs/file target-dir (from-src-dir %)))))]
     (doseq [path (concat modified-paths new-paths)
@@ -163,7 +207,7 @@
   (sort post-compare posts))
 
 (defn modified-since? [target src]
-  (seq (fs/modified-since target src)))
+  (seq (modified-since target src)))
 
 (defn validate-metadata [post]
   (if-let [missing-keys
@@ -219,50 +263,6 @@
 (defn debug [& xs]
   (binding [*out* *err*]
     (apply println xs)))
-
-(set! *warn-on-reflection* true)
-
-(defn- last-modified-1
-  "Returns max last-modified of regular file f. Returns 0 if file does not exist."
-  ^java.nio.file.attribute.FileTime [f]
-  (if (fs/exists? f)
-    (fs/last-modified-time f)
-    (java.nio.file.attribute.FileTime/fromMillis 0)))
-
-(defn max-filetime [filetimes]
-  (if (empty? filetimes)
-    (java.nio.file.attribute.FileTime/fromMillis 0)
-    (reduce #(if (pos? (.compareTo ^java.nio.file.attribute.FileTime %1 ^java.nio.file.attribute.FileTime %2))
-               %1 %2)
-            filetimes)))
-
-(defn- last-modified
-  "Returns max last-modified of f or of all files within f"
-  [f]
-  (if (fs/exists? f)
-    (if (fs/regular-file? f)
-      (last-modified-1 f)
-      (max-filetime
-             (map last-modified-1
-                  (filter fs/regular-file? (file-seq (fs/file f))))))
-    (java.nio.file.attribute.FileTime/fromMillis 0)))
-
-(defn- expand-file-set
-  [file-set]
-  (if (coll? file-set)
-    (mapcat expand-file-set file-set)
-    (filter fs/regular-file? (file-seq (fs/file file-set)))))
-
-(defn modified-since
-  "Returns seq of regular files (non-directories, non-symlinks) from file-set that were modified since the anchor path.
-  The anchor path can be a regular file or directory, in which case
-  the recursive max last modified time stamp is used as the timestamp
-  to compare with.  The file-set may be a regular file, directory or
-  collection of files (e.g. returned by glob). Directories are
-  searched recursively."
-  [anchor file-set]
-  (let [lm (last-modified anchor)]
-    (map fs/path (filter #(pos? (.compareTo (last-modified-1 %) lm)) (expand-file-set file-set)))))
 
 (defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
   (if (fs/exists? posts-dir)
