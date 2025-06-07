@@ -678,6 +678,7 @@
 
         ;; Change preview to true
         (testing "Tag pages regenerate when preview status changes"
+          (debug "==== writing post with preview, this should lead to the removal of tag files")
           (write-test-post (:posts-dir opts)
                            {:file "post1.md"
                             :title "Post 1"
@@ -688,6 +689,7 @@
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
+          (debug "==== did it?")
           (Thread/sleep 5)
           (debug "writing non preview post, tags files should re-occur!")
           (write-test-post (:posts-dir opts)
