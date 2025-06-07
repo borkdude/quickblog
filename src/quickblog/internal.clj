@@ -304,7 +304,7 @@
 (defn write-cache! [{:keys [cache-dir posts]}]
   (let [cache-file (fs/file cache-dir cache-filename)]
     (fs/create-dirs cache-dir)
-    (prn :writing-cache (only-metadata posts))
+    (debug :writing-cache (only-metadata posts))
     (spit cache-file (only-metadata posts))))
 
 (defn deleted-posts [{:keys [cached-posts posts]}]
