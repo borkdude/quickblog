@@ -307,6 +307,8 @@
         (debug "Writing tags and posts" tag-and-posts)
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
+      (debug :posts-by-tag posts-by-tag)
+      (debug :removed (remove posts-by-tag modified-tags))
       (doseq [tag (remove posts-by-tag modified-tags)
               :let [tag-filename (fs/file tags-out-dir (lib/tag-file tag))]]
         (debug "Deleting removed tag:" (str tag-filename))
