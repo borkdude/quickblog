@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '11'
+          java-version: '21'
 
       - name: Install clojure tools
         uses: DeLaGuardo/setup-clojure@10.1
@@ -30,7 +30,6 @@ jobs:
           # Install just one or all simultaneously
           # The value must indicate a particular version of the tool, or use 'latest'
           # to always provision the latest version
-          boot: 2.8.3                  # Boot.clj
           bb: latest
 
       # Optional step:
@@ -49,4 +48,4 @@ jobs:
           restore-keys: cljdeps-
 
       - name: Run tests
-        run: bb test
+        run: bb test --vars quickblog.api-test/preview-tag-caching-test

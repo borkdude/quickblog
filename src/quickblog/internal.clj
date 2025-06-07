@@ -13,6 +13,50 @@
 ;; Script used for live reloading in watch mode
 (def live-reload-script "https://livejs.com/live.js")
 
+(set! *warn-on-reflection* true)
+
+(defn- last-modified-1
+  "Returns max last-modified of regular file f. Returns 0 if file does not exist."
+  ^java.nio.file.attribute.FileTime [f]
+  (if (fs/exists? f)
+    (fs/last-modified-time f)
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn max-filetime [filetimes]
+  (if (empty? filetimes)
+    (java.nio.file.attribute.FileTime/fromMillis 0)
+    (reduce #(if (pos? (.compareTo ^java.nio.file.attribute.FileTime %1 ^java.nio.file.attribute.FileTime %2))
+               %1 %2)
+            filetimes)))
+
+(defn- last-modified
+  "Returns max last-modified of f or of all files within f"
+  [f]
+  (if (fs/exists? f)
+    (if (fs/regular-file? f)
+      (last-modified-1 f)
+      (max-filetime
+             (map last-modified-1
+                  (filter fs/regular-file? (file-seq (fs/file f))))))
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn- expand-file-set
+  [file-set]
+  (if (coll? file-set)
+    (mapcat expand-file-set file-set)
+    (filter fs/regular-file? (file-seq (fs/file file-set)))))
+
+(defn modified-since
+  "Returns seq of regular files (non-directories, non-symlinks) from file-set that were modified since the anchor path.
+  The anchor path can be a regular file or directory, in which case
+  the recursive max last modified time stamp is used as the timestamp
+  to compare with.  The file-set may be a regular file, directory or
+  collection of files (e.g. returned by glob). Directories are
+  searched recursively."
+  [anchor file-set]
+  (let [lm (last-modified anchor)]
+    (map fs/path (filter #(pos? (.compareTo (last-modified-1 %) lm)) (expand-file-set file-set)))))
+
 (def ^:private cache-filename "cache.edn")
 (def ^:private resource-path "quickblog")
 (def ^:private templates-resource-dir "templates")
@@ -32,10 +76,10 @@
           ks))
 
 (defn rendering-modified? [target-file rendering-system-files]
-  (seq (fs/modified-since target-file rendering-system-files)))
+  (seq (modified-since target-file rendering-system-files)))
 
 (defn copy-modified [src target]
-  (when (seq (fs/modified-since target src))
+  (when (seq (modified-since target src))
     (println "Writing" (str target))
     (fs/create-dirs (.getParent (fs/file target)))
     (fs/copy src target {:replace-existing true})))
@@ -45,8 +89,8 @@
         target-dir (fs/file target-dir)
         num-dirs (->> src-dir .toPath .iterator iterator-seq count)
         from-src-dir (fn [path]
-                       (->> path .iterator iterator-seq (drop num-dirs) (apply fs/file)))
-        modified-paths (fs/modified-since target-dir src-dir)
+                       (->> path seq (drop num-dirs) (apply fs/file)))
+        modified-paths (modified-since target-dir src-dir)
         new-paths (->> (fs/glob src-dir "**")
                        (remove #(fs/exists? (fs/file target-dir (from-src-dir %)))))]
     (doseq [path (concat modified-paths new-paths)
@@ -149,7 +193,7 @@
 (defn remove-previews [posts]
   (->> posts
        (remove (fn [{:keys [file preview]}]
-                 (let [preview? (Boolean/valueOf preview)]
+                 (let [preview? (when preview (parse-boolean preview))]
                    (when preview?
                      (println "Skipping preview post:" file)
                      true))))))
@@ -163,7 +207,7 @@
   (sort post-compare posts))
 
 (defn modified-since? [target src]
-  (seq (fs/modified-since target src)))
+  (seq (modified-since target src)))
 
 (defn validate-metadata [post]
   (if-let [missing-keys
@@ -216,13 +260,17 @@
     (println error)
     true))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
   (if (fs/exists? posts-dir)
     (let [cache-file (fs/file cache-dir cache-filename)
           post-paths (set (fs/glob posts-dir "*.md"))
           modified-post-paths (if (empty? cached-posts)
                                 (set post-paths)
-                                (set (fs/modified-since cache-file post-paths)))
+                                (set (modified-since cache-file post-paths)))
           _cached-post-paths (set/difference post-paths modified-post-paths)]
       (merge (->> cached-posts
                   (map (fn [[file post]]
@@ -290,10 +338,18 @@
        (map first)
        set))
 
-(defn modified-tags [{:keys [modified-metadata]}]
+(defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
   (->> (vals modified-metadata)
-       (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
-       (apply set/union)))
+       (mapcat (partial keep (fn [[post opts]]
+                               (when (contains? opts :preview)
+                                 post))))))
+
+(defn modified-tags [{:keys [posts modified-metadata modified-drafts]}]
+  (let [tags-from-modified-drafts (map :tags (vals (select-keys posts modified-drafts)))]
+    (->> (vals modified-metadata)
+         (mapcat (partial map (fn [[_ {:keys [tags]}]] tags)))
+         (concat tags-from-modified-drafts)
+         (apply set/union))))
 
 (defn expand-prev-next-metadata [{:keys [link-prev-next-posts posts] :as _opts}
                                  {:keys [prev next] :as post}]
@@ -349,8 +405,9 @@
                 (load-posts opts))
         opts (assoc opts :posts posts)
         opts (assoc-prev-next opts)
-        opts (assoc opts
-                    :modified-metadata (modified-metadata opts))]
+        opts (assoc opts :modified-metadata (modified-metadata opts))
+        modified-drafts (distinct (posts-with-modified-draft-statuses opts))
+        opts (assoc opts :modified-drafts modified-drafts)]
     (assoc opts
            :deleted-posts (deleted-posts opts)
            :modified-posts (modified-posts opts)
@@ -443,12 +500,9 @@
                            out-dir
                            page-suffix
                            page-template
-                           post-template
-                           link-prev-next-posts
-                           post-order
-                           posts]
+                           post-template]
                     :as opts}
-                   {:keys [file html description image image-alt prev next]
+                   {:keys [file html description image image-alt]
                     :as post-metadata}]
   (let [out-file (fs/file out-dir (html-file file))
         post-metadata (->> (assoc post-metadata :body @html)
@@ -484,7 +538,7 @@
                   template
                   [tag posts]]
   (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
-    (when (or (modified-tags tag) (not (fs/exists? tag-filename)))
+    (when (or (contains? (set modified-tags) tag) (not (fs/exists? tag-filename)))
       (write-page! opts tag-filename template
                    {:skip-archive true
                     :title (str blog-title " - Tag - " tag)
