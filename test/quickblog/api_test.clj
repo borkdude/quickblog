@@ -689,6 +689,9 @@ Tags: %s
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
+          (debug "==post==")
+          (debug (slurp (fs/file (:posts-dir opts) "post1.md")))
+          (debug "==END post==")
           (Thread/sleep 5)
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
