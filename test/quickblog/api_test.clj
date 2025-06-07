@@ -693,7 +693,7 @@ Tags: %s
           (debug "==post==")
           (debug (slurp (fs/file (:posts-dir opts) "post1.md")))
           (debug "==END post==")
-          (Thread/sleep 5)
+          (Thread/sleep 500)
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
