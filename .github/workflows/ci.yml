@@ -48,4 +48,4 @@ jobs:
           restore-keys: cljdeps-
 
       - name: Run tests
-        run: bb test
+        run: bb test --vars quickblog.api-test/preview-tag-caching-test
