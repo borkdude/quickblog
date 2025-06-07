@@ -26,8 +26,8 @@ Instances of quickblog can be seen here:
   posts](README.md#new-posts) in README. ([@jmglov](https://github.com/jmglov))
 - Add 'language-xxx' to pre/code blocks
 - Fix README.md with working version in quickstart example
-- Fix #104: fix caching with respect to previews
-- Fix #104: document `:preview` option
+- Fix [#104](https://github.com/borkdude/quickblog/issues/104): fix caching with respect to previews
+- Fix [#104](https://github.com/borkdude/quickblog/issues/104): document `:preview` option
 
 ## 0.3.6 (2023-12-31)
 
