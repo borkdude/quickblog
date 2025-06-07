@@ -644,3 +644,52 @@
                "prev: post2\nnext: post4"))
         (is (= (slurp (fs/file out-dir "post4.html"))
                "prev: post3\n"))))))
+
+(deftest preview-tag-caching
+  (testing "Tag pages are regenerated when preview status changes"
+    (with-dirs [tmp-dir cache-dir]
+      (let [opts {:blog-title "Test"
+                  :blog-author "Test Author"
+                  :blog-root "https://example.com"
+                  :blog-description "Test blog"
+                  :posts-dir (fs/file tmp-dir "posts")
+                  :out-dir (fs/file tmp-dir "out")
+                  :cache-dir cache-dir
+                  :force-render false}]
+        ;; Create a post with preview=false
+        (write-test-post (:posts-dir opts)
+                         {:file "post2.md"
+                          :title "Post 2"
+                          :date "2023-01-01"
+                          :tags #{"clojure"}
+                          :preview? false})
+        (write-test-post (:posts-dir opts)
+                         {:file "post1.md"
+                          :title "Post 1"
+                          :date "2023-01-01"
+                          :tags #{"clojure" "blog"}
+                          :preview? false})
+
+        ;; First render
+        (testing "Initial render creates tag pages"
+          (api/render opts)
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
+          (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
+            (is (str/includes? clojure-tag-content "Post 1")
+                "Non-preview post should appear in tag page")))
+
+        ;; Change preview to true
+        (testing "Tag pages regenerate when preview status changes"
+          (write-test-post (:posts-dir opts)
+                           {:file "post1.md"
+                            :title "Post 1"
+                            :date "2023-01-01"
+                            :tags #{"clojure" "blog"}
+                            :preview? true})
+          (api/render opts)
+          (debug (fs/list-dir (fs/file (:out-dir opts) "tags")))
+          (debug (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
+          (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
+            (is (not (str/includes? clojure-tag-content "Post 1"))
+                "Preview post should not appear in tag page")))))))
