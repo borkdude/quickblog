@@ -46,9 +46,13 @@
                     date "2022-01-02"
                     tags #{"clojure"}
                     content "Write a blog post here!"}}]
-   (let [preview-str (if preview? "Preview: true\n" "")]
+   (let [preview-str (if preview? "Preview: true" "")]
      (write-test-file posts-dir file
-                      (format "Title: %s\nDate: %s\nTags: %s\n%s\n%s"
+                      (format "Title: %s
+Date: %s
+Tags: %s
+%s
+%s"
                               title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
