@@ -89,7 +89,7 @@
         target-dir (fs/file target-dir)
         num-dirs (->> src-dir .toPath .iterator iterator-seq count)
         from-src-dir (fn [path]
-                       (->> path .iterator iterator-seq (drop num-dirs) (apply fs/file)))
+                       (->> path seq (drop num-dirs) (apply fs/file)))
         modified-paths (modified-since target-dir src-dir)
         new-paths (->> (fs/glob src-dir "**")
                        (remove #(fs/exists? (fs/file target-dir (from-src-dir %)))))]
@@ -193,7 +193,7 @@
 (defn remove-previews [posts]
   (->> posts
        (remove (fn [{:keys [file preview]}]
-                 (let [preview? (Boolean/valueOf preview)]
+                 (let [preview? (when preview (parse-boolean preview))]
                    (when preview?
                      (println "Skipping preview post:" file)
                      true))))))
