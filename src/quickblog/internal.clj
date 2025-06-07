@@ -290,11 +290,15 @@
        (map first)
        set))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
   (->> (vals modified-metadata)
-       (mapcat (partial map (fn [[post opts]]
-                              (when (contains? opts :preview)
-                                post))))))
+       (mapcat (partial keep (fn [[post opts]]
+                               (when (contains? opts :preview)
+                                 post))))))
 
 (defn modified-tags [{:keys [posts modified-metadata modified-drafts]}]
   (let [tags-from-modified-drafts (map :tags (vals (select-keys posts modified-drafts)))]

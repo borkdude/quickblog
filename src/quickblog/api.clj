@@ -274,6 +274,10 @@
       (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
       (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn- gen-tags [{:keys [blog-title blog-description
                          blog-image blog-image-alt twitter-handle
                          modified-tags modified-drafts posts out-dir tags-dir]
@@ -284,7 +288,7 @@
         template (base-html opts)]
     (when (or (seq modified-tags)
               (not (fs/exists? tags-file))
-              modified-drafts)
+              (seq modified-drafts))
       (lib/write-page! opts tags-file template
                        {:skip-archive true
                         :title (str blog-title " - Tags")
