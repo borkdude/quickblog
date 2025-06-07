@@ -308,6 +308,7 @@
 (defn modified-metadata [{:keys [cached-posts posts]}]
   (let [cached-posts (only-metadata cached-posts)
         posts (only-metadata posts)
+        _ (debug :post-meta posts)
         [cached current _] (data/diff cached-posts posts)]
     (->map cached current)))
 
