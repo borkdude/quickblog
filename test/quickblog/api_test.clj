@@ -35,7 +35,6 @@
   (fs/create-dirs dir)
   (let [f (fs/file dir filename)]
     (spit f content)
-    (Thread/sleep 1) ;; wait so time modified is significant in successive tests
     f))
 
 (defn- write-test-post
@@ -315,6 +314,7 @@
                                  :templates-dir templates-dir
                                  :cache-dir cache-dir
                                  :out-dir out-dir})]
+        (Thread/sleep 5)
         (write-test-post posts-dir)
         (write-test-file assets-dir "asset.txt" "something")
         (render)
@@ -365,6 +365,7 @@
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite all but metadata-cached files when post modified
+          (Thread/sleep 5)
           (write-test-post posts-dir)
           (render)
           (doseq [[filename mtime] content-cached]
@@ -374,6 +375,7 @@
             (is (= (map str [filename mtime])
                    (map str [filename (fs/last-modified-time filename)]))))
           ;; Should rewrite everything when metadata modified
+          (Thread/sleep 5)
           (write-test-post posts-dir {:title "Changed", :tags #{"not-clojure"}})
           (render)
           (doseq [[filename mtime] (merge content-cached metadata-cached)]
@@ -427,6 +429,7 @@
         (is (= #{"clojure1.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (Thread/sleep 5)
         (write-test-post posts-dir {:file "clojure2.md"
                                     :tags #{"clojure"}})
         (write-test-post posts-dir {:file "random2.md"
@@ -681,6 +684,7 @@
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
+          (Thread/sleep 1)
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
@@ -691,6 +695,7 @@
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? false})
+          (Thread/sleep 1)
           (api/render opts)
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
