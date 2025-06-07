@@ -538,6 +538,7 @@
                   template
                   [tag posts]]
   (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
+    (debug :writing-tag tag :modified (set modified-tags) :contains? (contains? (set modified-tags) tag))
     (when (or (contains? (set modified-tags) tag) (not (fs/exists? tag-filename)))
       (write-page! opts tag-filename template
                    {:skip-archive true
