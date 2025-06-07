@@ -678,13 +678,13 @@
 
         ;; Change preview to true
         (testing "Tag pages regenerate when preview status changes"
-          (Thread/sleep 5) ;; removing this causes the modified timestamp to not change because this runs too fast?
           (write-test-post (:posts-dir opts)
                            {:file "post1.md"
                             :title "Post 1"
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
+          (Thread/sleep 1)
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
@@ -695,6 +695,7 @@
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? false})
+          (Thread/sleep 1)
           (api/render opts)
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
