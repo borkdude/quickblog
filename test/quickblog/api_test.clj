@@ -52,6 +52,7 @@
 Date: %s
 Tags: %s
 %s
+
 %s"
                               title date (str/join "," tags) preview-str content)))))
 
