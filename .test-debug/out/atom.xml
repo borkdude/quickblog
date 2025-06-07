@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Test</title>
+  <link href="https://example.com/atom.xml" rel="self"/>
+  <link href="https://example.com"/>
+  <updated>2025-06-07T09:25:16+00:00</updated>
+  <id>https://example.com</id>
+  <author>
+    <name>Test Author</name>
+  </author>
+  <entry>
+    <id>https://example.com/post1.html</id>
+    <link href="https://example.com/post1.html"/>
+    <title>Post 1</title>
+    <updated>2023-01-01T23:59:59+00:00</updated>
+    <content type="html"><![CDATA[<p>Content</p>]]></content>
+  </entry>
+</feed>

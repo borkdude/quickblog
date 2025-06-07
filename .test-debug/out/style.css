@@ -1,0 +1,72 @@
+body {
+  /* borrowed from metaredux.com */
+  font: 400 16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+  margin: 0;
+  padding: 0;
+  color: rgb(51, 65, 85)
+}
+
+h1, h2, h3 {
+  font-weight: 800;
+}
+
+a {
+  color: rgb(51, 65, 85)
+}
+
+.wrapper {
+  max-width: 800px;
+  margin: 0 auto 0 auto;
+  padding: 0 15px;
+}
+
+h2 {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+p {
+  margin-top: 0.2em;
+}
+
+.site-header {
+  border-top: 2px solid #424242;
+  border-bottom: 1px solid #e8e8e8;
+  min-height: 55.95px;
+  position: relative;
+}
+
+.site-title {
+  margin: 0;
+}
+
+.site-nav {
+  float: right;
+  line-height: 4rem;
+}
+
+.site-nav .page-link:not(:last-child) {
+  margin-right: 20px;
+}
+
+.page-link {
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.page-icon {
+  vertical-align: middle;
+}
+
+ul.index {
+  list-style: none;
+  padding-left: 0;
+}
+
+.index li {
+  margin-bottom: 1em;
+}
+
+code {
+  white-space: pre;
+}

@@ -662,12 +662,6 @@
                   :force-render false}]
         ;; Create a post with preview=false
         (write-test-post (:posts-dir opts)
-                         {:file "post2.md"
-                          :title "Post 2"
-                          :date "2023-01-01"
-                          :tags #{"clojure"}
-                          :preview? false})
-        (write-test-post (:posts-dir opts)
                          {:file "post1.md"
                           :title "Post 1"
                           :date "2023-01-01"
