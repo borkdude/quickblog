@@ -339,6 +339,7 @@
        set))
 
 (defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
+  (debug :modified-metadata-for-modified-drafts modified-metadata)
   (->> (vals modified-metadata)
        (mapcat (partial keep (fn [[post opts]]
                                (when (contains? opts :preview)
