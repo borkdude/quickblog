@@ -271,6 +271,10 @@
           modified-post-paths (if (empty? cached-posts)
                                 (set post-paths)
                                 (set (modified-since cache-file post-paths)))
+          _ (debug :filetime-cache-file (fs/last-modified-time cache-file))
+          _ (debug :post-paths post-paths)
+          _ (debug :filetime-posts (map fs/last-modified-time post-paths))
+          _ (debug :modified-post-paths modified-post-paths)
           _cached-post-paths (set/difference post-paths modified-post-paths)]
       (merge (->> cached-posts
                   (map (fn [[file post]]
