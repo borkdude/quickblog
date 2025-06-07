@@ -286,6 +286,8 @@
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)]
+    (debug :modified-tags (seq modified-tags)
+           :modified-drafts (seq modified-drafts))
     (when (or (seq modified-tags)
               (not (fs/exists? tags-file))
               (seq modified-drafts))

@@ -688,7 +688,8 @@
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
-
+          (Thread/sleep 5)
+          (debug "writing non preview post, tags files should re-occur!")
           (write-test-post (:posts-dir opts)
                            {:file "post2.md"
                             :title "Post 2"
