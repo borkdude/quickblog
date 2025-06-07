@@ -698,6 +698,7 @@
           (Thread/sleep 5)
           (api/render opts)
           (Thread/sleep 5)
+          (debug (fs/list-dir (fs/file (:out-dir opts) "tags")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
           #_(is (not (str/includes? (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))

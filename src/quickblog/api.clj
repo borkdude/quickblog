@@ -302,12 +302,12 @@
                                   :image-alt blog-image-alt
                                   :url (lib/blog-link opts "tags/index.html")}})
       (doseq [tag-and-posts posts-by-tag]
-        (println "Writing tags and posts" tag-and-posts)
+        (debug "Writing tags and posts" tag-and-posts)
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
       (doseq [tag (remove posts-by-tag modified-tags)
               :let [tag-filename (fs/file tags-out-dir (lib/tag-file tag))]]
-        (println "Deleting removed tag:" (str tag-filename))
+        (debug "Deleting removed tag:" (str tag-filename))
         (fs/delete-if-exists tag-filename)))))
 
 ;;;; Generate index page with last `num-index-posts` posts
