@@ -514,7 +514,6 @@
           (spit-about opts))
         (spit-index opts)
         (spit-feeds opts)
-        (Thread/sleep 100)
         (lib/write-cache! opts)))
     opts))
 
