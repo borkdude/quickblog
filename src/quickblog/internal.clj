@@ -290,6 +290,10 @@
        (map first)
        set))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn modified-tags [{:keys [modified-metadata posts]}]
   (let [;; Get tags from posts with any metadata changes
         tags-from-diff (->> (vals modified-metadata)
@@ -298,13 +302,14 @@
         ;; Get ALL tags from posts that have preview changes
         posts-with-preview-changes (->> (merge (:cached modified-metadata)
                                                (:current modified-metadata))
-                                        (filter (fn [[file metadata]]
+                                        (filter (fn [[_file metadata]]
                                                   (contains? metadata :preview)))
                                         (map first)
                                         set)
         tags-from-preview-changes (->> posts-with-preview-changes
                                        (map #(get-in posts [% :tags]))
                                        (apply set/union))]
+    (debug :tags-from-preview-changes tags-from-preview-changes)
     ;; Combine both sets of tags
     (set/union tags-from-diff tags-from-preview-changes)))
 

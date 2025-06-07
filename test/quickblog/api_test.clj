@@ -16,6 +16,10 @@
       (test-fn)
       (fs/delete-tree test-dir))))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn- tmp-dir [dir-name]
   (fs/file test-dir
            (format "quickblog-test-%s-%s" dir-name (str (UUID/randomUUID)))))
@@ -611,16 +615,16 @@
                      :out-dir out-dir
                      :link-prev-next-posts true
                      :num-index-posts 2})
-        (is (= (slurp (fs/file out-dir "post1.html"))
-               "\nnext: post2"))
-        (is (= (slurp (fs/file out-dir "post2.html"))
-               "prev: post1\nnext: post4"))
-        (is (= (slurp (fs/file out-dir "post3.html"))
-               "\n"))
-        (is (= (slurp (fs/file out-dir "post4.html"))
-               "prev: post2\n"))
-        (is (= (slurp (fs/file out-dir "index.html"))
-               (str "post4\npost2\nprev: post1")))))
+        (is (= "\nnext: post2"
+               (slurp (fs/file out-dir "post1.html"))))
+        (is (= "prev: post1\nnext: post4"
+               (slurp (fs/file out-dir "post2.html"))))
+        (is (= "\n"
+               (slurp (fs/file out-dir "post3.html"))))
+        (is (= "prev: post2\n"
+               (slurp (fs/file out-dir "post4.html"))))
+        (is (= "post4\npost2\nprev: post1"
+               (slurp (fs/file out-dir "index.html"))))))
 
     (testing "include preview posts"
       (with-dirs [posts-dir
@@ -636,14 +640,14 @@
                      :out-dir out-dir
                      :link-prev-next-posts true
                      :include-preview-posts-in-linking true})
-        (is (= (slurp (fs/file out-dir "post1.html"))
-               "\nnext: post2"))
-        (is (= (slurp (fs/file out-dir "post2.html"))
-               "prev: post1\nnext: post3"))
-        (is (= (slurp (fs/file out-dir "post3.html"))
-               "prev: post2\nnext: post4"))
-        (is (= (slurp (fs/file out-dir "post4.html"))
-               "prev: post3\n"))))))
+        (is (= "\nnext: post2"
+               (slurp (fs/file out-dir "post1.html"))))
+        (is (= "prev: post1\nnext: post3"
+               (slurp (fs/file out-dir "post2.html"))))
+        (is (= "prev: post2\nnext: post4"
+               (slurp (fs/file out-dir "post3.html"))))
+        (is (= "prev: post3\n"
+               (slurp (fs/file out-dir "post4.html"))))))))
 
 (deftest preview-tag-caching
   (testing "Tag pages are regenerated when preview status changes"
@@ -657,6 +661,12 @@
                   :cache-dir cache-dir
                   :force-render false}]
         ;; Create a post with preview=false
+        (write-test-post (:posts-dir opts)
+                         {:file "post2.md"
+                          :title "Post 2"
+                          :date "2023-01-01"
+                          :tags #{"clojure"}
+                          :preview? false})
         (write-test-post (:posts-dir opts)
                          {:file "post1.md"
                           :title "Post 1"
@@ -682,6 +692,8 @@
                             :tags #{"clojure" "blog"}
                             :preview? true})
           (api/render opts)
+          (debug (fs/list-dir (fs/file (:out-dir opts) "tags")))
+          (debug (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
             (is (not (str/includes? clojure-tag-content "Post 1"))
                 "Preview post should not appear in tag page")))))))
