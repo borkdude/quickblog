@@ -683,39 +683,27 @@ Tags: %s
 
         ;; Change preview to true
         (testing "Tag pages regenerate when preview status changes"
-          (debug "==== writing post with preview, this should lead to the removal of tag files")
-          (Thread/sleep 500)
           (write-test-post (:posts-dir opts)
                            {:file "post1.md"
                             :title "Post 1"
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
-          (debug "==post==")
-          (debug (slurp (fs/file (:posts-dir opts) "post1.md")))
-          (debug "==END post==")
-          (Thread/sleep 500)
+          ;; issue with Windows file timestamps being the same when writing
+          ;; shortly after each other, perhaps some form of write caching?
+          (when (fs/windows?)
+            (Thread/sleep 500))
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
-          (debug "==== did it?")
-          (Thread/sleep 5)
-          (debug "writing non preview post, tags files should re-occur!")
           (write-test-post (:posts-dir opts)
                            {:file "post2.md"
                             :title "Post 2"
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? false})
-          (Thread/sleep 5)
           (api/render opts)
-          (Thread/sleep 5)
-          (debug (fs/list-dir (fs/file (:out-dir opts) "tags")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
-          #_(is (not (str/includes? (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))
-                                  "Post 1")))
-
-          #_(let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
-              (is (not (str/includes? clojure-tag-content "Post 1"))
-                  "Preview post should not appear in tag page")))))))
+          (is (not (str/includes? (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))
+                                  "Post 1"))))))))

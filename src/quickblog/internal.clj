@@ -271,13 +271,6 @@
           modified-post-paths (if (empty? cached-posts)
                                 (set post-paths)
                                 (set (modified-since cache-file post-paths)))
-          _ (when (fs/exists? cache-file)
-              (debug :cache-file (slurp cache-file))
-              (debug :filetime-cache-file (fs/last-modified-time cache-file)))
-          _ (debug :post-paths post-paths)
-          _ (debug :post-contents (map (comp slurp fs/file) post-paths))
-          _ (debug :filetime-posts (map fs/last-modified-time post-paths))
-          _ (debug :modified-post-paths modified-post-paths)
           _cached-post-paths (set/difference post-paths modified-post-paths)]
       (merge (->> cached-posts
                   (map (fn [[file post]]
@@ -305,7 +298,6 @@
 (defn write-cache! [{:keys [cache-dir posts]}]
   (let [cache-file (fs/file cache-dir cache-filename)]
     (fs/create-dirs cache-dir)
-    (debug :writing-cache (only-metadata posts))
     (spit cache-file (only-metadata posts))))
 
 (defn deleted-posts [{:keys [cached-posts posts]}]
@@ -316,7 +308,6 @@
 (defn modified-metadata [{:keys [cached-posts posts]}]
   (let [cached-posts (only-metadata cached-posts)
         posts (only-metadata posts)
-        _ (debug :post-meta posts)
         [cached current _] (data/diff cached-posts posts)]
     (->map cached current)))
 
@@ -348,7 +339,6 @@
        set))
 
 (defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
-  (debug :modified-metadata-for-modified-drafts modified-metadata)
   (->> (vals modified-metadata)
        (mapcat (partial keep (fn [[post opts]]
                                (when (contains? opts :preview)
@@ -548,7 +538,6 @@
                   template
                   [tag posts]]
   (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
-    (debug :writing-tag tag :modified (set modified-tags) :contains? (contains? (set modified-tags) tag))
     (when (or (contains? (set modified-tags) tag) (not (fs/exists? tag-filename)))
       (write-page! opts tag-filename template
                    {:skip-archive true
