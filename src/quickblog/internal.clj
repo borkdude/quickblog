@@ -309,7 +309,7 @@
         tags-from-preview-changes (->> posts-with-preview-changes
                                        (map #(get-in posts [% :tags]))
                                        (apply set/union))]
-    (debug :tags-from-preview-changes tags-from-preview-changes)
+    ;; (debug :tags-from-preview-changes tags-from-preview-changes)
     ;; Combine both sets of tags
     (set/union tags-from-diff tags-from-preview-changes)))
 

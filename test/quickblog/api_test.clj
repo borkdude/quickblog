@@ -692,8 +692,6 @@
                             :tags #{"clojure" "blog"}
                             :preview? true})
           (api/render opts)
-          (debug (fs/list-dir (fs/file (:out-dir opts) "tags")))
-          (debug (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
             (is (not (str/includes? clojure-tag-content "Post 1"))
                 "Preview post should not appear in tag page")))))))
