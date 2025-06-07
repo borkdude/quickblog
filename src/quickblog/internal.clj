@@ -275,6 +275,7 @@
               (debug :cache-file (slurp cache-file))
               (debug :filetime-cache-file (fs/last-modified-time cache-file)))
           _ (debug :post-paths post-paths)
+          _ (debug :post-contents (map slurp post-paths))
           _ (debug :filetime-posts (map fs/last-modified-time post-paths))
           _ (debug :modified-post-paths modified-post-paths)
           _cached-post-paths (set/difference post-paths modified-post-paths)]
