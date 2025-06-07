@@ -719,6 +719,7 @@ Tags: %s
       (debug state)
       (do
         (spit "a.txt" "hello")
+        (Thread/sleep 0 10000)
         (spit "b.txt" "hello")
         (if (= (fs/last-modified-time "a.txt")
                (fs/last-modified-time "b.txt"))
