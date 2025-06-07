@@ -715,11 +715,12 @@ Tags: %s
 (deftest flaky-windows-test
   (loop [state {:good 0 :bad 0}
          iters 0]
+    (Thread/sleep (long (rand-int 5)))
     (if (= 1000 iters)
       (debug state)
       (do
         (spit "a.txt" "hello")
-        (Thread/sleep 0 10000)
+        (Thread/sleep 1)
         (spit "b.txt" "hello")
         (if (= (fs/last-modified-time "a.txt")
                (fs/last-modified-time "b.txt"))
