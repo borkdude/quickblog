@@ -706,3 +706,22 @@ Tags: %s
           (Thread/sleep 5)
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))))))
+
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
+(require '[babashka.fs :as fs])
+(deftest flaky-windows-test
+  (loop [state {:good 0 :bad 0}
+         iters 0]
+    (if (= 1000 iters)
+      (debug state)
+      (do
+        (spit "a.txt" "hello")
+        (Thread/sleep 1)
+        (spit "b.txt" "hello")
+        (if (= (fs/last-modified-time "a.txt")
+               (fs/last-modified-time "b.txt"))
+          (recur (update state :bad inc) (inc iters))
+          (recur (update state :good inc) (inc iters)))))))
