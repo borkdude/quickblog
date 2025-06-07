@@ -684,6 +684,7 @@ Tags: %s
         ;; Change preview to true
         (testing "Tag pages regenerate when preview status changes"
           (debug "==== writing post with preview, this should lead to the removal of tag files")
+          (Thread/sleep 500)
           (write-test-post (:posts-dir opts)
                            {:file "post1.md"
                             :title "Post 1"
