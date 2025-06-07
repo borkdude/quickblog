@@ -46,9 +46,14 @@
                     date "2022-01-02"
                     tags #{"clojure"}
                     content "Write a blog post here!"}}]
-   (let [preview-str (if preview? "Preview: true\n" "")]
+   (let [preview-str (if preview? "Preview: true" "")]
      (write-test-file posts-dir file
-                      (format "Title: %s\nDate: %s\nTags: %s\n%s\n%s"
+                      (format "Title: %s
+Date: %s
+Tags: %s
+%s
+
+%s"
                               title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
@@ -649,7 +654,7 @@
         (is (= "prev: post3\n"
                (slurp (fs/file out-dir "post4.html"))))))))
 
-(deftest preview-tag-caching
+(deftest preview-tag-caching-test
   (testing "Tag pages are regenerated when preview status changes"
     (with-dirs [tmp-dir cache-dir]
       (let [opts {:blog-title "Test"
@@ -660,7 +665,6 @@
                   :out-dir (fs/file tmp-dir "out")
                   :cache-dir cache-dir
                   :force-render false}]
-        ;; Create a post with preview=false
         (write-test-post (:posts-dir opts)
                          {:file "post1.md"
                           :title "Post 1"
@@ -679,13 +683,26 @@
 
         ;; Change preview to true
         (testing "Tag pages regenerate when preview status changes"
+          (Thread/sleep 500)
           (write-test-post (:posts-dir opts)
                            {:file "post1.md"
                             :title "Post 1"
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
+          (Thread/sleep 500)
           (api/render opts)
-          (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
-            (is (not (str/includes? clojure-tag-content "Post 1"))
-                "Preview post should not appear in tag page")))))))
+          (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
+          (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
+          (Thread/sleep 5)
+          (write-test-post (:posts-dir opts)
+                           {:file "post2.md"
+                            :title "Post 2"
+                            :date "2023-01-01"
+                            :tags #{"clojure" "blog"}
+                            :preview? false})
+          (Thread/sleep 5)
+          (api/render opts)
+          (Thread/sleep 5)
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))))))

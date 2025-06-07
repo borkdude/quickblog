@@ -274,16 +274,21 @@
       (fs/delete-if-exists (fs/file cache-dir (lib/cache-file file)))
       (fs/delete-if-exists (fs/file out-dir (lib/html-file file))))))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
 (defn- gen-tags [{:keys [blog-title blog-description
                          blog-image blog-image-alt twitter-handle
-                         modified-tags posts out-dir tags-dir]
+                         modified-tags modified-drafts posts out-dir tags-dir]
                   :as opts}]
   (let [tags-out-dir (fs/create-dirs (fs/file out-dir tags-dir))
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)]
     (when (or (seq modified-tags)
-              (not (fs/exists? tags-file)))
+              (not (fs/exists? tags-file))
+              (seq modified-drafts))
       (lib/write-page! opts tags-file template
                        {:skip-archive true
                         :title (str blog-title " - Tags")
@@ -297,6 +302,7 @@
                                   :image-alt blog-image-alt
                                   :url (lib/blog-link opts "tags/index.html")}})
       (doseq [tag-and-posts posts-by-tag]
+        (println "Writing tags and posts" tag-and-posts)
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
       (doseq [tag (remove posts-by-tag modified-tags)
