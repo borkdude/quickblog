@@ -684,7 +684,7 @@
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? true})
-          (Thread/sleep 1)
+          (Thread/sleep 5)
           (api/render opts)
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
           (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
@@ -695,7 +695,7 @@
                             :date "2023-01-01"
                             :tags #{"clojure" "blog"}
                             :preview? false})
-          (Thread/sleep 1)
+          (Thread/sleep 5)
           (api/render opts)
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
