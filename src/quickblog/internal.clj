@@ -216,13 +216,61 @@
     (println error)
     true))
 
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
+
+(set! *warn-on-reflection* true)
+
+(defn- last-modified-1
+  "Returns max last-modified of regular file f. Returns 0 if file does not exist."
+  ^java.nio.file.attribute.FileTime [f]
+  (if (fs/exists? f)
+    (fs/last-modified-time f)
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn max-filetime [filetimes]
+  (if (empty? filetimes)
+    (java.nio.file.attribute.FileTime/fromMillis 0)
+    (reduce #(if (pos? (.compareTo ^java.nio.file.attribute.FileTime %1 ^java.nio.file.attribute.FileTime %2))
+               %1 %2)
+            filetimes)))
+
+(defn- last-modified
+  "Returns max last-modified of f or of all files within f"
+  [f]
+  (if (fs/exists? f)
+    (if (fs/regular-file? f)
+      (last-modified-1 f)
+      (max-filetime
+             (map last-modified-1
+                  (filter fs/regular-file? (file-seq (fs/file f))))))
+    (java.nio.file.attribute.FileTime/fromMillis 0)))
+
+(defn- expand-file-set
+  [file-set]
+  (if (coll? file-set)
+    (mapcat expand-file-set file-set)
+    (filter fs/regular-file? (file-seq (fs/file file-set)))))
+
+(defn modified-since
+  "Returns seq of regular files (non-directories, non-symlinks) from file-set that were modified since the anchor path.
+  The anchor path can be a regular file or directory, in which case
+  the recursive max last modified time stamp is used as the timestamp
+  to compare with.  The file-set may be a regular file, directory or
+  collection of files (e.g. returned by glob). Directories are
+  searched recursively."
+  [anchor file-set]
+  (let [lm (last-modified anchor)]
+    (map fs/path (filter #(pos? (.compareTo (last-modified-1 %) lm)) (expand-file-set file-set)))))
+
 (defn load-posts [{:keys [cache-dir cached-posts posts-dir] :as opts}]
   (if (fs/exists? posts-dir)
     (let [cache-file (fs/file cache-dir cache-filename)
           post-paths (set (fs/glob posts-dir "*.md"))
           modified-post-paths (if (empty? cached-posts)
                                 (set post-paths)
-                                (set (fs/modified-since cache-file post-paths)))
+                                (set (modified-since cache-file post-paths)))
           _cached-post-paths (set/difference post-paths modified-post-paths)]
       (merge (->> cached-posts
                   (map (fn [[file post]]
@@ -290,10 +338,6 @@
        (map first)
        set))
 
-(defn debug [& xs]
-  (binding [*out* *err*]
-    (apply println xs)))
-
 (defn posts-with-modified-draft-statuses [{:keys [modified-metadata]}]
   (->> (vals modified-metadata)
        (mapcat (partial keep (fn [[post opts]]
@@ -352,7 +396,6 @@
 (defn refresh-cache [{:keys [cached-posts posts] :as opts}]
   ;; watch mode manages caching manually, so if cached-posts and posts are
   ;; already set, use them as is
-  (prn :posts posts)
   (let [cached-posts (if cached-posts
                        cached-posts
                        (load-cache opts))
