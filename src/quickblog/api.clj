@@ -286,6 +286,8 @@
         posts-by-tag (lib/posts-by-tag posts)
         tags-file (fs/file tags-out-dir "index.html")
         template (base-html opts)]
+    (debug :modified-tags (seq modified-tags)
+           :modified-drafts (seq modified-drafts))
     (when (or (seq modified-tags)
               (not (fs/exists? tags-file))
               (seq modified-drafts))
@@ -302,12 +304,14 @@
                                   :image-alt blog-image-alt
                                   :url (lib/blog-link opts "tags/index.html")}})
       (doseq [tag-and-posts posts-by-tag]
-        (println "Writing tags and posts" tag-and-posts)
+        (debug "Writing tags and posts" tag-and-posts)
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
+      (debug :posts-by-tag posts-by-tag)
+      (debug :removed (remove posts-by-tag modified-tags))
       (doseq [tag (remove posts-by-tag modified-tags)
               :let [tag-filename (fs/file tags-out-dir (lib/tag-file tag))]]
-        (println "Deleting removed tag:" (str tag-filename))
+        (debug "Deleting removed tag:" (str tag-filename))
         (fs/delete-if-exists tag-filename)))))
 
 ;;;; Generate index page with last `num-index-posts` posts
