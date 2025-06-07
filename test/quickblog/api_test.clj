@@ -649,7 +649,7 @@
         (is (= "prev: post3\n"
                (slurp (fs/file out-dir "post4.html"))))))))
 
-(deftest preview-tag-caching
+(deftest preview-tag-caching-test
   (testing "Tag pages are regenerated when preview status changes"
     (with-dirs [tmp-dir cache-dir]
       (let [opts {:blog-title "Test"
@@ -697,6 +697,7 @@
                             :preview? false})
           (Thread/sleep 5)
           (api/render opts)
+          (Thread/sleep 5)
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
           (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
           #_(is (not (str/includes? (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))
