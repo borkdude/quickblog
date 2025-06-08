@@ -243,7 +243,7 @@
          :marker (nth match 2)
          :content (nth match 3)}))
 
-    ;; Ordered list item  
+    ;; Ordered list item
     (re-matches #"^\s*\d+\.\s+.*" line)
     (let [match (re-find #"^(\s*)(\d+)\.\s+(.*)" line)]
       (when match
@@ -276,13 +276,29 @@
       (when item-info
         (let [list-type (:type item-info)
               list-items (parse-list-items lines)
-              list-node (if (= list-type :ordered)
+              list-node (if (= :ordered list-type)
                           (make-node :ordered-list
                                      {:list-start (or (:start item-info) 1)
                                       :children list-items})
                           (make-node :bullet-list
                                      {:children list-items}))]
           list-node)))))
+
+(defn html-block-line?
+  "Check if a line starts an HTML block"
+  [line]
+  (and line
+       (or (re-matches #"^\s*</?[a-zA-Z][^>]*>\s*$" line) ; Simple tag on its own line
+           (re-matches #"^\s*<!--.*-->\s*$" line) ; HTML comment
+           (re-matches #"^\s*<!\[CDATA\[.*\]\]>\s*$" line) ; CDATA section
+           (re-matches #"^\s*<!DOCTYPE.*>\s*$" line)))) ; DOCTYPE
+
+(defn parse-html-block
+  "Parse HTML block content"
+  [lines]
+  (when (seq lines)
+    (let [content (str/join "\n" lines)]
+      (make-node :html-block {:literal content}))))
 
 ;; Main block parser
 (defn parse-blocks
@@ -590,7 +606,15 @@ Here's some Clojure code:
 
 ## Conclusion
 
-This parser demonstrates the **feasibility** of porting CommonMark to Clojure!"
+This parser demonstrates the **feasibility** of porting CommonMark to Clojure!
+
+<img src=\"foo.jpg\" />
+
+<a href=\"dude\">
+
+</a>
+
+Dude <a href=\"dude\"><a/> go"
 
         ast (parse demo-md)]
 
