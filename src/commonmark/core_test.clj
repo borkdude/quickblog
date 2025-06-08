@@ -23,24 +23,18 @@
       (is (some #(= :emph (:type %)) children)))))
 
 (deftest test-html-inline-parsing
-  ;; Note: HTML inline parsing is not yet implemented in the parser
-  ;; These tests are placeholders for future functionality
-  (testing "HTML inline tags (not yet implemented)"
+  (testing "HTML inline tags"
     (let [ast (cm/parse "This has <em>HTML</em> tags.")
           para (first (:children ast))
           children (:children para)]
-      ;; Currently treats HTML as plain text
-      (is (= 1 (count children)))
-      (is (= :text (:type (first children))))
-      (is (= "This has <em>HTML</em> tags." (:literal (first children))))))
+      (is (some #(= :html-inline (:type %)) children))))
 
-  (testing "Mixed HTML and markdown (HTML as text for now)"
+  (testing "Mixed HTML and markdown"
     (let [ast (cm/parse "Text with <strong>HTML strong</strong> and **markdown strong**.")
           para (first (:children ast))
           children (:children para)]
-      ;; Should find markdown strong but not HTML strong (treated as text)
-      (is (some #(= :strong (:type %)) children)) ; Markdown strong
-      (is (some #(str/includes? (:literal %) "<strong>") children))))) ; Markdown strong
+      (is (some #(= :html-inline (:type %)) children)) ; HTML tags
+      (is (some #(= :strong (:type %)) children))))) ; Markdown strong ; Markdown strong
 
 (deftest test-lists
   (testing "Unordered list"
@@ -116,12 +110,18 @@
       (is (str/includes? html "<strong>"))
       (is (str/includes? html "<em>"))))
 
-  (testing "HTML tags in text are preserved (not escaped)"
+  (testing "Render HTML inline nodes"
+    (let [ast (cm/parse "Text with <em>HTML</em> tags.")
+          html (cm/render-html ast)]
+      (is (str/includes? html "<em>"))
+      (is (str/includes? html "</em>"))))
+
+  (testing "Don't double-escape HTML nodes"
     (let [ast (cm/parse "Text with <strong>HTML strong</strong>.")
           html (cm/render-html ast)]
-      ;; Currently HTML tags in text are preserved as-is
-      (is (str/includes? html "<strong>HTML strong</strong>"))
-      (is (str/includes? html "<p>Text with <strong>HTML strong</strong>.</p>")))))
+      ;; Should preserve the HTML tags as-is
+      (is (str/includes? html "<strong>"))
+      (is (str/includes? html "</strong>")))))
 
 (deftest test-comprehensive-example
   (testing "Comprehensive document structure and HTML rendering"

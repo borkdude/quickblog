@@ -58,6 +58,12 @@
   {:type :strong
    :children []})
 
+(defn html-inline-node
+  "Create an HTML inline node with literal content"
+  [content]
+  {:type :html-inline
+   :literal content})
+
 ;; Node manipulation functions
 (defn append-child
   "Add a child node to a parent node"
@@ -92,21 +98,21 @@
 (defn parse-inline-complex
   "Parse text with mixed inline elements into AST nodes"
   [text]
-  ;; Handle strong emphasis first (highest precedence)
-  (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
-    (let [[full-match content] match
+  ;; Handle HTML inline tags first (highest precedence)
+  (if-let [match (re-find #"<[^>]+>" text)]
+    (let [full-match match ; re-find returns the string directly for simple regex
           idx (.indexOf text full-match)]
       (if (>= idx 0)
         (let [before (subs text 0 idx)
               after (subs text (+ idx (count full-match)))]
           (concat
            (if (not (str/blank? before)) (parse-inline-text before) [])
-           [{:type :strong :children [(text-node content)]}]
+           [(html-inline-node full-match)]
            (if (not (str/blank? after)) (parse-inline-text after) [])))
         [(text-node text)]))
 
-    ;; Handle emphasis
-    (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+    ;; Handle strong emphasis (**text**)
+    (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
       (let [[full-match content] match
             idx (.indexOf text full-match)]
         (if (>= idx 0)
@@ -114,37 +120,54 @@
                 after (subs text (+ idx (count full-match)))]
             (concat
              (if (not (str/blank? before)) (parse-inline-text before) [])
-             [{:type :emph :children [(text-node content)]}]
+             [{:type :strong :children [(text-node content)]}]
              (if (not (str/blank? after)) (parse-inline-text after) [])))
           [(text-node text)]))
 
-      ;; Handle links
-      (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
-        (let [[full-match link-text url] match
+      ;; Handle emphasis (*text*)
+      (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+        (let [[full-match content] match
               idx (.indexOf text full-match)]
           (if (>= idx 0)
             (let [before (subs text 0 idx)
                   after (subs text (+ idx (count full-match)))]
               (concat
                (if (not (str/blank? before)) (parse-inline-text before) [])
-               [{:type :link
-                 :destination url
-                 :children [(text-node link-text)]}]
+               [{:type :emph :children [(text-node content)]}]
                (if (not (str/blank? after)) (parse-inline-text after) [])))
             [(text-node text)]))
 
-        ;; Default case - no inline formatting found
-        [(text-node text)]))))
+        ;; Handle links ([text](url))
+        (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
+          (let [[full-match link-text url] match
+                idx (.indexOf text full-match)]
+            (if (>= idx 0)
+              (let [before (subs text 0 idx)
+                    after (subs text (+ idx (count full-match)))]
+                (concat
+                 (if (not (str/blank? before)) (parse-inline-text before) [])
+                 [{:type :link
+                   :destination url
+                   :children [(text-node link-text)]}]
+                 (if (not (str/blank? after)) (parse-inline-text after) [])))
+              [(text-node text)]))
+
+          ;; Default case - no inline formatting found
+          [(text-node text)])))))
 
  ;; Now define the actual function
 (defn parse-inline-text
-  "Parse inline markdown into AST nodes (emphasis, strong, links, text)"
+  "Parse inline markdown into AST nodes (emphasis, strong, links, HTML inline, text)"
   [text]
   (if (str/blank? text)
     []
     ;; Simple implementation: handle the first occurrence of each pattern
     (cond
-      ;; Handle strong emphasis first (**text**)
+      ;; Handle HTML inline tags first (highest precedence)
+      (re-find #"<[^>]+>" text)
+      (parse-inline-complex text)
+
+      ;; Handle strong emphasis (**text**)
       (re-find #"\*\*([^\*]+)\*\*" text)
       (parse-inline-complex text)
 
@@ -551,6 +574,10 @@
     :link
     (let [url (:destination node)]
       (str "<a href=\"" url "\">" (str/join "" (map render-node (:children node))) "</a>"))
+
+    :html-inline
+    ;; HTML inline nodes contain raw HTML that should be preserved
+    (:literal node)
 
     ;; Default fallback
     (str "<!-- Unknown node type: " (:type node) " -->")))
