@@ -837,4 +837,7 @@ Dude <a href=\"dude\"><a/> go"
    ```clojure
    Here!
    ```
-`"))
+`")
+  (parse "<!--more-->")
+  (parse "* `dude--dude`
+  whatever"))
