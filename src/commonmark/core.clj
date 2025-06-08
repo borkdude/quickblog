@@ -82,6 +82,11 @@
    :destination url
    :children [(text-node url)]})
 
+(defn thematic-break-node
+  "Create a thematic break (horizontal rule) node"
+  []
+  {:type :thematic-break})
+
 ;; Node manipulation functions
 (defn append-child
   "Add a child node to a parent node"
@@ -115,11 +120,11 @@
 
 (defn parse-inline-complex
   "Parse text with mixed inline elements into AST nodes"
-  [text]
+  [^String text]
   ;; Handle autolinks first (<url>)
   (if-let [match (re-find #"<(https?://[^>\s]+)>" text)]
     (let [[full-match url] match
-          idx (.indexOf text full-match)]
+          idx (.indexOf text ^String full-match)]
       (if (>= idx 0)
         (let [before (subs text 0 idx)
               after (subs text (+ idx (count full-match)))]
@@ -132,7 +137,7 @@
     ;; Handle HTML inline tags (after autolinks)
     (if-let [match (re-find #"<[^>]+>" text)]
       (let [full-match match ; re-find returns the string directly for simple regex
-            idx (.indexOf text full-match)]
+            idx (.indexOf text ^String full-match)]
         (if (>= idx 0)
           (let [before (subs text 0 idx)
                 after (subs text (+ idx (count full-match)))]
@@ -145,7 +150,7 @@
       ;; Handle inline code (`code`)
       (if-let [match (re-find #"`([^`]+)`" text)]
         (let [[full-match content] match
-              idx (.indexOf text full-match)]
+              idx (.indexOf text ^String full-match)]
           (if (>= idx 0)
             (let [before (subs text 0 idx)
                   after (subs text (+ idx (count full-match)))]
@@ -158,7 +163,7 @@
         ;; Handle strong emphasis (**text**)
         (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
           (let [[full-match content] match
-                idx (.indexOf text full-match)]
+                idx (.indexOf text ^String full-match)]
             (if (>= idx 0)
               (let [before (subs text 0 idx)
                     after (subs text (+ idx (count full-match)))]
@@ -171,7 +176,7 @@
           ;; Handle emphasis (*text*)
           (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
             (let [[full-match content] match
-                  idx (.indexOf text full-match)]
+                  idx (.indexOf text ^String full-match)]
               (if (>= idx 0)
                 (let [before (subs text 0 idx)
                       after (subs text (+ idx (count full-match)))]
@@ -184,7 +189,7 @@
             ;; Handle links ([text](url))
             (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
               (let [[full-match link-text url] match
-                    idx (.indexOf text full-match)]
+                    idx (.indexOf text ^String full-match)]
                 (if (>= idx 0)
                   (let [before (subs text 0 idx)
                         after (subs text (+ idx (count full-match)))]
@@ -202,7 +207,7 @@
  ;; Now define the actual function
 (defn parse-inline-text
   "Parse inline markdown into AST nodes (autolinks, HTML inline, code, emphasis, strong, links, text)"
-  [text]
+  [^String text]
   (if (str/blank? text)
     []
     ;; Simple implementation: handle the first occurrence of each pattern
@@ -301,11 +306,14 @@
       (make-node :code-block {:literal content :info info}))))
 
 (defn list-item-line?
-  "Check if a line is a list item (ordered or unordered)"
+  "Check if a line is a list item (ordered or unordered), but not a thematic break"
   [line]
   (and line
+       ;; First check it's not a thematic break
+       (not (thematic-break-line? line))
+       ;; Then check if it matches list patterns
        (or (re-matches #"^\s*[-*+]\s+.*" line) ; unordered list
-           (re-matches #"^\s*\d+\.\s+.*" line)))) ; ordered list
+           (re-matches #"^\s*\d+\.\s+.*" line))))
 
 (defn indented-content-line?
   "Check if a line is indented content (part of a list item)"
@@ -579,7 +587,17 @@
        (or (re-matches #"^\s*</?[a-zA-Z][^>]*>\s*$" line) ; Simple tag on its own line
            (re-matches #"^\s*<!--.*-->\s*$" line) ; HTML comment
            (re-matches #"^\s*<!\[CDATA\[.*\]\]>\s*$" line) ; CDATA section
-           (re-matches #"^\s*<!DOCTYPE.*>\s*$" line)))) ; DOCTYPE
+           (re-matches #"^\s*<!DOCTYPE.*>\s*$" line))))
+
+(defn thematic-break-line?
+  "Check if a line is a thematic break (horizontal rule)"
+  [line]
+  (and line
+       (let [trimmed (str/trim line)]
+         ;; Match lines with 3+ asterisks, hyphens, or underscores, optionally with spaces
+         (or (re-matches #"^(\*\s*){3,}$" trimmed) ; *** or * * *
+             (re-matches #"^(-\s*){3,}$" trimmed) ; --- or - - -
+             (re-matches #"^(_\s*){3,}$" trimmed))))) ; DOCTYPE
 
 (defn parse-html-block
   "Parse HTML block content"
@@ -646,6 +664,40 @@
           in-code-block
           (recur rest-lines blocks [] [] true (conj current-code line))
 
+          ;; Heading
+          (heading-line? line)
+          (let [new-blocks (cond
+                             (seq current-blockquote)
+                             (conj blocks (parse-blockquote current-blockquote))
+
+                             (seq current-para)
+                             (conj blocks (parse-paragraph current-para))
+
+                             :else blocks)]
+            (recur rest-lines
+                   (conj new-blocks (parse-heading line))
+                   []
+                   []
+                   false
+                   []))
+
+          ;; Thematic break (check before list items to avoid confusion)
+          (thematic-break-line? line)
+          (let [new-blocks (cond
+                             (seq current-blockquote)
+                             (conj blocks (parse-blockquote current-blockquote))
+
+                             (seq current-para)
+                             (conj blocks (parse-paragraph current-para))
+
+                             :else blocks)]
+            (recur rest-lines
+                   (conj new-blocks (thematic-break-node))
+                   []
+                   []
+                   false
+                   []))
+
           ;; List item
           ;; List item - consume entire list at once
           (list-item-line? line)
@@ -664,23 +716,6 @@
                 remaining-after (drop lines-consumed remaining)]
             (recur remaining-after
                    (conj new-blocks list-block)
-                   []
-                   []
-                   false
-                   []))
-
-          ;; Heading
-          (heading-line? line)
-          (let [new-blocks (cond
-                             (seq current-blockquote)
-                             (conj blocks (parse-blockquote current-blockquote))
-
-                             (seq current-para)
-                             (conj blocks (parse-paragraph current-para))
-
-                             :else blocks)]
-            (recur rest-lines
-                   (conj new-blocks (parse-heading line))
                    []
                    []
                    false
@@ -824,6 +859,10 @@
     ;; Softbreak nodes render as a newline in HTML
     "\n"
 
+    :thematic-break
+    ;; Thematic break renders as an HTML horizontal rule
+    "<hr />"
+
     ;; Default fallback
     (str "<!-- Unknown node type: " (:type node) " -->")))
 
@@ -860,9 +899,12 @@ The parser supports:
 - **Bold** and *italic* text
 - [Links](https://commonmark.org) to external sites
 - Blockquotes (see below)
+- Thematic breaks (horizontal rules)
 
 > This is a blockquote with some **formatting** inside.
 > It can span multiple lines.
+
+***
 
 ### Code Support
 
@@ -875,6 +917,18 @@ Here's some Clojure code:
         doc (document-node)]
     (reduce append-child doc blocks)))
 ```
+
+---
+
+## Thematic Breaks
+
+The parser supports various thematic break styles:
+
+- Three or more asterisks: ***
+- Three or more hyphens: ---
+- Three or more underscores with spaces: - - -
+
+- - -
 
 ## Conclusion
 
@@ -929,4 +983,11 @@ Dude <a href=\"dude\"><a/> go"
   (parse "<!--more-->")
   (parse "* dude `dude--dude`
   whatever")
-  (parse "Test: <https://www.page.com/Bob's-page>"))
+  (parse "Test: <https://www.page.com/Bob's-page>")
+  (parse "***
+
+- - -
+
+---
+
+-----"))

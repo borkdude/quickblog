@@ -356,6 +356,45 @@ Final paragraph with <span>inline HTML</span>."
       (is (= "https://example.com" (:destination (second children))))
       (is (= "https://other.com" (:destination (nth children 3)))))))
 
+(deftest test-thematic-breaks
+  "Test parsing and rendering of thematic breaks (horizontal rules)"
+  (testing "thematic break detection"
+    (is (cm/thematic-break-line? "***"))
+    (is (cm/thematic-break-line? "---"))
+    (is (cm/thematic-break-line? "- - -"))
+    (is (cm/thematic-break-line? "* * *"))
+    (is (cm/thematic-break-line? "___"))
+    (is (cm/thematic-break-line? "-----"))
+    (is (not (cm/thematic-break-line? "**")))
+    (is (not (cm/thematic-break-line? "--")))
+    (is (not (cm/thematic-break-line? "regular text")))
+    (is (not (cm/thematic-break-line? "- List item"))))
+
+  (testing "thematic break parsing"
+    (is (= {:type :document, :children [{:type :thematic-break}]}
+           (cm/parse "***")))
+    (is (= {:type :document, :children [{:type :thematic-break}]}
+           (cm/parse "---")))
+    (is (= {:type :document, :children [{:type :thematic-break}]}
+           (cm/parse "- - -"))))
+
+  (testing "thematic break HTML rendering"
+    (is (= "<hr />" (cm/render-html (cm/parse "***"))))
+    (is (= "<hr />" (cm/render-html (cm/parse "---"))))
+    (is (= "<hr />" (cm/render-html (cm/parse "- - -")))))
+
+  (testing "thematic breaks don't interfere with lists"
+    (let [ast (cm/parse "- List item 1\n- List item 2\n\n- - -\n\nAnother paragraph")]
+      (is (= 3 (count (:children ast))))
+      (is (= :bullet-list (:type (first (:children ast)))))
+      (is (= :thematic-break (:type (second (:children ast)))))
+      (is (= :paragraph (:type (nth (:children ast) 2))))))
+
+  (testing "multiple thematic break styles"
+    (let [ast (cm/parse "***\n\n---\n\n- - -\n\n_____")]
+      (is (= 4 (count (:children ast))))
+      (is (every? #(= :thematic-break (:type %)) (:children ast))))))
+
 ;; Run the tests when this file is evaluated
 (comment
   (run-tests))
