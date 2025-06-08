@@ -225,6 +225,65 @@
                  (str/replace first-line #"^```" ""))]
       (make-node :code-block {:literal content :info info}))))
 
+(defn list-item-line? [line]
+  (and line
+       (or (re-matches #"^\s*[-*+]\s+.*" line) ; unordered list
+           (re-matches #"^\s*\d+\.\s+.*" line)))) ; ordered list
+
+(defn parse-list-item-line
+  "Parse a list item line and return content with indentation info"
+  [line]
+  (cond
+    ;; Unordered list item
+    (re-matches #"^\s*[-*+]\s+.*" line)
+    (let [match (re-find #"^(\s*)([-*+])\s+(.*)" line)]
+      (when match
+        {:type :bullet
+         :indent (count (nth match 1))
+         :marker (nth match 2)
+         :content (nth match 3)}))
+
+    ;; Ordered list item  
+    (re-matches #"^\s*\d+\.\s+.*" line)
+    (let [match (re-find #"^(\s*)(\d+)\.\s+(.*)" line)]
+      (when match
+        {:type :ordered
+         :indent (count (nth match 1))
+         :start (Integer/parseInt (nth match 2))
+         :content (nth match 3)}))
+
+    :else nil))
+
+(defn parse-list-items
+  "Parse consecutive list item lines into list items"
+  [lines]
+  (when (seq lines)
+    (let [parsed-items (map parse-list-item-line lines)]
+      (when (every? some? parsed-items)
+        ;; For now, simple implementation - all items at same level
+        (map (fn [item]
+               (let [inline-nodes (parse-inline-text (:content item))]
+                 (make-node :list-item
+                            {:children inline-nodes})))
+             parsed-items)))))
+
+(defn parse-list
+  "Parse a list (ordered or unordered)"
+  [lines]
+  (when (seq lines)
+    (let [first-line (first lines)
+          item-info (parse-list-item-line first-line)]
+      (when item-info
+        (let [list-type (:type item-info)
+              list-items (parse-list-items lines)
+              list-node (if (= list-type :ordered)
+                          (make-node :ordered-list
+                                     {:list-start (or (:start item-info) 1)
+                                      :children list-items})
+                          (make-node :bullet-list
+                                     {:children list-items}))]
+          list-node)))))
+
 ;; Main block parser
 (defn parse-blocks
   "Parse lines into block-level elements"
@@ -233,6 +292,7 @@
          blocks []
          current-para []
          current-blockquote []
+         current-list []
          in-code-block false
          current-code []]
     (if (empty? remaining)
@@ -240,6 +300,9 @@
       (cond
         (seq current-code)
         (conj blocks (parse-code-block current-code))
+
+        (seq current-list)
+        (conj blocks (parse-list current-list))
 
         (seq current-blockquote)
         (conj blocks (parse-blockquote current-blockquote))
@@ -261,10 +324,14 @@
                    (conj blocks (parse-code-block (conj current-code line)))
                    []
                    []
+                   []
                    false
                    [])
             ;; Start code block - finish any current block first
             (let [new-blocks (cond
+                               (seq current-list)
+                               (conj blocks (parse-list current-list))
+
                                (seq current-blockquote)
                                (conj blocks (parse-blockquote current-blockquote))
 
@@ -276,16 +343,38 @@
                      new-blocks
                      []
                      []
+                     []
                      true
                      [line])))
 
           ;; Inside code block
           in-code-block
-          (recur rest-lines blocks [] [] true (conj current-code line))
+          (recur rest-lines blocks [] [] [] true (conj current-code line))
+
+          ;; List item
+          (list-item-line? line)
+          (let [new-blocks (cond
+                             (seq current-blockquote)
+                             (conj blocks (parse-blockquote current-blockquote))
+
+                             (seq current-para)
+                             (conj blocks (parse-paragraph current-para))
+
+                             :else blocks)]
+            (recur rest-lines
+                   new-blocks
+                   []
+                   []
+                   (conj current-list line)
+                   false
+                   []))
 
           ;; Heading
           (heading-line? line)
           (let [new-blocks (cond
+                             (seq current-list)
+                             (conj blocks (parse-list current-list))
+
                              (seq current-blockquote)
                              (conj blocks (parse-blockquote current-blockquote))
 
@@ -297,27 +386,44 @@
                    (conj new-blocks (parse-heading line))
                    []
                    []
+                   []
                    false
                    []))
 
           ;; Blockquote
           (blockquote-line? line)
-          (let [new-blocks (if (seq current-para)
+          (let [new-blocks (cond
+                             (seq current-list)
+                             (conj blocks (parse-list current-list))
+
+                             (seq current-para)
                              (conj blocks (parse-paragraph current-para))
-                             blocks)]
+
+                             :else blocks)]
             (recur rest-lines
                    new-blocks
                    []
                    (conj current-blockquote line)
+                   []
                    false
                    []))
 
           ;; Blank line - end current block
           (blank-line? line)
           (cond
+            (seq current-list)
+            (recur rest-lines
+                   (conj blocks (parse-list current-list))
+                   []
+                   []
+                   []
+                   false
+                   [])
+
             (seq current-blockquote)
             (recur rest-lines
                    (conj blocks (parse-blockquote current-blockquote))
+                   []
                    []
                    []
                    false
@@ -328,26 +434,42 @@
                    (conj blocks (parse-paragraph current-para))
                    []
                    []
+                   []
                    false
                    [])
 
             :else
-            (recur rest-lines blocks [] [] false []))
+            (recur rest-lines blocks [] [] [] false []))
 
           ;; Regular line - add to current paragraph (if not in other block)
           :else
-          (if (seq current-blockquote)
+          (cond
+            (seq current-blockquote)
             ;; Continue blockquote with non-prefixed line
             (recur rest-lines
                    (conj blocks (parse-blockquote current-blockquote))
                    [line]
                    []
+                   []
                    false
                    [])
+
+            (seq current-list)
+            ;; End list and start paragraph
+            (recur rest-lines
+                   (conj blocks (parse-list current-list))
+                   [line]
+                   []
+                   []
+                   false
+                   [])
+
+            :else
             ;; Regular paragraph line
             (recur rest-lines
                    blocks
                    (conj current-para line)
+                   []
                    []
                    false
                    [])))))))
@@ -387,6 +509,18 @@
       (if (and info (not (str/blank? info)))
         (str "<pre><code class=\"language-" info "\">" content "</code></pre>")
         (str "<pre><code>" content "</code></pre>")))
+
+    :bullet-list
+    (str "<ul>" (str/join "" (map render-node (:children node))) "</ul>")
+
+    :ordered-list
+    (let [start (:list-start node)]
+      (if (and start (not= start 1))
+        (str "<ol start=\"" start "\">" (str/join "" (map render-node (:children node))) "</ol>")
+        (str "<ol>" (str/join "" (map render-node (:children node))) "</ol>")))
+
+    :list-item
+    (str "<li>" (str/join "" (map render-node (:children node))) "</li>")
 
     :text
     ;; Text nodes contain plain text - no need for emphasis processing
