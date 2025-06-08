@@ -357,43 +357,73 @@ Final paragraph with <span>inline HTML</span>."
       (is (= "https://other.com" (:destination (nth children 3)))))))
 
 (deftest test-thematic-breaks
-  "Test parsing and rendering of thematic breaks (horizontal rules)"
-  (testing "thematic break detection"
-    (is (cm/thematic-break-line? "***"))
-    (is (cm/thematic-break-line? "---"))
-    (is (cm/thematic-break-line? "- - -"))
-    (is (cm/thematic-break-line? "* * *"))
-    (is (cm/thematic-break-line? "___"))
-    (is (cm/thematic-break-line? "-----"))
-    (is (not (cm/thematic-break-line? "**")))
-    (is (not (cm/thematic-break-line? "--")))
-    (is (not (cm/thematic-break-line? "regular text")))
-    (is (not (cm/thematic-break-line? "- List item"))))
+  (testing "Test parsing and rendering of thematic breaks (horizontal rules)"
+    (testing "thematic break detection"
+      (is (cm/thematic-break-line? "***"))
+      (is (cm/thematic-break-line? "---"))
+      (is (cm/thematic-break-line? "- - -"))
+      (is (cm/thematic-break-line? "* * *"))
+      (is (cm/thematic-break-line? "___"))
+      (is (cm/thematic-break-line? "-----"))
+      (is (not (cm/thematic-break-line? "**")))
+      (is (not (cm/thematic-break-line? "--")))
+      (is (not (cm/thematic-break-line? "regular text")))
+      (is (not (cm/thematic-break-line? "- List item"))))
 
-  (testing "thematic break parsing"
-    (is (= {:type :document, :children [{:type :thematic-break}]}
-           (cm/parse "***")))
-    (is (= {:type :document, :children [{:type :thematic-break}]}
-           (cm/parse "---")))
-    (is (= {:type :document, :children [{:type :thematic-break}]}
-           (cm/parse "- - -"))))
+    (testing "thematic break parsing"
+      (is (= {:type :document, :children [{:type :thematic-break}]}
+             (cm/parse "***")))
+      (is (= {:type :document, :children [{:type :thematic-break}]}
+             (cm/parse "---")))
+      (is (= {:type :document, :children [{:type :thematic-break}]}
+             (cm/parse "- - -"))))
 
-  (testing "thematic break HTML rendering"
-    (is (= "<hr />" (cm/render-html (cm/parse "***"))))
-    (is (= "<hr />" (cm/render-html (cm/parse "---"))))
-    (is (= "<hr />" (cm/render-html (cm/parse "- - -")))))
+    (testing "thematic break HTML rendering"
+      (is (= "<hr />" (cm/render-html (cm/parse "***"))))
+      (is (= "<hr />" (cm/render-html (cm/parse "---"))))
+      (is (= "<hr />" (cm/render-html (cm/parse "- - -")))))
 
-  (testing "thematic breaks don't interfere with lists"
-    (let [ast (cm/parse "- List item 1\n- List item 2\n\n- - -\n\nAnother paragraph")]
-      (is (= 3 (count (:children ast))))
-      (is (= :bullet-list (:type (first (:children ast)))))
-      (is (= :thematic-break (:type (second (:children ast)))))
-      (is (= :paragraph (:type (nth (:children ast) 2))))))
+    (testing "thematic breaks don't interfere with lists"
+      (let [ast (cm/parse "- List item 1\n- List item 2\n\n- - -\n\nAnother paragraph")]
+        (is (= 3 (count (:children ast))))
+        (is (= :bullet-list (:type (first (:children ast)))))
+        (is (= :thematic-break (:type (second (:children ast)))))
+        (is (= :paragraph (:type (nth (:children ast) 2))))))
 
-  (testing "multiple thematic break styles"
-    (let [ast (cm/parse "***\n\n---\n\n- - -\n\n_____")]
-      (is (= 4 (count (:children ast))))
-      (is (every? #(= :thematic-break (:type %)) (:children ast))))))
+    (testing "multiple thematic break styles"
+      (let [ast (cm/parse "***\n\n---\n\n- - -\n\n_____")]
+        (is (= 4 (count (:children ast))))
+        (is (every? #(= :thematic-break (:type %)) (:children ast)))))))
+
+(deftest test-images
+  "Test image parsing and rendering"
+  (testing "Basic image syntax"
+    (let [result (cm/render-html (cm/parse "![Alt text](https://example.com/image.jpg)"))]
+      (is (= result "<p><img src=\"https://example.com/image.jpg\" alt=\"Alt text\" /></p>"))))
+
+  (testing "Image with empty alt text"
+    (let [result (cm/render-html (cm/parse "![](https://example.com/image.jpg)"))]
+      (is (= result "<p><img src=\"https://example.com/image.jpg\" alt=\"\" /></p>"))))
+
+  (testing "Image vs link distinction"
+    (let [result (cm/render-html (cm/parse "![Image](pic.jpg) and [Link](page.html)"))]
+      (is (= result "<p><img src=\"pic.jpg\" alt=\"Image\" /> and <a href=\"page.html\">Link</a></p>"))))
+
+  (testing "Image in mixed content"
+    (let [result (cm/render-html (cm/parse "Here is an image: ![Cat](cat.jpg) in the text."))]
+      (is (= result "<p>Here is an image: <img src=\"cat.jpg\" alt=\"Cat\" /> in the text.</p>"))))
+
+  (testing "Multiple images"
+    (let [result (cm/render-html (cm/parse "![First](1.jpg) ![Second](2.jpg)"))]
+      (is (= result "<p><img src=\"1.jpg\" alt=\"First\" /><img src=\"2.jpg\" alt=\"Second\" /></p>"))))
+
+  (testing "Image with simple alt text"
+    (let [result (cm/render-html (cm/parse "![Simple alt text](test.jpg)"))]
+      (is (= result "<p><img src=\"test.jpg\" alt=\"Simple alt text\" /></p>"))))
+
+  (testing "Image with URL containing special characters"
+    (let [result (cm/render-html (cm/parse "![Test](https://example.com/path/image.jpg?param=value)"))]
+      (is (= result "<p><img src=\"https://example.com/path/image.jpg?param=value\" alt=\"Test\" /></p>")))))
 
 ;; Run the tests when this file is evaluated
 (comment

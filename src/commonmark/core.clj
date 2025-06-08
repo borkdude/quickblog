@@ -82,6 +82,15 @@
    :destination url
    :children [(text-node url)]})
 
+(defn image-node
+  "Create an image node with URL and alt text"
+  ([alt url] (image-node alt url nil))
+  ([alt url title]
+   {:type :image
+    :destination url
+    :title title
+    :children [(text-node alt)]}))
+
 (defn thematic-break-node
   "Create a thematic break (horizontal rule) node"
   []
@@ -111,12 +120,12 @@
     (->> line
          (re-seq #"\S+|\s+")
          (map str/trim)
-         (filter #(not (empty? %))))))
+         (filter seq))))
 
 ;; Basic inline parser - handles emphasis for now
 ;; Inline parsing functions
 ;; Inline parsing functions (reorganized to fix forward references)
-(declare parse-inline-text) ; Forward declaration
+(declare parse-inline-text thematic-break-line?) ; Forward declaration
 
 (defn parse-inline-complex
   "Parse text with mixed inline elements into AST nodes"
@@ -186,27 +195,40 @@
                    (if (not (str/blank? after)) (parse-inline-text after) [])))
                 [(text-node text)]))
 
-            ;; Handle links ([text](url))
-            (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
-              (let [[full-match link-text url] match
+            ;; Handle images (![alt](url)) - must come before links
+            (if-let [match (re-find #"!\[([^\]]*)\]\(([^\)]+)\)" text)]
+              (let [[full-match alt-text url] match
                     idx (.indexOf text ^String full-match)]
                 (if (>= idx 0)
                   (let [before (subs text 0 idx)
                         after (subs text (+ idx (count full-match)))]
                     (concat
                      (if (not (str/blank? before)) (parse-inline-text before) [])
-                     [{:type :link
-                       :destination url
-                       :children [(text-node link-text)]}]
+                     [(image-node alt-text url)]
                      (if (not (str/blank? after)) (parse-inline-text after) [])))
                   [(text-node text)]))
 
-              ;; Default case - no inline formatting found
-              [(text-node text)])))))))
+              ;; Handle links ([text](url))
+              (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
+                (let [[full-match link-text url] match
+                      idx (.indexOf text ^String full-match)]
+                  (if (>= idx 0)
+                    (let [before (subs text 0 idx)
+                          after (subs text (+ idx (count full-match)))]
+                      (concat
+                       (if (not (str/blank? before)) (parse-inline-text before) [])
+                       [{:type :link
+                         :destination url
+                         :children [(text-node link-text)]}]
+                       (if (not (str/blank? after)) (parse-inline-text after) [])))
+                    [(text-node text)]))
+
+                ;; Default case - no inline formatting found
+                [(text-node text)]))))))))
 
  ;; Now define the actual function
 (defn parse-inline-text
-  "Parse inline markdown into AST nodes (autolinks, HTML inline, code, emphasis, strong, links, text)"
+  "Parse inline markdown into AST nodes (autolinks, HTML inline, code, emphasis, strong, images, links, text)"
   [^String text]
   (if (str/blank? text)
     []
@@ -230,6 +252,10 @@
 
       ;; Handle emphasis (*text*)
       (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)
+      (parse-inline-complex text)
+
+      ;; Handle images (![alt](url)) - must come before links
+      (re-find #"!\[([^\]]*)\]\(([^\)]+)\)" text)
       (parse-inline-complex text)
 
       ;; Handle links ([text](url))
@@ -841,6 +867,14 @@
     :link
     (let [url (:destination node)]
       (str "<a href=\"" url "\">" (str/join "" (map render-node (:children node))) "</a>"))
+
+    :image
+    (let [url (:destination node)
+          alt (str/join "" (map render-node (:children node)))
+          title (:title node)]
+      (if title
+        (str "<img src=\"" url "\" alt=\"" alt "\" title=\"" title "\" />")
+        (str "<img src=\"" url "\" alt=\"" alt "\" />")))
 
     :autolink
     ;; Autolink nodes render as links with the URL as both href and text
