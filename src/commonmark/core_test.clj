@@ -55,9 +55,12 @@
     (let [ast (cm/parse "- Item with **bold**\n- Item with [link](http://example.com)")
           list-node (first (:children ast))
           first-item (first (:children list-node))
-          second-item (second (:children list-node))]
-      (is (some #(= :strong (:type %)) (:children first-item)))
-      (is (some #(= :link (:type %)) (:children second-item))))))
+          second-item (second (:children list-node))
+          ;; Items now contain paragraphs, so need to check within the paragraphs
+          first-para (first (:children first-item))
+          second-para (first (:children second-item))]
+      (is (some #(= :strong (:type %)) (:children first-para)))
+      (is (some #(= :link (:type %)) (:children second-para))))))
 
 (deftest test-blockquotes
   (testing "Simple blockquote"
@@ -179,6 +182,54 @@ Final paragraph with <span>inline HTML</span>."
       (is (str/includes? stats-output ":strong"))
       (is (str/includes? stats-output ":link"))
       (is (str/includes? stats-output ":bullet-list")))))
+
+(deftest test-complex-lists
+  (testing "Ordered list with multi-paragraph items and code blocks"
+    (let [markdown "1. List 1
+
+   This is some text yo!
+2. List 2
+
+   This is still
+   ```clojure
+   Here!
+   ```"
+          ast (cm/parse markdown)]
+      ;; Should be a single ordered list
+      (is (= 1 (count (:children ast))))
+      (let [list-node (first (:children ast))]
+        (is (= :ordered-list (:type list-node)))
+        (is (= 2 (count (:children list-node))))
+
+        ;; First list item should have 2 children (2 paragraphs)
+        (let [first-item (first (:children list-node))]
+          (is (= :list-item (:type first-item)))
+          (is (= 2 (count (:children first-item))))
+          (is (every? #(= :paragraph (:type %)) (:children first-item))))
+
+        ;; Second list item should have 3 children (2 paragraphs + 1 code block)
+        (let [second-item (second (:children list-node))]
+          (is (= :list-item (:type second-item)))
+          (is (= 3 (count (:children second-item))))
+          (let [child-types (map :type (:children second-item))]
+            (is (= [:paragraph :paragraph :code-block] child-types))
+            ;; Check code block content
+            (let [code-block (nth (:children second-item) 2)]
+              (is (= "clojure" (:info code-block)))
+              (is (= "Here!" (:literal code-block)))))))))
+
+  (testing "List continuation across blank lines"
+    (let [markdown "1. First item
+
+2. Second item
+3. Third item"
+          ast (cm/parse markdown)]
+      ;; Should be a single ordered list with 3 items
+      (is (= 1 (count (:children ast))))
+      (let [list-node (first (:children ast))]
+        (is (= :ordered-list (:type list-node)))
+        (is (= 3 (count (:children list-node))))
+        (is (every? #(= :list-item (:type %)) (:children list-node)))))))
 
 ;; Run the tests when this file is evaluated
 (comment

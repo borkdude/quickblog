@@ -248,10 +248,28 @@
                  (str/replace first-line #"^```" ""))]
       (make-node :code-block {:literal content :info info}))))
 
-(defn list-item-line? [line]
+(defn list-item-line?
+  "Check if a line is a list item (ordered or unordered)"
+  [line]
   (and line
        (or (re-matches #"^\s*[-*+]\s+.*" line) ; unordered list
            (re-matches #"^\s*\d+\.\s+.*" line)))) ; ordered list
+
+(defn indented-content-line?
+  "Check if a line is indented content (part of a list item)"
+  [line base-indent]
+  (and line
+       (not (str/blank? line))
+       (not (list-item-line? line))
+       (let [line-indent (count (take-while #(= % \space) line))]
+         (>= line-indent base-indent))))
+
+(defn get-line-indent
+  "Get the indentation level of a line"
+  [line]
+  (if (str/blank? line)
+    0
+    (count (take-while #(= % \space) line)))) ; ordered list
 
 (defn parse-list-item-line
   "Parse a list item line and return content with indentation info"
@@ -277,28 +295,200 @@
 
     :else nil))
 
-(defn parse-list-items
-  "Parse consecutive list item lines into list items"
+(defn parse-list-item-content
+  "Parse the content of a list item, which can include multiple blocks"
+  [content-lines]
+  (when (seq content-lines)
+    (cond
+      ;; Single line - create a paragraph with inline parsing
+      (= 1 (count content-lines))
+      (let [text (first content-lines)
+            inline-nodes (parse-inline-text text)]
+        (if (= 1 (count inline-nodes))
+          inline-nodes ; single text node doesn't need paragraph wrapper
+          [(-> (paragraph-node)
+               (update :children concat inline-nodes))]))
+
+      ;; Multiple lines - need to group into blocks
+      :else
+      (loop [remaining content-lines
+             blocks []
+             current-para []
+             in-code-block false
+             current-code []]
+        (if (empty? remaining)
+          ;; End of content - finish any current block
+          (cond
+            (seq current-code)
+            (conj blocks (parse-code-block current-code))
+
+            (seq current-para)
+            (conj blocks (parse-paragraph current-para))
+
+            :else blocks)
+
+          (let [line (first remaining)
+                rest-lines (rest remaining)]
+            (cond
+              ;; Code fence - start or end
+              (code-fence-line? line)
+              (if in-code-block
+                ;; End code block
+                (recur rest-lines
+                       (conj blocks (parse-code-block (conj current-code line)))
+                       []
+                       false
+                       [])
+                ;; Start code block - finish any current paragraph first
+                (let [new-blocks (if (seq current-para)
+                                   (conj blocks (parse-paragraph current-para))
+                                   blocks)]
+                  (recur rest-lines
+                         new-blocks
+                         []
+                         true
+                         [line])))
+
+              ;; Inside code block
+              in-code-block
+              (recur rest-lines blocks [] true (conj current-code line))
+
+              ;; Blank line - end current paragraph
+              (str/blank? line)
+              (if (seq current-para)
+                (recur rest-lines
+                       (conj blocks (parse-paragraph current-para))
+                       []
+                       false
+                       [])
+                (recur rest-lines blocks [] false []))
+
+              ;; Regular line - add to current paragraph
+              :else
+              (recur rest-lines
+                     blocks
+                     (conj current-para line)
+                     false
+                     []))))))))
+
+(defn collect-list-item-lines
+  "Collect all lines that belong to a single list item, including indented content"
+  [lines item-info]
+  (let [marker-indent (:indent item-info)
+        ; Calculate content indentation - for "1. " it would be marker-indent + 3
+        content-indent (+ marker-indent
+                          (if (= :ordered (:type item-info))
+                            (+ (count (str (:start item-info))) 2) ; "1. " = 3 chars
+                            2))] ; "- " = 2 chars  
+    (loop [remaining (rest lines) ; skip the list item line itself
+           collected [(:content item-info)] ; start with the list item content
+           blank-line-buffer []]
+      (if (empty? remaining)
+        collected
+        (let [line (first remaining)
+              rest-lines (rest remaining)]
+          (cond
+            ;; Another list item - stop collecting
+            (list-item-line? line)
+            collected
+
+            ;; Blank line - buffer it in case more content follows
+            (str/blank? line)
+            (recur rest-lines collected (conj blank-line-buffer line))
+
+            ;; Indented content - belongs to this list item
+            (>= (get-line-indent line) content-indent)
+            (let [trimmed-line (subs line (min content-indent (count line)))] ; remove indentation
+              (recur rest-lines
+                     (concat collected blank-line-buffer [trimmed-line])
+                     []))
+
+            ;; Non-indented content - end of list item
+            :else
+            collected))))))
+
+(defn parse-advanced-list-items
+  "Parse list items with proper support for multi-block content"
   [lines]
   (when (seq lines)
-    (let [parsed-items (map parse-list-item-line lines)]
-      (when (every? some? parsed-items)
-        ;; For now, simple implementation - all items at same level
-        (map (fn [item]
-               (let [inline-nodes (parse-inline-text (:content item))]
-                 (make-node :list-item
-                            {:children inline-nodes})))
-             parsed-items)))))
+    (loop [remaining lines
+           items []]
+      (if (empty? remaining)
+        items
+        (let [line (first remaining)]
+          (if (list-item-line? line)
+            (let [item-info (parse-list-item-line line)
+                  item-content-lines (collect-list-item-lines remaining item-info)
+                  item-blocks (parse-list-item-content item-content-lines)
+                  list-item (make-node :list-item {:children item-blocks})
+                  ;; collect-list-item-lines processes content after the list item line
+                  ;; so we need to skip 1 line (the list item line) plus the content lines
+                  ;; But actually, let's just move to the next list item 
+                  next-list-item-pos (loop [idx 1] ; start at 1 to skip current list item line
+                                       (if (>= idx (count remaining))
+                                         (count remaining) ; end of lines
+                                         (if (list-item-line? (nth remaining idx))
+                                           idx
+                                           (recur (inc idx)))))
+                  remaining-after (drop next-list-item-pos remaining)]
+              (recur remaining-after (conj items list-item)))
+            ;; Not a list item line - shouldn't happen, but skip it
+            (recur (rest remaining) items)))))))
+
+(defn same-list-type?
+  "Check if two list item lines are of the same type"
+  [line1 line2]
+  (let [info1 (parse-list-item-line line1)
+        info2 (parse-list-item-line line2)]
+    (and info1 info2
+         (= (:type info1) (:type info2)))))
+
+(defn find-list-end
+  "Find the index where the list ends"
+  [lines]
+  (when (list-item-line? (first lines))
+    (let [first-line (first lines)]
+      (loop [idx 0]
+        (if (>= idx (count lines))
+          (count lines) ; end of input
+          (let [line (nth lines idx)]
+            (cond
+              ;; List item of same type - part of list, continue
+              (and (list-item-line? line)
+                   (same-list-type? first-line line))
+              (recur (inc idx))
+
+              ;; List item of different type - end of current list
+              (list-item-line? line)
+              idx
+
+              ;; Blank line - might be part of list
+              (str/blank? line)
+              (if (and (< (inc idx) (count lines))
+                       (let [next-line (nth lines (inc idx))]
+                         (or (and (list-item-line? next-line)
+                                  (same-list-type? first-line next-line))
+                             (>= (get-line-indent next-line) 2)))) ; indented content
+                (recur (inc idx))
+                idx) ; end of list
+
+              ;; Indented content - part of list
+              (>= (get-line-indent line) 2)
+              (recur (inc idx))
+
+              ;; Non-list content - end of list
+              :else
+              idx)))))))
 
 (defn parse-list
-  "Parse a list (ordered or unordered)"
+  "Parse a list (ordered or unordered) with proper multi-block support"
   [lines]
   (when (seq lines)
     (let [first-line (first lines)
           item-info (parse-list-item-line first-line)]
       (when item-info
         (let [list-type (:type item-info)
-              list-items (parse-list-items lines)
+              list-items (parse-advanced-list-items lines)
               list-node (if (= :ordered list-type)
                           (make-node :ordered-list
                                      {:list-start (or (:start item-info) 1)
@@ -331,7 +521,6 @@
          blocks []
          current-para []
          current-blockquote []
-         current-list []
          in-code-block false
          current-code []]
     (if (empty? remaining)
@@ -339,9 +528,6 @@
       (cond
         (seq current-code)
         (conj blocks (parse-code-block current-code))
-
-        (seq current-list)
-        (conj blocks (parse-list current-list))
 
         (seq current-blockquote)
         (conj blocks (parse-blockquote current-blockquote))
@@ -363,14 +549,10 @@
                    (conj blocks (parse-code-block (conj current-code line)))
                    []
                    []
-                   []
                    false
                    [])
             ;; Start code block - finish any current block first
             (let [new-blocks (cond
-                               (seq current-list)
-                               (conj blocks (parse-list current-list))
-
                                (seq current-blockquote)
                                (conj blocks (parse-blockquote current-blockquote))
 
@@ -382,15 +564,15 @@
                      new-blocks
                      []
                      []
-                     []
                      true
                      [line])))
 
           ;; Inside code block
           in-code-block
-          (recur rest-lines blocks [] [] [] true (conj current-code line))
+          (recur rest-lines blocks [] [] true (conj current-code line))
 
           ;; List item
+          ;; List item - consume entire list at once
           (list-item-line? line)
           (let [new-blocks (cond
                              (seq current-blockquote)
@@ -399,21 +581,22 @@
                              (seq current-para)
                              (conj blocks (parse-paragraph current-para))
 
-                             :else blocks)]
-            (recur rest-lines
-                   new-blocks
+                             :else blocks)
+                list-end-idx (find-list-end remaining)
+                list-lines (take list-end-idx remaining)
+                list-block (parse-list list-lines)
+                lines-consumed list-end-idx
+                remaining-after (drop lines-consumed remaining)]
+            (recur remaining-after
+                   (conj new-blocks list-block)
                    []
                    []
-                   (conj current-list line)
                    false
                    []))
 
           ;; Heading
           (heading-line? line)
           (let [new-blocks (cond
-                             (seq current-list)
-                             (conj blocks (parse-list current-list))
-
                              (seq current-blockquote)
                              (conj blocks (parse-blockquote current-blockquote))
 
@@ -425,16 +608,12 @@
                    (conj new-blocks (parse-heading line))
                    []
                    []
-                   []
                    false
                    []))
 
           ;; Blockquote
           (blockquote-line? line)
           (let [new-blocks (cond
-                             (seq current-list)
-                             (conj blocks (parse-list current-list))
-
                              (seq current-para)
                              (conj blocks (parse-paragraph current-para))
 
@@ -443,26 +622,16 @@
                    new-blocks
                    []
                    (conj current-blockquote line)
-                   []
                    false
                    []))
 
           ;; Blank line - end current block
+          ;; Blank line - end current block
           (blank-line? line)
           (cond
-            (seq current-list)
-            (recur rest-lines
-                   (conj blocks (parse-list current-list))
-                   []
-                   []
-                   []
-                   false
-                   [])
-
             (seq current-blockquote)
             (recur rest-lines
                    (conj blocks (parse-blockquote current-blockquote))
-                   []
                    []
                    []
                    false
@@ -473,13 +642,13 @@
                    (conj blocks (parse-paragraph current-para))
                    []
                    []
-                   []
                    false
                    [])
 
             :else
-            (recur rest-lines blocks [] [] [] false []))
+            (recur rest-lines blocks [] [] false []))
 
+          ;; Regular line - add to current paragraph (if not in other block)
           ;; Regular line - add to current paragraph (if not in other block)
           :else
           (cond
@@ -489,17 +658,6 @@
                    (conj blocks (parse-blockquote current-blockquote))
                    [line]
                    []
-                   []
-                   false
-                   [])
-
-            (seq current-list)
-            ;; End list and start paragraph
-            (recur rest-lines
-                   (conj blocks (parse-list current-list))
-                   [line]
-                   []
-                   []
                    false
                    [])
 
@@ -508,7 +666,6 @@
             (recur rest-lines
                    blocks
                    (conj current-para line)
-                   []
                    []
                    false
                    [])))))))
@@ -669,4 +826,15 @@ Dude <a href=\"dude\"><a/> go"
       (println (str "  " type ": " count)))))
 
 (comment
-  (demo))
+  (demo)
+  (parse "[long\nline](link)")
+  (parse "1. List 1
+
+   This is some text yo!
+2. List 2
+
+   This is still
+   ```clojure
+   Here!
+   ```
+`"))
