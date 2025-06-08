@@ -231,6 +231,40 @@ Final paragraph with <span>inline HTML</span>."
         (is (= 3 (count (:children list-node))))
         (is (every? #(= :list-item (:type %)) (:children list-node)))))))
 
+(deftest test-inline-code
+  (testing "Simple inline code"
+    (let [ast (cm/parse "Hello `dude`")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 2 (count children)))
+      (is (= :text (:type (first children))))
+      (is (= "Hello " (:literal (first children))))
+      (is (= :code (:type (second children))))
+      (is (= "dude" (:literal (second children))))))
+
+  (testing "Mixed inline code and formatting"
+    (let [ast (cm/parse "Hello `code` and **bold**")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 4 (count children)))
+      (is (= [:text :code :text :strong] (map :type children)))
+      (is (= "code" (:literal (second children))))))
+
+  (testing "Multiple code spans"
+    (let [ast (cm/parse "Multiple `code` spans `in` one sentence")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 5 (count children)))
+      (is (= [:text :code :text :code :text] (map :type children)))
+      (is (= "code" (:literal (second children))))
+      (is (= "in" (:literal (nth children 3))))))
+
+  (testing "Inline code HTML rendering"
+    (let [ast (cm/parse "Hello `dude`")
+          html (cm/render-html ast)]
+      (is (str/includes? html "<code>dude</code>"))
+      (is (str/includes? html "<p>Hello <code>dude</code></p>")))))
+
 ;; Run the tests when this file is evaluated
 (comment
   (run-tests))

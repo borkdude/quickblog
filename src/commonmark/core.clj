@@ -64,6 +64,12 @@
   {:type :html-inline
    :literal content})
 
+(defn code-node
+  "Create an inline code node with literal content"
+  [content]
+  {:type :code
+   :literal content})
+
 ;; Node manipulation functions
 (defn append-child
   "Add a child node to a parent node"
@@ -111,8 +117,8 @@
            (if (not (str/blank? after)) (parse-inline-text after) [])))
         [(text-node text)]))
 
-    ;; Handle strong emphasis (**text**)
-    (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
+    ;; Handle inline code (`code`)
+    (if-let [match (re-find #"`([^`]+)`" text)]
       (let [[full-match content] match
             idx (.indexOf text full-match)]
         (if (>= idx 0)
@@ -120,12 +126,12 @@
                 after (subs text (+ idx (count full-match)))]
             (concat
              (if (not (str/blank? before)) (parse-inline-text before) [])
-             [{:type :strong :children [(text-node content)]}]
+             [(code-node content)]
              (if (not (str/blank? after)) (parse-inline-text after) [])))
           [(text-node text)]))
 
-      ;; Handle emphasis (*text*)
-      (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+      ;; Handle strong emphasis (**text**)
+      (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
         (let [[full-match content] match
               idx (.indexOf text full-match)]
           (if (>= idx 0)
@@ -133,31 +139,44 @@
                   after (subs text (+ idx (count full-match)))]
               (concat
                (if (not (str/blank? before)) (parse-inline-text before) [])
-               [{:type :emph :children [(text-node content)]}]
+               [{:type :strong :children [(text-node content)]}]
                (if (not (str/blank? after)) (parse-inline-text after) [])))
             [(text-node text)]))
 
-        ;; Handle links ([text](url))
-        (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
-          (let [[full-match link-text url] match
+        ;; Handle emphasis (*text*)
+        (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+          (let [[full-match content] match
                 idx (.indexOf text full-match)]
             (if (>= idx 0)
               (let [before (subs text 0 idx)
                     after (subs text (+ idx (count full-match)))]
                 (concat
                  (if (not (str/blank? before)) (parse-inline-text before) [])
-                 [{:type :link
-                   :destination url
-                   :children [(text-node link-text)]}]
+                 [{:type :emph :children [(text-node content)]}]
                  (if (not (str/blank? after)) (parse-inline-text after) [])))
               [(text-node text)]))
 
-          ;; Default case - no inline formatting found
-          [(text-node text)])))))
+          ;; Handle links ([text](url))
+          (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
+            (let [[full-match link-text url] match
+                  idx (.indexOf text full-match)]
+              (if (>= idx 0)
+                (let [before (subs text 0 idx)
+                      after (subs text (+ idx (count full-match)))]
+                  (concat
+                   (if (not (str/blank? before)) (parse-inline-text before) [])
+                   [{:type :link
+                     :destination url
+                     :children [(text-node link-text)]}]
+                   (if (not (str/blank? after)) (parse-inline-text after) [])))
+                [(text-node text)]))
+
+            ;; Default case - no inline formatting found
+            [(text-node text)]))))))
 
  ;; Now define the actual function
 (defn parse-inline-text
-  "Parse inline markdown into AST nodes (emphasis, strong, links, HTML inline, text)"
+  "Parse inline markdown into AST nodes (emphasis, strong, links, HTML inline, code, text)"
   [text]
   (if (str/blank? text)
     []
@@ -165,6 +184,10 @@
     (cond
       ;; Handle HTML inline tags first (highest precedence)
       (re-find #"<[^>]+>" text)
+      (parse-inline-complex text)
+
+      ;; Handle inline code (`code`)
+      (re-find #"`([^`]+)`" text)
       (parse-inline-complex text)
 
       ;; Handle strong emphasis (**text**)
@@ -736,6 +759,10 @@
     ;; HTML inline nodes contain raw HTML that should be preserved
     (:literal node)
 
+    :code
+    ;; Inline code nodes should be wrapped in <code> tags
+    (str "<code>" (:literal node) "</code>")
+
     ;; Default fallback
     (str "<!-- Unknown node type: " (:type node) " -->")))
 
@@ -839,5 +866,5 @@ Dude <a href=\"dude\"><a/> go"
    ```
 `")
   (parse "<!--more-->")
-  (parse "* `dude--dude`
+  (parse "* dude `dude--dude`
   whatever"))
