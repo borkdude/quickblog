@@ -70,6 +70,11 @@
   {:type :code
    :literal content})
 
+(defn softbreak-node
+  "Create a softbreak node (line break)"
+  []
+  {:type :softbreak})
+
 ;; Node manipulation functions
 (defn append-child
   "Add a child node to a parent node"
@@ -318,21 +323,41 @@
 
     :else nil))
 
+(defn parse-inline-with-softbreaks
+  "Parse multiple lines as inline content with softbreaks between lines"
+  [lines]
+  (when (seq lines)
+    (loop [remaining lines
+           nodes []]
+      (if (empty? remaining)
+        nodes
+        (let [line (first remaining)
+              rest-lines (rest remaining)
+              inline-nodes (parse-inline-text line)]
+          (if (seq rest-lines)
+            ;; More lines remaining - add inline nodes + softbreak
+            (recur rest-lines
+                   (concat nodes inline-nodes [(softbreak-node)]))
+            ;; Last line - just add inline nodes
+            (concat nodes inline-nodes)))))))
+
 (defn parse-list-item-content
   "Parse the content of a list item, which can include multiple blocks"
   [content-lines]
   (when (seq content-lines)
     (cond
-      ;; Single line - create a paragraph with inline parsing
+      ;; Single line - create inline nodes directly
       (= 1 (count content-lines))
-      (let [text (first content-lines)
-            inline-nodes (parse-inline-text text)]
-        (if (= 1 (count inline-nodes))
-          inline-nodes ; single text node doesn't need paragraph wrapper
-          [(-> (paragraph-node)
-               (update :children concat inline-nodes))]))
+      (parse-inline-text (first content-lines))
 
-      ;; Multiple lines - need to group into blocks
+      ;; Multiple lines without blank lines - single paragraph with softbreaks
+      (and (> (count content-lines) 1)
+           (not-any? str/blank? content-lines))
+      (let [inline-nodes (parse-inline-with-softbreaks content-lines)]
+        [(-> (paragraph-node)
+             (update :children concat inline-nodes))])
+
+      ;; Multiple lines with possible blank lines - need to group into blocks
       :else
       (loop [remaining content-lines
              blocks []
@@ -346,7 +371,8 @@
             (conj blocks (parse-code-block current-code))
 
             (seq current-para)
-            (conj blocks (parse-paragraph current-para))
+            (conj blocks (-> (paragraph-node)
+                             (update :children concat (parse-inline-with-softbreaks current-para))))
 
             :else blocks)
 
@@ -364,7 +390,8 @@
                        [])
                 ;; Start code block - finish any current paragraph first
                 (let [new-blocks (if (seq current-para)
-                                   (conj blocks (parse-paragraph current-para))
+                                   (conj blocks (-> (paragraph-node)
+                                                    (update :children concat (parse-inline-with-softbreaks current-para))))
                                    blocks)]
                   (recur rest-lines
                          new-blocks
@@ -380,7 +407,8 @@
               (str/blank? line)
               (if (seq current-para)
                 (recur rest-lines
-                       (conj blocks (parse-paragraph current-para))
+                       (conj blocks (-> (paragraph-node)
+                                        (update :children concat (parse-inline-with-softbreaks current-para))))
                        []
                        false
                        [])
@@ -762,6 +790,10 @@
     :code
     ;; Inline code nodes should be wrapped in <code> tags
     (str "<code>" (:literal node) "</code>")
+
+    :softbreak
+    ;; Softbreak nodes render as a newline in HTML
+    "\n"
 
     ;; Default fallback
     (str "<!-- Unknown node type: " (:type node) " -->")))

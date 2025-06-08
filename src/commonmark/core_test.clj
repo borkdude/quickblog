@@ -55,12 +55,10 @@
     (let [ast (cm/parse "- Item with **bold**\n- Item with [link](http://example.com)")
           list-node (first (:children ast))
           first-item (first (:children list-node))
-          second-item (second (:children list-node))
-          ;; Items now contain paragraphs, so need to check within the paragraphs
-          first-para (first (:children first-item))
-          second-para (first (:children second-item))]
-      (is (some #(= :strong (:type %)) (:children first-para)))
-      (is (some #(= :link (:type %)) (:children second-para))))))
+          second-item (second (:children list-node))]
+      ;; With the new parsing, single-line items have inline content directly
+      (is (some #(= :strong (:type %)) (:children first-item)))
+      (is (some #(= :link (:type %)) (:children second-item))))))
 
 (deftest test-blockquotes
   (testing "Simple blockquote"
@@ -264,6 +262,45 @@ Final paragraph with <span>inline HTML</span>."
           html (cm/render-html ast)]
       (is (str/includes? html "<code>dude</code>"))
       (is (str/includes? html "<p>Hello <code>dude</code></p>")))))
+
+(deftest test-softbreaks
+  (testing "Softbreak in list item"
+    (let [ast (cm/parse "* dude `dude--dude`\n  whatever")
+          list-item (first (:children (first (:children ast))))
+          para (first (:children list-item))
+          children (:children para)]
+      (is (= 4 (count children)))
+      (is (= [:text :code :softbreak :text] (map :type children)))
+      (is (= "dude " (:literal (first children))))
+      (is (= "dude--dude" (:literal (second children))))
+      (is (= :softbreak (:type (nth children 2))))
+      (is (= "whatever" (:literal (nth children 3))))))
+
+  (testing "Multiple softbreaks"
+    (let [ast (cm/parse "* line one\n  line two\n  line three")
+          list-item (first (:children (first (:children ast))))
+          para (first (:children list-item))
+          children (:children para)]
+      (is (= 5 (count children)))
+      (is (= [:text :softbreak :text :softbreak :text] (map :type children)))
+      (is (= "line one" (:literal (first children))))
+      (is (= "line two" (:literal (nth children 2))))
+      (is (= "line three" (:literal (nth children 4))))))
+
+  (testing "Single line list item (no softbreak needed)"
+    (let [ast (cm/parse "* single line")
+          list-item (first (:children (first (:children ast))))
+          children (:children list-item)]
+      ;; Single line should not be wrapped in paragraph
+      (is (= 1 (count children)))
+      (is (= :text (:type (first children))))
+      (is (= "single line" (:literal (first children))))))
+
+  (testing "Softbreak HTML rendering"
+    (let [ast (cm/parse "* dude `code`\n  whatever")
+          html (cm/render-html ast)]
+      (is (str/includes? html "<code>code</code>\nwhatever"))
+      (is (str/includes? html "<li><p>dude <code>code</code>\nwhatever</p></li>")))))
 
 ;; Run the tests when this file is evaluated
 (comment
