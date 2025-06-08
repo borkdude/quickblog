@@ -302,6 +302,60 @@ Final paragraph with <span>inline HTML</span>."
       (is (str/includes? html "<code>code</code>\nwhatever"))
       (is (str/includes? html "<li><p>dude <code>code</code>\nwhatever</p></li>")))))
 
+(deftest test-autolinks
+  (testing "Simple autolink"
+    (let [ast (cm/parse "<https://www.example.com>")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 1 (count children)))
+      (is (= :autolink (:type (first children))))
+      (is (= "https://www.example.com" (:destination (first children))))))
+
+  (testing "Autolink with surrounding text"
+    (let [ast (cm/parse "Visit <https://www.google.com> for search")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 3 (count children)))
+      (is (= [:text :autolink :text] (map :type children)))
+      (is (= "Visit " (:literal (first children))))
+      (is (= "https://www.google.com" (:destination (second children))))
+      (is (= " for search" (:literal (nth children 2))))))
+
+  (testing "Multiple autolinks"
+    (let [ast (cm/parse "Check <http://example.com> and <https://other.com>")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 4 (count children)))
+      (is (= [:text :autolink :text :autolink] (map :type children)))
+      (is (= "http://example.com" (:destination (second children))))
+      (is (= "https://other.com" (:destination (nth children 3))))))
+
+  (testing "Autolink vs HTML inline distinction"
+    (let [ast (cm/parse "Link: <https://example.com> and HTML: <div>tag</div>")
+          para (first (:children ast))
+          children (:children para)]
+      ;; Should have: text, autolink, text, html-inline, text, html-inline
+      (is (= 6 (count children)))
+      (is (= [:text :autolink :text :html-inline :text :html-inline] (map :type children)))
+      (is (= :autolink (:type (second children))))
+      (is (= :html-inline (:type (nth children 3))))
+      (is (= :html-inline (:type (nth children 5))))))
+
+  (testing "Autolink HTML rendering"
+    (let [ast (cm/parse "<https://www.example.com>")
+          html (cm/render-html ast)]
+      (is (str/includes? html "<a href=\"https://www.example.com\">https://www.example.com</a>"))
+      (is (str/includes? html "<p><a href=\"https://www.example.com\">https://www.example.com</a></p>"))))
+
+  (testing "Mixed autolink and regular link"
+    (let [ast (cm/parse "Auto: <https://example.com> and regular: [text](https://other.com)")
+          para (first (:children ast))
+          children (:children para)]
+      (is (= 4 (count children)))
+      (is (= [:text :autolink :text :link] (map :type children)))
+      (is (= "https://example.com" (:destination (second children))))
+      (is (= "https://other.com" (:destination (nth children 3)))))))
+
 ;; Run the tests when this file is evaluated
 (comment
   (run-tests))

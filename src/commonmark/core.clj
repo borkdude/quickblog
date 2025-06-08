@@ -75,6 +75,13 @@
   []
   {:type :softbreak})
 
+(defn autolink-node
+  "Create an autolink node with URL"
+  [url]
+  {:type :autolink
+   :destination url
+   :children [(text-node url)]})
+
 ;; Node manipulation functions
 (defn append-child
   "Add a child node to a parent node"
@@ -109,34 +116,34 @@
 (defn parse-inline-complex
   "Parse text with mixed inline elements into AST nodes"
   [text]
-  ;; Handle HTML inline tags first (highest precedence)
-  (if-let [match (re-find #"<[^>]+>" text)]
-    (let [full-match match ; re-find returns the string directly for simple regex
+  ;; Handle autolinks first (<url>)
+  (if-let [match (re-find #"<(https?://[^>\s]+)>" text)]
+    (let [[full-match url] match
           idx (.indexOf text full-match)]
       (if (>= idx 0)
         (let [before (subs text 0 idx)
               after (subs text (+ idx (count full-match)))]
           (concat
            (if (not (str/blank? before)) (parse-inline-text before) [])
-           [(html-inline-node full-match)]
+           [(autolink-node url)]
            (if (not (str/blank? after)) (parse-inline-text after) [])))
         [(text-node text)]))
 
-    ;; Handle inline code (`code`)
-    (if-let [match (re-find #"`([^`]+)`" text)]
-      (let [[full-match content] match
+    ;; Handle HTML inline tags (after autolinks)
+    (if-let [match (re-find #"<[^>]+>" text)]
+      (let [full-match match ; re-find returns the string directly for simple regex
             idx (.indexOf text full-match)]
         (if (>= idx 0)
           (let [before (subs text 0 idx)
                 after (subs text (+ idx (count full-match)))]
             (concat
              (if (not (str/blank? before)) (parse-inline-text before) [])
-             [(code-node content)]
+             [(html-inline-node full-match)]
              (if (not (str/blank? after)) (parse-inline-text after) [])))
           [(text-node text)]))
 
-      ;; Handle strong emphasis (**text**)
-      (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
+      ;; Handle inline code (`code`)
+      (if-let [match (re-find #"`([^`]+)`" text)]
         (let [[full-match content] match
               idx (.indexOf text full-match)]
           (if (>= idx 0)
@@ -144,12 +151,12 @@
                   after (subs text (+ idx (count full-match)))]
               (concat
                (if (not (str/blank? before)) (parse-inline-text before) [])
-               [{:type :strong :children [(text-node content)]}]
+               [(code-node content)]
                (if (not (str/blank? after)) (parse-inline-text after) [])))
             [(text-node text)]))
 
-        ;; Handle emphasis (*text*)
-        (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+        ;; Handle strong emphasis (**text**)
+        (if-let [match (re-find #"\*\*([^\*]+)\*\*" text)]
           (let [[full-match content] match
                 idx (.indexOf text full-match)]
             (if (>= idx 0)
@@ -157,37 +164,54 @@
                     after (subs text (+ idx (count full-match)))]
                 (concat
                  (if (not (str/blank? before)) (parse-inline-text before) [])
-                 [{:type :emph :children [(text-node content)]}]
+                 [{:type :strong :children [(text-node content)]}]
                  (if (not (str/blank? after)) (parse-inline-text after) [])))
               [(text-node text)]))
 
-          ;; Handle links ([text](url))
-          (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
-            (let [[full-match link-text url] match
+          ;; Handle emphasis (*text*)
+          (if-let [match (re-find #"(?<!\*)\*([^\*]+)\*(?!\*)" text)]
+            (let [[full-match content] match
                   idx (.indexOf text full-match)]
               (if (>= idx 0)
                 (let [before (subs text 0 idx)
                       after (subs text (+ idx (count full-match)))]
                   (concat
                    (if (not (str/blank? before)) (parse-inline-text before) [])
-                   [{:type :link
-                     :destination url
-                     :children [(text-node link-text)]}]
+                   [{:type :emph :children [(text-node content)]}]
                    (if (not (str/blank? after)) (parse-inline-text after) [])))
                 [(text-node text)]))
 
-            ;; Default case - no inline formatting found
-            [(text-node text)]))))))
+            ;; Handle links ([text](url))
+            (if-let [match (re-find #"\[([^\]]+)\]\(([^\)]+)\)" text)]
+              (let [[full-match link-text url] match
+                    idx (.indexOf text full-match)]
+                (if (>= idx 0)
+                  (let [before (subs text 0 idx)
+                        after (subs text (+ idx (count full-match)))]
+                    (concat
+                     (if (not (str/blank? before)) (parse-inline-text before) [])
+                     [{:type :link
+                       :destination url
+                       :children [(text-node link-text)]}]
+                     (if (not (str/blank? after)) (parse-inline-text after) [])))
+                  [(text-node text)]))
+
+              ;; Default case - no inline formatting found
+              [(text-node text)])))))))
 
  ;; Now define the actual function
 (defn parse-inline-text
-  "Parse inline markdown into AST nodes (emphasis, strong, links, HTML inline, code, text)"
+  "Parse inline markdown into AST nodes (autolinks, HTML inline, code, emphasis, strong, links, text)"
   [text]
   (if (str/blank? text)
     []
     ;; Simple implementation: handle the first occurrence of each pattern
     (cond
-      ;; Handle HTML inline tags first (highest precedence)
+      ;; Handle autolinks first (<url>)
+      (re-find #"<(https?://[^>\s]+)>" text)
+      (parse-inline-complex text)
+
+      ;; Handle HTML inline tags (after autolinks)
       (re-find #"<[^>]+>" text)
       (parse-inline-complex text)
 
@@ -783,6 +807,11 @@
     (let [url (:destination node)]
       (str "<a href=\"" url "\">" (str/join "" (map render-node (:children node))) "</a>"))
 
+    :autolink
+    ;; Autolink nodes render as links with the URL as both href and text
+    (let [url (:destination node)]
+      (str "<a href=\"" url "\">" url "</a>"))
+
     :html-inline
     ;; HTML inline nodes contain raw HTML that should be preserved
     (:literal node)
@@ -899,4 +928,5 @@ Dude <a href=\"dude\"><a/> go"
 `")
   (parse "<!--more-->")
   (parse "* dude `dude--dude`
-  whatever"))
+  whatever")
+  (parse "Test: <https://www.page.com/Bob's-page>"))
