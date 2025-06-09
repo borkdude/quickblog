@@ -130,7 +130,7 @@
 ;; Basic inline parser - handles emphasis for now
 ;; Inline parsing functions
 ;; Inline parsing functions (reorganized to fix forward references)
-(declare parse-inline-text thematic-break-line?) ; Forward declaration
+(declare parse-inline-text thematic-break-line? setext-heading-level) ; Forward declaration
 
 (defn parse-inline-complex
   "Parse text with mixed inline elements into AST nodes"
@@ -299,6 +299,14 @@
     (let [[_ hashes text] match
           level (count hashes)
           inline-nodes (parse-inline-text text)]
+      (-> (make-node :heading {:level level})
+          (update :children concat inline-nodes)))))
+
+(defn parse-setext-heading
+  "Parse a setext heading from heading text and underline"
+  [heading-text underline]
+  (when-let [level (setext-heading-level underline)]
+    (let [inline-nodes (parse-inline-text heading-text)]
       (-> (make-node :heading {:level level})
           (update :children concat inline-nodes)))))
 
@@ -640,7 +648,26 @@
          ;; Match lines with 3+ asterisks, hyphens, or underscores, optionally with spaces
          (or (re-matches #"^(\*\s*){3,}$" trimmed) ; *** or * * *
              (re-matches #"^(-\s*){3,}$" trimmed) ; --- or - - -
-             (re-matches #"^(_\s*){3,}$" trimmed))))) ; DOCTYPE
+             (re-matches #"^(_\s*){3,}$" trimmed)))))
+
+(defn setext-underline-line?
+  "Check if a line is a setext heading underline (= or - characters)"
+  [line]
+  (and line
+       (let [trimmed (str/trim line)]
+         (and (not (str/blank? trimmed))
+              (or (re-matches #"^=+$" trimmed) ; H1 underline (===)
+                  (re-matches #"^-+$" trimmed)))))) ; H2 underline (---)
+
+(defn setext-heading-level
+  "Get the heading level from a setext underline (1 for =, 2 for -)"
+  [underline]
+  (when (setext-underline-line? underline)
+    (let [trimmed (str/trim underline)]
+      (cond
+        (re-matches #"^=+$" trimmed) 1
+        (re-matches #"^-+$" trimmed) 2
+        :else nil))))
 
 (defn parse-html-block
   "Parse HTML block content"
@@ -707,7 +734,7 @@
           in-code-block
           (recur rest-lines blocks [] [] true (conj current-code line))
 
-          ;; Heading
+          ;; ATX Heading (## Heading)
           (heading-line? line)
           (let [new-blocks (cond
                              (seq current-blockquote)
@@ -724,7 +751,20 @@
                    false
                    []))
 
-          ;; Thematic break (check before list items to avoid confusion)
+          ;; Setext heading detection - check if current line is an underline for the current paragraph
+          (and (seq current-para)
+               (= 1 (count current-para))
+               (setext-underline-line? line))
+          (let [heading-text (first current-para)
+                setext-heading (parse-setext-heading heading-text line)]
+            (recur rest-lines
+                   (conj blocks setext-heading)
+                   []
+                   []
+                   false
+                   []))
+
+          ;; Thematic break (check after setext to avoid conflicts)
           (thematic-break-line? line)
           (let [new-blocks (cond
                              (seq current-blockquote)
@@ -741,7 +781,6 @@
                    false
                    []))
 
-          ;; List item
           ;; List item - consume entire list at once
           (list-item-line? line)
           (let [new-blocks (cond
@@ -779,7 +818,6 @@
                    []))
 
           ;; Blank line - end current block
-          ;; Blank line - end current block
           (blank-line? line)
           (cond
             (seq current-blockquote)
@@ -801,7 +839,6 @@
             :else
             (recur rest-lines blocks [] [] false []))
 
-          ;; Regular line - add to current paragraph (if not in other block)
           ;; Regular line - add to current paragraph (if not in other block)
           :else
           (cond

@@ -457,6 +457,51 @@ Final paragraph with <span>inline HTML</span>."
     (is (= "<ul><li><p>Item one<br />Item continues</p></li></ul>"
            (cm/render-html (cm/parse "- Item one  \n  Item continues"))))))
 
+(deftest test-setext-headings
+  (testing "H1 setext heading with equals"
+    (is (= "<h1>Heading 1</h1>"
+           (cm/render-html (cm/parse "Heading 1\n=========")))))
+
+  (testing "H2 setext heading with dashes"
+    (is (= "<h2>Heading 2</h2>"
+           (cm/render-html (cm/parse "Heading 2\n---------")))))
+
+  (testing "Short underline still works"
+    (is (= "<h1>Short</h1>"
+           (cm/render-html (cm/parse "Short\n="))))
+    (is (= "<h2>Also short</h2>"
+           (cm/render-html (cm/parse "Also short\n-")))))
+
+  (testing "Long underline works"
+    (is (= "<h1>Heading</h1>"
+           (cm/render-html (cm/parse "Heading\n==================")))))
+
+  (testing "Multi-line paragraph does not become setext heading"
+    (is (= "<p>Line one\nLine two\n=========</p>"
+           (cm/render-html (cm/parse "Line one\nLine two\n=========")))))
+
+  (testing "Setext heading with inline formatting"
+    (is (= "<h1><strong>Bold heading</strong></h1>"
+           (cm/render-html (cm/parse "**Bold heading**\n==============="))))
+    (is (= "<h2><em>Italic</em> heading</h2>"
+           (cm/render-html (cm/parse "*Italic* heading\n--------------")))))
+
+  (testing "Setext heading in mixed content"
+    (is (= "<p>Paragraph</p>\n<h1>Heading</h1>\n<p>Another paragraph</p>"
+           (cm/render-html (cm/parse "Paragraph\n\nHeading\n=======\n\nAnother paragraph")))))
+
+  (testing "Thematic break still works independently"
+    (is (= "<hr />"
+           (cm/render-html (cm/parse "---"))))
+    (is (= "<p>Text</p>\n<hr />"
+           (cm/render-html (cm/parse "Text\n\n---")))))
+
+  (testing "Setext vs thematic break distinction"
+    (is (= "<h2>Heading</h2>"
+           (cm/render-html (cm/parse "Heading\n-------"))))
+    (is (= "<hr />"
+           (cm/render-html (cm/parse "-------"))))))
+
 ;; Run the tests when this file is evaluated
 (comment
   (run-tests))
