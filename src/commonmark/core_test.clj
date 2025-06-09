@@ -502,6 +502,102 @@ Final paragraph with <span>inline HTML</span>."
     (is (= "<hr />"
            (cm/render-html (cm/parse "-------"))))))
 
+(deftest test-underscore-emphasis
+  (testing "Basic underscore emphasis"
+    (is (= "<p><em>italic</em> and <strong>bold</strong></p>"
+           (cm/render-html (cm/parse "_italic_ and __bold__")))))
+
+  (testing "Single underscore for emphasis"
+    (is (= "<p><em>italic text</em></p>"
+           (cm/render-html (cm/parse "_italic text_")))))
+
+  (testing "Double underscore for strong emphasis"
+    (is (= "<p><strong>bold text</strong></p>"
+           (cm/render-html (cm/parse "__bold text__")))))
+
+  (testing "Mixed asterisk and underscore emphasis"
+    (is (= "<p><em>underscore</em> and <em>asterisk</em> and <strong>underscore</strong> and <strong>asterisk</strong></p>"
+           (cm/render-html (cm/parse "_underscore_ and *asterisk* and __underscore__ and **asterisk**")))))
+
+  (testing "Underscore emphasis with surrounding text"
+    (is (= "<p>This is <em>italic</em> and this is <strong>bold</strong> text.</p>"
+           (cm/render-html (cm/parse "This is _italic_ and this is __bold__ text.")))))
+
+  (testing "Multiple underscore emphasis in same paragraph"
+    (is (= "<p><em>first</em> and <em>second</em> and <strong>third</strong></p>"
+           (cm/render-html (cm/parse "_first_ and _second_ and __third__")))))
+
+  (testing "Underscore emphasis at start and end of paragraph"
+    (is (= "<p><em>start</em> middle <strong>end</strong></p>"
+           (cm/render-html (cm/parse "_start_ middle __end__")))))
+
+  (testing "Underscore emphasis with punctuation"
+    (is (= "<p><em>italic</em>, <strong>bold</strong>!</p>"
+           (cm/render-html (cm/parse "_italic_, __bold__!")))))
+
+  (testing "Underscore emphasis cannot be nested"
+    ;; According to CommonMark, same delimiter types cannot be nested
+    (is (= "<p><strong>bold _not nested_ bold</strong></p>"
+           (cm/render-html (cm/parse "__bold _not nested_ bold__")))))
+
+  (testing "Underscores in the middle of words don't create emphasis"
+    (is (= "<p>snake_case_variable and file_name_here</p>"
+           (cm/render-html (cm/parse "snake_case_variable and file_name_here")))))
+
+  (testing "Underscores require word boundaries"
+    (is (= "<p>a_b_c and <em>emphasized</em></p>"
+           (cm/render-html (cm/parse "a_b_c and _emphasized_")))))
+
+  (testing "Mixed with other inline formatting"
+    (is (= "<p><em>italic</em> and <code>code</code> and <a href=\"url\">link</a></p>"
+           (cm/render-html (cm/parse "_italic_ and `code` and [link](url)")))))
+
+  (testing "Underscore emphasis in lists"
+    (is (= "<ul><li><em>italic item</em></li><li><strong>bold item</strong></li></ul>"
+           (cm/render-html (cm/parse "- _italic item_\n- __bold item__")))))
+
+  (testing "Underscore emphasis in blockquotes"
+    (is (= "<blockquote><p><em>italic quote</em> and <strong>bold quote</strong></p></blockquote>"
+           (cm/render-html (cm/parse "> _italic quote_ and __bold quote__")))))
+
+  (testing "Underscore emphasis in headings"
+    (is (= "<h1><em>italic</em> heading</h1>"
+           (cm/render-html (cm/parse "# _italic_ heading")))))
+
+  (testing "Whitespace handling"
+    ;; Emphasis markers cannot be followed by whitespace
+    (is (= "<p>_ not italic _ and __ not bold __</p>"
+           (cm/render-html (cm/parse "_ not italic _ and __ not bold __")))))
+
+  (testing "Mismatched delimiters"
+    (is (= "<p>_no match and __no match</p>"
+           (cm/render-html (cm/parse "_no match and __no match")))))
+
+  (testing "Empty emphasis"
+    (is (= "<p>__ and ____</p>"
+           (cm/render-html (cm/parse "__ and ____")))))
+
+  (testing "Cross-delimiter nesting asterisk inside underscore"
+    (is (= "<p><em>italic with <strong>bold</strong> inside</em></p>"
+           (cm/render-html (cm/parse "_italic with **bold** inside_")))))
+
+  (testing "Cross-delimiter nesting underscore inside asterisk"
+    (is (= "<p><em>italic with <strong>bold</strong> inside</em></p>"
+           (cm/render-html (cm/parse "*italic with __bold__ inside*")))))
+
+  (testing "Triple underscore creates strong emphasis with leftover underscore"
+    ;; ___text___ should be interpreted as __<em>text</em>__ which is <strong><em>text</em></strong>
+    (is (= "<p><strong><em>text</em></strong></p>"
+           (cm/render-html (cm/parse "___text___")))))
+
+  (testing "Underscore emphasis with line breaks"
+    (is (= "<p><em>multi\nline</em></p>"
+           (cm/render-html (cm/parse "_multi\nline_")))))
+
+  (testing "Underscore emphasis vs literal underscores in code"
+    (is (= "<p><code>_not_emphasis_</code> but <em>this is</em></p>"
+           (cm/render-html (cm/parse "`_not_emphasis_` but _this is_"))))))
+
 ;; Run the tests when this file is evaluated
 (comment
   (run-tests))
