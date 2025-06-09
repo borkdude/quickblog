@@ -75,6 +75,11 @@
   []
   {:type :softbreak})
 
+(defn hardbreak-node
+  "Create a hard line break node"
+  []
+  {:type :hardbreak})
+
 (defn autolink-node
   "Create an autolink node with URL"
   [url]
@@ -267,13 +272,19 @@
 
 ;; Simple block parser
 (defn parse-paragraph
-  "Parse consecutive non-empty lines as a paragraph with inline elements"
+  "Parse consecutive non-empty lines as a paragraph with inline elements, handling hard line breaks"
   [lines]
   (when (seq lines)
-    (let [text (str/join " " lines)
-          inline-nodes (parse-inline-text text)]
-      (-> (paragraph-node)
-          (update :children concat inline-nodes)))))
+    (if (= 1 (count lines))
+      ;; Single line - simple inline parsing (remove trailing spaces since no line break follows)
+      (let [clean-line (str/replace (first lines) #"\s+$" "")
+            inline-nodes (parse-inline-text clean-line)]
+        (-> (paragraph-node)
+            (update :children concat inline-nodes)))
+      ;; Multiple lines - check for hard line breaks
+      (let [inline-nodes (parse-inline-with-softbreaks lines)]
+        (-> (paragraph-node)
+            (update :children concat inline-nodes))))))
 
 (defn blank-line? [line]
   (or (nil? line) (str/blank? line)))
@@ -382,7 +393,7 @@
     :else nil))
 
 (defn parse-inline-with-softbreaks
-  "Parse multiple lines as inline content with softbreaks between lines"
+  "Parse multiple lines as inline content with hard breaks and softbreaks between lines"
   [lines]
   (when (seq lines)
     (loop [remaining lines
@@ -391,12 +402,18 @@
         nodes
         (let [line (first remaining)
               rest-lines (rest remaining)
-              inline-nodes (parse-inline-text line)]
+              ;; Check if line ends with two or more spaces (hard line break)
+              has-hard-break? (and (seq rest-lines) (re-find #"  +$" line))
+              ;; Remove trailing spaces from line for processing
+              clean-line (str/replace line #"\s+$" "")
+              inline-nodes (parse-inline-text clean-line)]
           (if (seq rest-lines)
-            ;; More lines remaining - add inline nodes + softbreak
+            ;; More lines remaining - add inline nodes + appropriate break
             (recur rest-lines
-                   (concat nodes inline-nodes [(softbreak-node)]))
-            ;; Last line - just add inline nodes
+                   (concat nodes
+                           inline-nodes
+                           [(if has-hard-break? (hardbreak-node) (softbreak-node))]))
+            ;; Last line - just add inline nodes (no trailing spaces matter)
             (concat nodes inline-nodes)))))))
 
 (defn parse-list-item-content
@@ -892,6 +909,10 @@
     :softbreak
     ;; Softbreak nodes render as a newline in HTML
     "\n"
+
+    :hardbreak
+    ;; Hard line break renders as HTML <br /> tag
+    "<br />"
 
     :thematic-break
     ;; Thematic break renders as an HTML horizontal rule

@@ -396,34 +396,66 @@ Final paragraph with <span>inline HTML</span>."
         (is (every? #(= :thematic-break (:type %)) (:children ast)))))))
 
 (deftest test-images
-  "Test image parsing and rendering"
   (testing "Basic image syntax"
     (let [result (cm/render-html (cm/parse "![Alt text](https://example.com/image.jpg)"))]
-      (is (= result "<p><img src=\"https://example.com/image.jpg\" alt=\"Alt text\" /></p>"))))
+      (is (= "<p><img src=\"https://example.com/image.jpg\" alt=\"Alt text\" /></p>" result))))
 
   (testing "Image with empty alt text"
     (let [result (cm/render-html (cm/parse "![](https://example.com/image.jpg)"))]
-      (is (= result "<p><img src=\"https://example.com/image.jpg\" alt=\"\" /></p>"))))
+      (is (= "<p><img src=\"https://example.com/image.jpg\" alt=\"\" /></p>" result))))
 
   (testing "Image vs link distinction"
     (let [result (cm/render-html (cm/parse "![Image](pic.jpg) and [Link](page.html)"))]
-      (is (= result "<p><img src=\"pic.jpg\" alt=\"Image\" /> and <a href=\"page.html\">Link</a></p>"))))
+      (is (= "<p><img src=\"pic.jpg\" alt=\"Image\" /> and <a href=\"page.html\">Link</a></p>" result))))
 
   (testing "Image in mixed content"
     (let [result (cm/render-html (cm/parse "Here is an image: ![Cat](cat.jpg) in the text."))]
-      (is (= result "<p>Here is an image: <img src=\"cat.jpg\" alt=\"Cat\" /> in the text.</p>"))))
+      (is (= "<p>Here is an image: <img src=\"cat.jpg\" alt=\"Cat\" /> in the text.</p>" result))))
 
   (testing "Multiple images"
     (let [result (cm/render-html (cm/parse "![First](1.jpg) ![Second](2.jpg)"))]
-      (is (= result "<p><img src=\"1.jpg\" alt=\"First\" /><img src=\"2.jpg\" alt=\"Second\" /></p>"))))
+      (is (= "<p><img src=\"1.jpg\" alt=\"First\" /><img src=\"2.jpg\" alt=\"Second\" /></p>" result))))
 
   (testing "Image with simple alt text"
     (let [result (cm/render-html (cm/parse "![Simple alt text](test.jpg)"))]
-      (is (= result "<p><img src=\"test.jpg\" alt=\"Simple alt text\" /></p>"))))
+      (is (= "<p><img src=\"test.jpg\" alt=\"Simple alt text\" /></p>" result))))
 
   (testing "Image with URL containing special characters"
     (let [result (cm/render-html (cm/parse "![Test](https://example.com/path/image.jpg?param=value)"))]
-      (is (= result "<p><img src=\"https://example.com/path/image.jpg?param=value\" alt=\"Test\" /></p>")))))
+      (is (= "<p><img src=\"https://example.com/path/image.jpg?param=value\" alt=\"Test\" /></p>" result)))))
+
+(deftest test-hard-line-breaks
+  (testing "Hard line break with two spaces"
+    (is (= "<p>Line one<br />Line two</p>"
+           (cm/render-html (cm/parse "Line one  \nLine two")))))
+
+  (testing "Hard line break with multiple spaces"
+    (is (= "<p>Line one<br />Line two</p>"
+           (cm/render-html (cm/parse "Line one   \nLine two")))))
+
+  (testing "Softbreak with just newline"
+    (is (= "<p>Line one\nLine two</p>"
+           (cm/render-html (cm/parse "Line one\nLine two")))))
+
+  (testing "Multiple hard line breaks"
+    (is (= "<p>Line one<br />Line two<br />Line three</p>"
+           (cm/render-html (cm/parse "Line one  \nLine two  \nLine three")))))
+
+  (testing "Mixed hard and soft breaks"
+    (is (= "<p>Line one<br />Line two\nLine three</p>"
+           (cm/render-html (cm/parse "Line one  \nLine two\nLine three")))))
+
+  (testing "Hard line break at end of paragraph (should not create break)"
+    (is (= "<p>Line one</p>"
+           (cm/render-html (cm/parse "Line one  ")))))
+
+  (testing "Hard line break with inline formatting"
+    (is (= "<p><strong>Bold text</strong><br />Next line</p>"
+           (cm/render-html (cm/parse "**Bold text**  \nNext line")))))
+
+  (testing "Hard line break in list items"
+    (is (= "<ul><li><p>Item one<br />Item continues</p></li></ul>"
+           (cm/render-html (cm/parse "- Item one  \n  Item continues"))))))
 
 ;; Run the tests when this file is evaluated
 (comment
