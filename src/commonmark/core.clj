@@ -270,6 +270,30 @@
       ;; No inline formatting - simple text node
       :else [(text-node text)])))
 
+(defn parse-inline-with-softbreaks
+  "Parse multiple lines as inline content with hard breaks and softbreaks between lines"
+  [lines]
+  (when (seq lines)
+    (loop [remaining lines
+           nodes []]
+      (if (empty? remaining)
+        nodes
+        (let [line (first remaining)
+              rest-lines (rest remaining)
+              ;; Check if line ends with two or more spaces (hard line break)
+              has-hard-break? (and (seq rest-lines) (re-find #"  +$" line))
+              ;; Remove trailing spaces from line for processing
+              clean-line (str/replace line #"\s+$" "")
+              inline-nodes (parse-inline-text clean-line)]
+          (if (seq rest-lines)
+            ;; More lines remaining - add inline nodes + appropriate break
+            (recur rest-lines
+                   (concat nodes
+                           inline-nodes
+                           [(if has-hard-break? (hardbreak-node) (softbreak-node))]))
+            ;; Last line - just add inline nodes (no trailing spaces matter)
+            (concat nodes inline-nodes)))))))
+
 ;; Simple block parser
 (defn parse-paragraph
   "Parse consecutive non-empty lines as a paragraph with inline elements, handling hard line breaks"
@@ -366,7 +390,7 @@
   (and line
        (not (str/blank? line))
        (not (list-item-line? line))
-       (let [line-indent (count (take-while #(= % \space) line))]
+       (let [line-indent (count (take-while #(= \space %) line))]
          (>= line-indent base-indent))))
 
 (defn get-line-indent
@@ -374,7 +398,7 @@
   [line]
   (if (str/blank? line)
     0
-    (count (take-while #(= % \space) line)))) ; ordered list
+    (count (take-while #(= \space %) line)))) ; ordered list
 
 (defn parse-list-item-line
   "Parse a list item line and return content with indentation info"
@@ -399,30 +423,6 @@
          :content (nth match 3)}))
 
     :else nil))
-
-(defn parse-inline-with-softbreaks
-  "Parse multiple lines as inline content with hard breaks and softbreaks between lines"
-  [lines]
-  (when (seq lines)
-    (loop [remaining lines
-           nodes []]
-      (if (empty? remaining)
-        nodes
-        (let [line (first remaining)
-              rest-lines (rest remaining)
-              ;; Check if line ends with two or more spaces (hard line break)
-              has-hard-break? (and (seq rest-lines) (re-find #"  +$" line))
-              ;; Remove trailing spaces from line for processing
-              clean-line (str/replace line #"\s+$" "")
-              inline-nodes (parse-inline-text clean-line)]
-          (if (seq rest-lines)
-            ;; More lines remaining - add inline nodes + appropriate break
-            (recur rest-lines
-                   (concat nodes
-                           inline-nodes
-                           [(if has-hard-break? (hardbreak-node) (softbreak-node))]))
-            ;; Last line - just add inline nodes (no trailing spaces matter)
-            (concat nodes inline-nodes)))))))
 
 (defn parse-list-item-content
   "Parse the content of a list item, which can include multiple blocks"
@@ -513,7 +513,7 @@
         content-indent (+ marker-indent
                           (if (= :ordered (:type item-info))
                             (+ (count (str (:start item-info))) 2) ; "1. " = 3 chars
-                            2))] ; "- " = 2 chars  
+                            2))] ; "- " = 2 chars
     (loop [remaining (rest lines) ; skip the list item line itself
            collected [(:content item-info)] ; start with the list item content
            blank-line-buffer []]
