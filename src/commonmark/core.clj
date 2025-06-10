@@ -338,6 +338,7 @@
   (and line (str/starts-with? line ">")))
 
 (defn code-fence-line? [line]
+  ;; TODO: replace with str/starts-with?
   (and line (re-matches #"^```.*" line)))
 
 (defn parse-blockquote-line
@@ -1082,4 +1083,11 @@ Dude <a href=\"dude\"><a/> go"
 
 ---
 
------"))
+-----")
+  (parse "* Item
+    1. First Subitem
+    2. Second Subitem")
+
+  
+  ;; TODO:
+  (parse "_italic_ and __bold__"))
