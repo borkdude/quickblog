@@ -17,6 +17,7 @@ Instances of quickblog can be seen here:
 
 ## Unreleased
 
+- Switch to [Nextjournal Markdown](https://github.com/nextjournal/markdown) for markdown rendering
 - Link to previous and next posts; see "Linking to previous and next posts" in
   the README ([@jmglov](https://github.com/jmglov))
 - Fix flaky caching tests ([@jmglov](https://github.com/jmglov))

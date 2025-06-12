@@ -28,3 +28,4 @@ classes
 .nrepl-port
 .direnv
 .envrc
+scratch.clj

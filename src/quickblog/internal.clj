@@ -7,7 +7,9 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [markdown.core :as md]
+   [hiccup2.core :as hiccup]
+   [nextjournal.markdown :as md]
+   [quickblog.internal.frontmatter :as fm]
    [selmer.parser :as selmer]))
 
 ;; Script used for live reloading in watch mode
@@ -159,36 +161,35 @@
         (into {})
         (merge default-metadata))))
 
+(def RET "^RET^")
+
 (defn pre-process-markdown [markdown]
-  (-> markdown
-      ;; allow multiline link title
-      (str/replace #"\[[^\]]+\n"
-                   (fn [match]
-                     (str/replace match "\n" "$$RET$$")))))
+    (-> markdown
+        ;; allow multiline link title
+        (str/replace #"\[[^\]]+\n"
+                     (fn [match]
+                       (str/replace match "\n" RET)))))
 
 (defn post-process-markdown [html]
-  (-> html
-      ;; restore comments
-      (str/replace #"(<p>)?<!&ndash;(.*?)&ndash;>(</p>)?" "<!--$2-->")
-      ;; restore newline in multiline link titles
-      (str/replace "$$RET$$" "\n")))
+    (-> html
+        ;; restore newline in multiline link titles
+        (str/replace RET "\n")))
 
 (defn markdown->html [file]
-  (let [markdown (slurp file)]
-    (println "Processing markdown for file:" (str file))
-    (-> markdown
-        pre-process-markdown
-        (md/md-to-html-string-with-meta :reference-links? true
-                                        :heading-anchors true
-                                        :footnotes? true
-                                        :code-style
-                                        (fn [lang]
-                                          (format "class=\"lang-%s language-%s\"" lang lang))
-                                        :pre-style
-                                        (fn [lang]
-                                          (format "class=\"language-%s\"" lang)))
-        :html
-        post-process-markdown)))
+  (with-open [rdr (io/reader file)]
+    (let [lines (line-seq rdr)]
+      (println "Processing markdown for file:" (str file))
+      (let [[_metadata n] (fm/parse-metadata-headers lines)
+            lines (drop n lines)
+            markdown-text (str/join \newline lines)]
+        (->> markdown-text
+             pre-process-markdown
+             (md/->hiccup (assoc md/default-hiccup-renderers
+                                 :html-inline (comp hiccup/raw md/node->text)
+                                 :html-block (comp hiccup/raw md/node->text)))
+             (hiccup/html)
+             str
+             post-process-markdown)))))
 
 (defn remove-previews [posts]
   (->> posts
@@ -200,8 +201,8 @@
 
 (defn post-compare [a-post b-post]
   ;; Compare dates opposite the other values to force desending order
-    (compare [(:date b-post) (:title a-post) (:file a-post)]
-             [(:date a-post) (:title b-post) (:file b-post)]))
+  (compare [(:date b-post) (:title a-post) (:file a-post)]
+           [(:date a-post) (:title b-post) (:file b-post)]))
 
 (defn sort-posts [posts]
   (sort post-compare posts))
@@ -223,6 +224,13 @@
       (println "Reading post from cache:" (str file))
       (slurp cached-file))))
 
+(defn read-metadata [path]
+  (with-open [rdr (io/reader path)
+              ]
+    (let [lines (line-seq rdr)
+          [metadata _n] (fm/parse-metadata-headers lines)]
+      metadata)))
+
 (defn load-post [{:keys [cache-dir default-metadata
                          force-render rendering-system-files]
                   :as opts}
@@ -235,19 +243,19 @@
                    (rendering-modified? cached-file (cons path rendering-system-files)))]
     (println "Reading metadata for post:" (str file))
     (try
-      (-> (slurp path)
-          md/md-to-meta
-          (transform-metadata default-metadata)
-          (assoc :file (fs/file-name file)
-                 :html (if stale?
-                         (delay
-                           (println "Parsing Markdown for post:" (str file))
-                           (let [html (markdown->html path)]
-                             (println "Caching post to file:" (str cached-file))
-                             (spit cached-file html)
-                             html))
-                         (read-cached-post opts file)))
-          validate-metadata)
+      (let [metadata (read-metadata path)]
+        (-> metadata
+            (transform-metadata default-metadata)
+            (assoc :file (fs/file-name file)
+                   :html (if stale?
+                           (delay
+                             (println "Parsing Markdown for post:" (str file))
+                             (let [html (markdown->html path)]
+                               (println "Caching post to file:" (str cached-file))
+                               (spit cached-file html)
+                               html))
+                           (read-cached-post opts file)))
+            validate-metadata))
       (catch Exception e
         {:quickblog/error (format "Skipping post %s due to exception: %s"
                                   (str file) (str e))}))))

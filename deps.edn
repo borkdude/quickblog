@@ -4,11 +4,12 @@
         org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}
         selmer/selmer {:mvn/version "1.12.53"}
-        markdown-clj/markdown-clj {:mvn/version "1.12.2"}
+        io.github.nextjournal/markdown {:mvn/version "0.7.186"}
         org.babashka/cli {:mvn/version "0.6.50"}
         org.babashka/http-server {:mvn/version "0.1.11"}
         babashka/babashka.pods {:git/url "https://github.com/babashka/pods"
-                                :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}}
+                                :git/sha "93081b75e66fb4c4d161f89e714c6b9e8d55c8d5"}
+        clj-commons/clj-yaml {:mvn/version "1.0.29"}}
  :aliases
  {:quickblog
   {:deps {io.github.borkdude/quickblog
