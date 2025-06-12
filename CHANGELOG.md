@@ -15,9 +15,10 @@ Instances of quickblog can be seen here:
 - [Henry Widd's blog](https://widdindustries.com/blog)
 - [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
 
-## Unreleased
+## 0.4.7 (2025-06-12)
 
 - Switch to [Nextjournal Markdown](https://github.com/nextjournal/markdown) for markdown rendering
+  The minimum babashka version to be used with quickblog is now v1.12.201 since it comes with Nextjournal Markdown built-in.
 - Link to previous and next posts; see "Linking to previous and next posts" in
   the README ([@jmglov](https://github.com/jmglov))
 - Fix flaky caching tests ([@jmglov](https://github.com/jmglov))
