@@ -1,9 +1,9 @@
 (ns quickblog.api-test
   (:require
+   [babashka.fs :as fs]
    [clojure.data.xml :as xml]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [babashka.fs :as fs]
    [quickblog.api :as api]
    [quickblog.internal :as lib])
   (:import (java.util UUID)))
@@ -15,6 +15,10 @@
     (with-out-str
       (test-fn)
       (fs/delete-tree test-dir))))
+
+(defn debug [& xs]
+  (binding [*out* *err*]
+    (apply println xs)))
 
 (defn- tmp-dir [dir-name]
   (fs/file test-dir
@@ -42,9 +46,14 @@
                     date "2022-01-02"
                     tags #{"clojure"}
                     content "Write a blog post here!"}}]
-   (let [preview-str (if preview? "Preview: true\n" "")]
+   (let [preview-str (if preview? "Preview: true" "")]
      (write-test-file posts-dir file
-                      (format "Title: %s\nDate: %s\nTags: %s\n%s\n%s"
+                      (format "Title: %s
+Date: %s
+Tags: %s
+%s
+
+%s"
                               title date (str/join "," tags) preview-str content)))))
 
 (deftest new-test
@@ -161,26 +170,26 @@
     (with-dirs [posts-dir
                 templates-dir
                 out-dir]
-       (write-test-post posts-dir {:tags #{"foobar" "tag with spaces"}})
-       (api/render {:page-suffix ""
-                    :posts-dir posts-dir
-                    :templates-dir templates-dir
-                    :out-dir out-dir})
-       (doseq [filename ["test.html" "index.html" "archive.html"
-                         (fs/file "tags" "index.html")
-                         (fs/file "tags" "tag-with-spaces.html")
-                         "atom.xml" "planetclojure.xml"]]
-         (is (fs/exists? (fs/file out-dir filename))))
-       (is (str/includes? (slurp (fs/file out-dir "test.html"))
-                          "<a class=\"page-link\" href=\"archive\">Archive</a>"))
-       (is (str/includes? (slurp (fs/file out-dir "test.html"))
-                          "<a href=\"tags/foobar\">foobar</a>"))
-       (is (str/includes? (slurp (fs/file out-dir "test.html"))
-                          "<a href=\"tags/tag-with-spaces\">tag with spaces</a>"))
-       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
-                          "<a href=\"foobar\">foobar</a>"))
-       (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
-                          "<a href=\"tag-with-spaces\">tag with spaces</a>"))))
+      (write-test-post posts-dir {:tags #{"foobar" "tag with spaces"}})
+      (api/render {:page-suffix ""
+                   :posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :out-dir out-dir})
+      (doseq [filename ["test.html" "index.html" "archive.html"
+                        (fs/file "tags" "index.html")
+                        (fs/file "tags" "tag-with-spaces.html")
+                        "atom.xml" "planetclojure.xml"]]
+        (is (fs/exists? (fs/file out-dir filename))))
+      (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                         "<a class=\"page-link\" href=\"archive\">Archive</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                         "<a href=\"tags/foobar\">foobar</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "test.html"))
+                         "<a href=\"tags/tag-with-spaces\">tag with spaces</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                         "<a href=\"foobar\">foobar</a>"))
+      (is (str/includes? (slurp (fs/file out-dir "tags" "index.html"))
+                         "<a href=\"tag-with-spaces\">tag with spaces</a>"))))
 
   (testing "with favicon"
     (with-dirs [favicon-dir
@@ -251,21 +260,21 @@
                    :out-dir out-dir})
       (is (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about ClojureScript"))))
 
-    (testing "non-Clojure tag"
-      (with-dirs [assets-dir
-                  posts-dir
-                  templates-dir
-                  cache-dir
-                  out-dir]
-        (write-test-post posts-dir {:content "Post about Elixir"
-                                    :tags #{"elixir"}})
-        (api/render {:assets-dir assets-dir
-                     :posts-dir posts-dir
-                     :templates-dir templates-dir
-                     :cache-dir cache-dir
-                     :out-dir out-dir})
-        (is (fs/exists? (fs/file out-dir "planetclojure.xml")))
-        (is (not (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about Elixir")))))
+  (testing "non-Clojure tag"
+    (with-dirs [assets-dir
+                posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:content "Post about Elixir"
+                                  :tags #{"elixir"}})
+      (api/render {:assets-dir assets-dir
+                   :posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (is (fs/exists? (fs/file out-dir "planetclojure.xml")))
+      (is (not (str/includes? (slurp (fs/file out-dir "planetclojure.xml")) "Post about Elixir")))))
 
   (testing "comments"
     (with-dirs [posts-dir
@@ -553,26 +562,26 @@
 (deftest refresh-templates
   ;; This fails in CI, why? /cc @jmglov
   #_(with-dirs [templates-dir]
-    (fs/create-dirs templates-dir)
-    (let [default-templates ["base.html" "post.html" "favicon.html" "style.css"]
-          custom-templates ["template1.html" "some-file.txt"]
-          mtimes (->> (concat default-templates custom-templates)
-                      (map #(let [filename %
-                                  file (fs/file templates-dir filename)]
-                              (spit file filename)
-                              [filename (str (fs/last-modified-time file))]))
-                      (into {}))]
-      (api/refresh-templates {:templates-dir templates-dir})
-      (doseq [filename default-templates
-              :let [file (fs/file templates-dir filename)
-                    mtime (str (fs/last-modified-time file))]]
-        (is (not= [filename (mtimes filename)]
-                  [filename mtime])))
-      (doseq [filename custom-templates
-              :let [file (fs/file templates-dir filename)
-                    mtime (str (fs/last-modified-time file))]]
-        (is (= [filename (mtimes filename)]
-               [filename mtime]))))))
+      (fs/create-dirs templates-dir)
+      (let [default-templates ["base.html" "post.html" "favicon.html" "style.css"]
+            custom-templates ["template1.html" "some-file.txt"]
+            mtimes (->> (concat default-templates custom-templates)
+                        (map #(let [filename %
+                                    file (fs/file templates-dir filename)]
+                                (spit file filename)
+                                [filename (str (fs/last-modified-time file))]))
+                        (into {}))]
+        (api/refresh-templates {:templates-dir templates-dir})
+        (doseq [filename default-templates
+                :let [file (fs/file templates-dir filename)
+                      mtime (str (fs/last-modified-time file))]]
+          (is (not= [filename (mtimes filename)]
+                    [filename mtime])))
+        (doseq [filename custom-templates
+                :let [file (fs/file templates-dir filename)
+                      mtime (str (fs/last-modified-time file))]]
+          (is (= [filename (mtimes filename)]
+                 [filename mtime]))))))
 
 (deftest link-prev-next-posts
   (let [posts (->> (range 1 5)
@@ -611,16 +620,16 @@
                      :out-dir out-dir
                      :link-prev-next-posts true
                      :num-index-posts 2})
-        (is (= (slurp (fs/file out-dir "post1.html"))
-               "\nnext: post2"))
-        (is (= (slurp (fs/file out-dir "post2.html"))
-               "prev: post1\nnext: post4"))
-        (is (= (slurp (fs/file out-dir "post3.html"))
-               "\n"))
-        (is (= (slurp (fs/file out-dir "post4.html"))
-               "prev: post2\n"))
-        (is (= (slurp (fs/file out-dir "index.html"))
-               (str "post4\npost2\nprev: post1")))))
+        (is (= "\nnext: post2"
+               (slurp (fs/file out-dir "post1.html"))))
+        (is (= "prev: post1\nnext: post4"
+               (slurp (fs/file out-dir "post2.html"))))
+        (is (= "\n"
+               (slurp (fs/file out-dir "post3.html"))))
+        (is (= "prev: post2\n"
+               (slurp (fs/file out-dir "post4.html"))))
+        (is (= "post4\npost2\nprev: post1"
+               (slurp (fs/file out-dir "index.html"))))))
 
     (testing "include preview posts"
       (with-dirs [posts-dir
@@ -636,11 +645,64 @@
                      :out-dir out-dir
                      :link-prev-next-posts true
                      :include-preview-posts-in-linking true})
-        (is (= (slurp (fs/file out-dir "post1.html"))
-               "\nnext: post2"))
-        (is (= (slurp (fs/file out-dir "post2.html"))
-               "prev: post1\nnext: post3"))
-        (is (= (slurp (fs/file out-dir "post3.html"))
-               "prev: post2\nnext: post4"))
-        (is (= (slurp (fs/file out-dir "post4.html"))
-               "prev: post3\n"))))))
+        (is (= "\nnext: post2"
+               (slurp (fs/file out-dir "post1.html"))))
+        (is (= "prev: post1\nnext: post3"
+               (slurp (fs/file out-dir "post2.html"))))
+        (is (= "prev: post2\nnext: post4"
+               (slurp (fs/file out-dir "post3.html"))))
+        (is (= "prev: post3\n"
+               (slurp (fs/file out-dir "post4.html"))))))))
+
+(deftest preview-tag-caching-test
+  (testing "Tag pages are regenerated when preview status changes"
+    (with-dirs [tmp-dir cache-dir]
+      (let [opts {:blog-title "Test"
+                  :blog-author "Test Author"
+                  :blog-root "https://example.com"
+                  :blog-description "Test blog"
+                  :posts-dir (fs/file tmp-dir "posts")
+                  :out-dir (fs/file tmp-dir "out")
+                  :cache-dir cache-dir
+                  :force-render false}]
+        (write-test-post (:posts-dir opts)
+                         {:file "post1.md"
+                          :title "Post 1"
+                          :date "2023-01-01"
+                          :tags #{"clojure" "blog"}
+                          :preview? false})
+
+        ;; First render
+        (testing "Initial render creates tag pages"
+          (api/render opts)
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html")))
+          (let [clojure-tag-content (slurp (fs/file (:out-dir opts) "tags" "clojure.html"))]
+            (is (str/includes? clojure-tag-content "Post 1")
+                "Non-preview post should appear in tag page")))
+
+        ;; Change preview to true
+        (testing "Tag pages regenerate when preview status changes"
+          (Thread/sleep 500)
+          (write-test-post (:posts-dir opts)
+                           {:file "post1.md"
+                            :title "Post 1"
+                            :date "2023-01-01"
+                            :tags #{"clojure" "blog"}
+                            :preview? true})
+          (Thread/sleep 500)
+          (api/render opts)
+          (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html"))))
+          (is (not (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))
+          (Thread/sleep 5)
+          (write-test-post (:posts-dir opts)
+                           {:file "post2.md"
+                            :title "Post 2"
+                            :date "2023-01-01"
+                            :tags #{"clojure" "blog"}
+                            :preview? false})
+          (Thread/sleep 5)
+          (api/render opts)
+          (Thread/sleep 5)
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "clojure.html")))
+          (is (fs/exists? (fs/file (:out-dir opts) "tags" "blog.html"))))))))

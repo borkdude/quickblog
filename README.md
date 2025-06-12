@@ -115,6 +115,8 @@ quickblog expects three pieces of metadata in each post:
 - `Date` - the date when the post will be published (used for sorting posts, so
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) datetimes are recommended)
 - `Tags` - a comma-separated list of tags
+- `Preview`: when `true`, the post won't be listed in the
+  archive or tags page, but is still accessible via the direct link.
 
 `quickblog new` requires the title to be specified and provides sensible
 defaults for `Date` and `Tags`.
