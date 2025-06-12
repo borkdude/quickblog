@@ -185,10 +185,8 @@
         (->> markdown-text
              pre-process-markdown
              (md/->hiccup (assoc md/default-hiccup-renderers
-                                 :html-inline (fn [_ {:keys [text]}]
-                                                (hiccup/raw text))
-                                 :html-block (fn [_ {:keys [text]}]
-                                               (hiccup/raw text))))
+                                 :html-inline (comp hiccup/raw md/node->text)
+                                 :html-block (comp hiccup/raw md/node->text)))
              (hiccup/html)
              str
              post-process-markdown)))))
