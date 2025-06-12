@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [hiccup2.core :as hiccup]
    [nextjournal.markdown :as md]
-   [nextjournal.markdown.transform :as md.transform]
    [quickblog.internal.frontmatter :as fm]
    [selmer.parser :as selmer]))
 
@@ -141,8 +140,7 @@
             markdown-text (str/join \newline lines)]
         (->> markdown-text
              pre-process-markdown
-             #_(md/parse)
-             (md/->hiccup (assoc md.transform/default-hiccup-renderers
+             (md/->hiccup (assoc md/default-hiccup-renderers
                                  :html-inline (fn [_ {:keys [text]}]
                                                 (hiccup/raw text))
                                  :html-block (fn [_ {:keys [text]}]
