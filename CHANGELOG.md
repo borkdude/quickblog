@@ -2,18 +2,7 @@
 
 [Quickblog](https://github.com/borkdude/quickblog): light-weight static blog engine for Clojure and babashka
 
-Instances of quickblog can be seen here:
-
-- [Michiel Borkent's blog](https://blog.michielborkent.nl)
-- [Josh Glover's blog](https://jmglov.net/blog)
-- [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
-- [JP Monetta's blog](https://jpmonettas.github.io/my-blog/public/)
-- [Luc Engelen's blog](https://blog.cofx.nl/) - ([source](https://github.com/cofx22/blog))
-- [Rattlin.blog](https://rattlin.blog/)
-- [REP‘ti’L‘e’](https://kuna.us/)
-- [Søren Sjørup's blog](https://zoren.dk)
-- [Henry Widd's blog](https://widdindustries.com/blog)
-- [Anders means different](https://www.eknert.com/blog) - ([source](https://github.com/anderseknert/blog))
+Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?tab=readme-ov-file#blogs-using-quickblog).
 
 ## 0.4.7 (2025-06-12)
 
