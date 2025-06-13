@@ -39,7 +39,7 @@
                       "--middleware" "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"]}
   :mcp {:deps {org.slf4j/slf4j-nop {:mvn/version "2.0.16"}
                com.bhauman/clojure-mcp {:git/url "https://github.com/bhauman/clojure-mcp.git"
-                                        :git/sha "a15b01c203456a509f3702d0624d17c87b9b3d0a"}}
+                                        :git/sha "8982863713faf34089117d9977c1803230302684"}}
         :exec-fn clojure-mcp.main/start-mcp-server
         :exec-args {:port 7888}}
   :mcp-sse
