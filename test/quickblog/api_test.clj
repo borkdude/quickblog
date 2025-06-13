@@ -243,7 +243,7 @@ Tags: %s
                    :cache-dir cache-dir
                    :out-dir out-dir})
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
-                         "<a href='www.example.org'>a \n\n multiline \n\n link</a>"))))
+                         "<a href=\"www.example.org\">a \n\n multiline \n\n link</a>"))))
 
   (testing "tag with capitals"
     (with-dirs [assets-dir

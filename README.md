@@ -38,7 +38,11 @@ Feel free to PR yours.
 
 ### Babashka
 
-quickblog is meant to be used as a library from your Babashka project. The
+Since v0.4.7 quickblog requires babashka v1.12.201 since it relies on the
+built-in [Nextjournal Markdown](https://github.com/nextjournal/markdown)
+library.
+
+Quickblog is intended to be used as a library from your babashka project. The
 easiest way to use it is to add a task to your project's `bb.edn`.
 
 This example assumes a basic `bb.edn` like this:

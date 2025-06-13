@@ -44,4 +44,5 @@
             (update opts :vars (fnil conj []) only)
             (update opts :nses (fnil conj []) only))
           opts)]
+    (println "Running tests")
     (api/test opts)))
