@@ -302,7 +302,6 @@
                                   :image-alt blog-image-alt
                                   :url (lib/blog-link opts "tags/index.html")}})
       (doseq [tag-and-posts posts-by-tag]
-        (println "Writing tags and posts" tag-and-posts)
         (lib/write-tag! opts tags-out-dir template tag-and-posts))
       ;; Delete tags pages for removed tags
       (doseq [tag (remove posts-by-tag modified-tags)
