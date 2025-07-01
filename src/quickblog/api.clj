@@ -170,8 +170,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [quickblog.internal :as lib :refer [->map]]
-   [selmer.parser :as selmer]
-   [selmer.filters :as filters]))
+   [selmer.filters :as filters]
+   [selmer.parser :as selmer]))
 
 ;; Add filter for tag page links; see:
 ;; https://github.com/yogthos/Selmer#filters
@@ -642,7 +642,7 @@
     (reset! posts-cache (:posts opts))
     (serve opts false)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
-      (load-pod 'org.babashka/fswatcher "0.0.3")
+      (load-pod 'org.babashka/fswatcher "0.0.6")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
         (watch posts-dir
                (fn [{:keys [path type]}]
