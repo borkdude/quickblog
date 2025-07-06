@@ -642,7 +642,7 @@
     (reset! posts-cache (:posts opts))
     (serve opts false)
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
-      (load-pod 'org.babashka/fswatcher "0.0.6")
+      (load-pod 'org.babashka/fswatcher "0.0.7")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
         (watch posts-dir
                (fn [{:keys [path type]}]
