@@ -647,10 +647,11 @@
         (watch posts-dir
                (fn [{:keys [path type]}]
                  (println "Change detected:" (name type) (str path))
-                 (when (#{:create :remove :rename :write :write|chmod} type)
+                 (when (#{:create :remove :rename :write :write|chmod :chmod} type)
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
-                     (when-not (str/starts-with? post-filename ".")
+                     (when (and (str/ends-with? post-filename ".md")
+                                (fs/exists? path))
                        (println "Re-rendering" post-filename)
                        (let [post (lib/load-post opts path)
                              posts (cond
