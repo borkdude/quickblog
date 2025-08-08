@@ -651,11 +651,13 @@
                    (let [post-filename (-> (fs/file path) fs/file-name)]
                      ;; skip Emacs backup files and the like
                      (when (and (str/ends-with? post-filename ".md")
-                                (fs/exists? path))
+                                ;; emacs backup file
+                                (not (str/starts-with? post-filename ".#")))
                        (println "Re-rendering" post-filename)
                        (let [post (lib/load-post opts path)
+                             deleted? (not (fs/exists? path))
                              posts (cond
-                                     (contains? #{:remove :rename} type)
+                                     deleted?
                                      (dissoc @posts-cache post-filename)
 
                                      (:quickblog/error post)
