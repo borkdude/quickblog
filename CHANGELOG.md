@@ -4,6 +4,10 @@
 
 Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?tab=readme-ov-file#blogs-using-quickblog).
 
+## Unreleased
+
+- Add support for a blog contained within another website; see [Serving an alternate content root](README.md#serving-an-alternate-content-root) in README.  ([@jmglov](https://github.com/jmglov))
+
 ## 0.4.7 (2025-06-12)
 
 - Switch to [Nextjournal Markdown](https://github.com/nextjournal/markdown) for markdown rendering
