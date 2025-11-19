@@ -314,6 +314,40 @@ Write a blog post here!
 any changes to the new post template will cause all of your existing posts to be
 re-rendered, which is probably not what you want!**
 
+## Serving an alternate content root
+
+If your website contains a blog not at the content root of the webserver (for
+example, https://example.com/blog), you may want `bb quickblog watch` to watch
+the blog directory whilst serving the blog directory's parent as the content
+root. Assuming that your website has a `bb.edn`, you can add a task similar to
+the following to accomplish this:
+
+``` clojure
+{:deps {io.github.borkdude/quickblog {:git/sha "LATEST-SHA-HERE"}}
+ :tasks
+ {:requires ([quickblog.api :as quickblog])
+  :init (def opts
+          {:out-dir "public"
+           ;; ...
+           :blog {:blog-title "Some cool blog"
+                  ;; ...
+                  :assets-dir "blog/assets"
+                  :out-dir "public/blog"
+                  :posts-dir "blog/posts"
+                  :templates-dir "blog/templates"}})
+
+  ;; ...
+
+  watch {:doc "Watch blog for changes"
+         :task (do
+                 (quickblog/watch (assoc (:blog opts)
+                                         :no-serve? true
+                                         :no-block? true))
+                 (quickblog/serve (assoc (:blog opts)
+                                         :out-dir (:out-dir opts))))}
+  }}
+```
+
 ## Breaking changes
 
 ### posts.edn removed
