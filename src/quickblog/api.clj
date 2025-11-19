@@ -604,7 +604,8 @@
   (lib/refresh-templates (apply-default-opts opts)))
 
 (defn serve
-  "Runs file-server on `port`."
+  "Runs file-server on `port`. If `block?` is false, returns a zero-arity
+  `stop-server!` function that will stop the server when called."
   {:org.babashka/cli
    {:spec
     {:port
@@ -615,10 +616,12 @@
   ([opts block?]
    (let [{:keys [port out-dir]} (merge (get-defaults (meta #'serve))
                                        (apply-default-opts opts))
-         serve (requiring-resolve 'babashka.http-server/serve)]
-     (serve {:port port
-             :dir out-dir})
-     (when block? @(promise)))))
+         serve (requiring-resolve 'babashka.http-server/serve)
+         stop-server! (serve {:port port
+                              :dir out-dir})]
+     (if block?
+       @(promise)
+       stop-server!))))
 
 (def ^:private posts-cache (atom nil))
 
