@@ -341,8 +341,8 @@ the following to accomplish this:
   watch {:doc "Watch blog for changes"
          :task (do
                  (quickblog/watch (assoc (:blog opts)
-                                         :no-serve? true
-                                         :no-block? true))
+                                         :serve false
+                                         :block false))
                  (quickblog/serve (assoc (:blog opts)
                                          :out-dir (:out-dir opts))))}
   }}

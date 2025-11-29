@@ -604,7 +604,7 @@
   (lib/refresh-templates (apply-default-opts opts)))
 
 (defn serve
-  "Runs file-server on `port`. If `block?` is false, returns a zero-arity
+  "Runs file-server on `port`. If `block?` is falsey, returns a zero-arity
   `stop-server!` function that will stop the server when called."
   {:org.babashka/cli
    {:spec
@@ -627,17 +627,23 @@
 
 (defn watch
   "Watches posts, templates, and assets for changes. Runs file server using
-  `serve` (unless the `:no-serve?` opt is true). If the `:no-block?` opt is true,
+  `serve` (unless the `:serve` opt is `false`). If the `:block` opt is `false`,
   returns a list of watchers that can be passed to `unwatch` to stop watching."
   {:org.babashka/cli
    {:spec
     {:port
      {:desc "Port for HTTP server to listen on"
       :ref "<port>"
-      :default 1888}}}}
+      :default 1888}
+     :serve
+     {:desc "Start a webserver"
+      :default true}
+     :block
+     {:desc "Block until interrupted"
+      :default true}}}}
   [opts]
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir
-                no-serve? no-block?]
+                serve block]
          :as opts}
         (-> opts
             (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
@@ -645,7 +651,7 @@
             apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
-    (when-not no-serve?
+    (when (not (false? serve))
       (serve opts false))
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.7")
@@ -699,9 +705,9 @@
                             (println "Removing deleted asset:" (str file))
                             (fs/delete-if-exists file)))
                         (lib/copy-tree-modified assets-dir assets-out-dir))))]]
-        (if no-block?
-          watchers
-          @(promise))))))
+        (if (not (false? block))
+          @(promise)
+          watchers)))))
 
 (defn unwatch
   "Stops each watcher in the list of `watchers`."

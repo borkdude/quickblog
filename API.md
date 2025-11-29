@@ -73,7 +73,7 @@ Renders posts declared in `posts.edn` to `out-dir`.
 ```
 
 
-Runs file-server on `port`. If `block?` is false, returns a zero-arity
+Runs file-server on `port`. If `block?` is falsey, returns a zero-arity
   `stop-server!` function that will stop the server when called.
 <br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L606-L624)</sub>
 ## `unwatch`
@@ -84,7 +84,7 @@ Runs file-server on `port`. If `block?` is false, returns a zero-arity
 
 
 Stops each watcher in the list of `watchers`.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L706-L711)</sub>
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L712-L717)</sub>
 ## `update-cache-dir`
 ``` clojure
 
@@ -100,9 +100,9 @@ Stops each watcher in the list of `watchers`.
 
 
 Watches posts, templates, and assets for changes. Runs file server using
-  `serve` (unless the `:no-serve?` opt is true). If the `:no-block?` opt is true,
+  `serve` (unless the `:serve` opt is `false`). If the `:block` opt is `false`,
   returns a list of watchers that can be passed to `unwatch` to stop watching.
-<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L628-L704)</sub>
+<br><sub>[source](https://github.com/borkdude/quickblog/blob/main/src/quickblog/api.clj#L628-L710)</sub>
 # quickblog.cli 
 
 
