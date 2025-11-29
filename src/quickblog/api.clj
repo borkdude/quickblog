@@ -643,7 +643,7 @@
       :default true}}}}
   [opts]
   (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir
-                serve block]
+                block]
          :as opts}
         (-> opts
             (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
@@ -651,7 +651,7 @@
             apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
-    (when (not (false? serve))
+    (when (not (false? (:opts serve)))
       (serve opts false))
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.7")
