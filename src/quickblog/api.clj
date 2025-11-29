@@ -604,7 +604,8 @@
   (lib/refresh-templates (apply-default-opts opts)))
 
 (defn serve
-  "Runs file-server on `port`."
+  "Runs file-server on `port`. If `block?` is falsey, returns a zero-arity
+  `stop-server!` function that will stop the server when called."
   {:org.babashka/cli
    {:spec
     {:port
@@ -615,24 +616,34 @@
   ([opts block?]
    (let [{:keys [port out-dir]} (merge (get-defaults (meta #'serve))
                                        (apply-default-opts opts))
-         serve (requiring-resolve 'babashka.http-server/serve)]
-     (serve {:port port
-             :dir out-dir})
-     (when block? @(promise)))))
+         serve (requiring-resolve 'babashka.http-server/serve)
+         stop-server! (serve {:port port
+                              :dir out-dir})]
+     (if block?
+       @(promise)
+       stop-server!))))
 
 (def ^:private posts-cache (atom nil))
 
 (defn watch
   "Watches posts, templates, and assets for changes. Runs file server using
-  `serve`."
+  `serve` (unless the `:serve` opt is `false`). If the `:block` opt is `false`,
+  returns a list of watchers that can be passed to `unwatch` to stop watching."
   {:org.babashka/cli
    {:spec
     {:port
      {:desc "Port for HTTP server to listen on"
       :ref "<port>"
-      :default 1888}}}}
+      :default 1888}
+     :serve
+     {:desc "Start a webserver"
+      :default true}
+     :block
+     {:desc "Block until interrupted"
+      :default true}}}}
   [opts]
-  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir]
+  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir
+                serve block]
          :as opts}
         (-> opts
             (assoc :watch (format "<script type=\"text/javascript\" src=\"%s\"></script>"
@@ -640,56 +651,67 @@
             apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
-    (serve opts false)
+    (when (not (false? serve))
+      (serve opts false))
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.7")
-      (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
-        (watch posts-dir
-               (fn [{:keys [path type]}]
-                 (println "Change detected:" (name type) (str path))
-                 (when (#{:create :remove :rename :write :write|chmod :chmod} type)
-                   (let [post-filename (-> (fs/file path) fs/file-name)]
-                     ;; skip Emacs backup files and the like
-                     (when (and (str/ends-with? post-filename ".md")
-                                ;; emacs backup file
-                                (not (str/starts-with? post-filename ".#")))
-                       (println "Re-rendering" post-filename)
-                       (let [post (lib/load-post opts path)
-                             deleted? (not (fs/exists? path))
-                             posts (cond
-                                     deleted?
-                                     (dissoc @posts-cache post-filename)
+      (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)
+            watchers
+            [(watch posts-dir
+                    (fn [{:keys [path type]}]
+                      (println "Change detected:" (name type) (str path))
+                      (when (#{:create :remove :rename :write :write|chmod :chmod} type)
+                        (let [post-filename (-> (fs/file path) fs/file-name)]
+                          ;; skip Emacs backup files and the like
+                          (when (and (str/ends-with? post-filename ".md")
+                                     ;; emacs backup file
+                                     (not (str/starts-with? post-filename ".#")))
+                            (println "Re-rendering" post-filename)
+                            (let [post (lib/load-post opts path)
+                                  deleted? (not (fs/exists? path))
+                                  posts (cond
+                                          deleted?
+                                          (dissoc @posts-cache post-filename)
 
-                                     (:quickblog/error post)
-                                     (do
-                                       (println (:quickblog/error post))
-                                       (dissoc @posts-cache post-filename))
+                                          (:quickblog/error post)
+                                          (do
+                                            (println (:quickblog/error post))
+                                            (dissoc @posts-cache post-filename))
 
-                                     :else
-                                     (assoc @posts-cache post-filename post))
-                             opts (-> opts
-                                      (assoc :cached-posts @posts-cache
-                                             :posts posts)
-                                      render)]
-                         (reset! posts-cache (:posts opts))))))))
+                                          :else
+                                          (assoc @posts-cache post-filename post))
+                                  opts (-> opts
+                                           (assoc :cached-posts @posts-cache
+                                                  :posts posts)
+                                           render)]
+                              (reset! posts-cache (:posts opts))))))))
 
-        (watch templates-dir
-               (fn [{:keys [path type]}]
-                 (println "Template change detected; re-rendering all posts:"
-                          (name type) (str path))
-                 (let [opts (-> opts
-                                (dissoc :cached-posts :posts)
-                                render)]
-                   (reset! posts-cache (:posts opts)))))
+             (watch templates-dir
+                    (fn [{:keys [path type]}]
+                      (println "Template change detected; re-rendering all posts:"
+                               (name type) (str path))
+                      (let [opts (-> opts
+                                     (dissoc :cached-posts :posts)
+                                     render)]
+                        (reset! posts-cache (:posts opts)))))
 
-        (when (fs/exists? assets-dir)
-          (watch assets-dir
-                 (fn [{:keys [path type]}]
-                   (println "Asset change detected:"
-                            (name type) (str path))
-                   (when (contains? #{:remove :rename} type)
-                     (let [file (fs/file assets-out-dir (fs/file-name path))]
-                       (println "Removing deleted asset:" (str file))
-                       (fs/delete-if-exists file)))
-                   (lib/copy-tree-modified assets-dir assets-out-dir)))))))
-  @(promise))
+             (when (fs/exists? assets-dir)
+               (watch assets-dir
+                      (fn [{:keys [path type]}]
+                        (println "Asset change detected:"
+                                 (name type) (str path))
+                        (when (contains? #{:remove :rename} type)
+                          (let [file (fs/file assets-out-dir (fs/file-name path))]
+                            (println "Removing deleted asset:" (str file))
+                            (fs/delete-if-exists file)))
+                        (lib/copy-tree-modified assets-dir assets-out-dir))))]]
+        (if (not (false? block))
+          @(promise)
+          watchers)))))
+
+(defn unwatch
+  "Stops each watcher in the list of `watchers`."
+  [watchers]
+  (let [unwatch (requiring-resolve 'pod.babashka.fswatcher/unwatch)]
+    (doseq [watcher (remove nil? watchers)]
+      (unwatch watcher))))
