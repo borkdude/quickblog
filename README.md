@@ -27,6 +27,7 @@ Instances of quickblog can be seen here:
 - [Saket Patel](https://blog.saketpatel.me/)
 - [Paul Butcher's blog](https://paulbutcher.com/)
 - [Alex Sheluchin's blog](https://fnguy.com/) - ([source](https://github.com/sheluchin/blog))
+- [Tengstrand's blog](https://tengstrand.github.io/blog/)
 
 ### Articles about quickblog
 
