@@ -142,6 +142,11 @@
       :ref "<url>"
       :group :social-sharing}
 
+     :blog-image-alt
+     {:desc "Alt text for blog thumbnail image"
+      :ref "<text>"
+      :group :social-sharing}
+
      ;; Favicon
      :favicon
      {:desc "If true, favicon will be added to all pages"
