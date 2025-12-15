@@ -7,6 +7,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 ## Unreleased
 
 - Add support for a blog contained within another website; see [Serving an alternate content root](README.md#serving-an-alternate-content-root) in README.  ([@jmglov](https://github.com/jmglov))
+- Fix `:blog-image-alt` option being ignored when using CLI (`bb quickblog render`)
 
 ## 0.4.7 (2025-06-12)
 
