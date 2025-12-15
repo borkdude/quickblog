@@ -28,6 +28,7 @@ Instances of quickblog can be seen here:
 - [Paul Butcher's blog](https://paulbutcher.com/)
 - [Alex Sheluchin's blog](https://fnguy.com/) - ([source](https://github.com/sheluchin/blog))
 - [Tengstrand's blog](https://tengstrand.github.io/blog/)
+- [Furkan's blog](https://furkan3ayraktar.github.io/blog/)
 
 ### Articles about quickblog
 
