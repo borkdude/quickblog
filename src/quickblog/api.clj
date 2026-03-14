@@ -656,7 +656,7 @@
             apply-default-opts
             render)]
     (reset! posts-cache (:posts opts))
-    (when (not (false? (:opts serve)))
+    (when (not (false? (:serve opts)))
       (serve opts false))
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.7")
