@@ -13,7 +13,7 @@ Includes hot-reload. See it in action [here](https://twitter.com/borkdude/status
 Instances of quickblog can be seen here:
 
 - [Michiel Borkent's blog](https://blog.michielborkent.nl)
-- [Josh Glover's blog](https://jmglov.net/blog)
+- [Josh Glover's blog](https://jmglov.net/blog) - ([source](https://github.com/jmglov/jmglov.net/tree/main/blog))
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 - [JP Monetta's blog](https://jpmonettas.github.io/my-blog/public/)
 - [Luc Engelen's blog](https://blog.cofx.nl/) - ([source](https://github.com/cofx22/blog))
