@@ -6,6 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
+- Add `page-type` template variable
 - Fixed `:serve false` option to `api/watch`
 - Fixed new-post.md example in README.md
 - Upgrade babashka/http-server to 0.1.14
