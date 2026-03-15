@@ -6,6 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
+- Fixed `:serve false` option to `api/watch`
 - Fixed new-post.md example in README.md
 - Upgrade babashka/http-server to 0.1.14
 - Add support for a blog contained within another website; see [Serving an alternate content root](https://github.com/borkdude/quickblog/README.md#serving-an-alternate-content-root) in README.  ([@jmglov](https://github.com/jmglov))
