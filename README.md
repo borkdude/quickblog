@@ -275,6 +275,21 @@ this happens, you won't be able to use the new feature without making the same
 modifications to your local templates. The easiest way to do this is to run `bb
 quickblog refresh-templates`.
 
+### Template variables
+
+The variables made available to your templates depend on the type of the page
+being rendered. These aren't currently documented, so you'll have to look at the
+default templates in `resources/quickblog/templates` and/or some of the sources
+of [blogs using quickblog](#blogs-using-quickblog) to figure them out.
+
+There is always a `page-type` template variable available, which indicates which
+type of page this is. It will be set to one of the following values:
+- `"index"`
+- `"post"`
+- `"archive"`
+- `"tags"`
+- `"tag"`
+
 ### New posts
 
 In addition to the HTML templates above, you can also use a template for
