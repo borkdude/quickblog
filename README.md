@@ -284,11 +284,11 @@ of [blogs using quickblog](#blogs-using-quickblog) to figure them out.
 
 There is always a `page-type` template variable available, which indicates which
 type of page this is. It will be set to one of the following values:
-- `"index"`
-- `"post"`
-- `"archive"`
-- `"tags"`
-- `"tag"`
+- `:index`
+- `:post`
+- `:archive`
+- `:tags`
+- `:tag`
 
 ### New posts
 
