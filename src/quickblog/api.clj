@@ -295,7 +295,8 @@
               (not (fs/exists? tags-file))
               (seq modified-drafts))
       (lib/write-page! opts tags-file template
-                       {:skip-archive true
+                       {:page-type :tags
+                        :skip-archive true
                         :title (str blog-title " - Tags")
                         :relative-path "../"
                         :body (lib/tag-links "Tags" posts-by-tag opts)
@@ -348,7 +349,8 @@
       (let [body (index (assoc opts :posts posts))]
         (lib/write-page! opts out-file
                          (base-html opts)
-                         {:title blog-title
+                         {:page-type :index
+                          :title blog-title
                           :body body
                           :sharing {:description blog-description
                                     :author twitter-handle
@@ -372,7 +374,8 @@
       (let [title (str blog-title " - About")]
         (lib/write-page! opts out-file
                          (base-html opts)
-                         {:skip-archive true
+                         {:page-type :about
+                          :skip-archive true
                           :title title
                           :body (about opts)
                           :sharing {:description (format "About - %s"
@@ -397,7 +400,8 @@
             posts (lib/sort-posts (vals posts))]
         (lib/write-page! opts out-file
                          (base-html opts)
-                         {:skip-archive true
+                         {:page-type :archive
+                          :skip-archive true
                           :title title
                           :body (lib/archive-links "Archive" posts opts)
                           :sharing {:description (format "Archive - %s"

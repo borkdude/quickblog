@@ -13,7 +13,7 @@ Includes hot-reload. See it in action [here](https://twitter.com/borkdude/status
 Instances of quickblog can be seen here:
 
 - [Michiel Borkent's blog](https://blog.michielborkent.nl)
-- [Josh Glover's blog](https://jmglov.net/blog)
+- [Josh Glover's blog](https://jmglov.net/blog) - ([source](https://github.com/jmglov/jmglov.net/tree/main/blog))
 - [Jeremy Taylor's blog](https://jdt.me/strange-reflections.html)
 - [JP Monetta's blog](https://jpmonettas.github.io/my-blog/public/)
 - [Luc Engelen's blog](https://blog.cofx.nl/) - ([source](https://github.com/cofx22/blog))
@@ -274,6 +274,21 @@ The default templates are occasionally modified to support new features. When
 this happens, you won't be able to use the new feature without making the same
 modifications to your local templates. The easiest way to do this is to run `bb
 quickblog refresh-templates`.
+
+### Template variables
+
+The variables made available to your templates depend on the type of the page
+being rendered. These aren't currently documented, so you'll have to look at the
+default templates in `resources/quickblog/templates` and/or some of the sources
+of [blogs using quickblog](#blogs-using-quickblog) to figure them out.
+
+There is always a `page-type` template variable available, which indicates which
+type of page this is. It will be set to one of the following values:
+- `:index`
+- `:post`
+- `:archive`
+- `:tags`
+- `:tag`
 
 ### New posts
 

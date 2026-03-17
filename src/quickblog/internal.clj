@@ -522,7 +522,8 @@
                             image
                             (blog-link opts image)))
         url (blog-link opts (html-file file))
-        post-metadata (merge {:sharing (->map description
+        post-metadata (merge {:page-type :post
+                              :sharing (->map description
                                               author
                                               twitter-handle
                                               image
@@ -548,7 +549,8 @@
   (let [tag-filename (fs/file tags-out-dir (tag-file tag))]
     (when (or (contains? (set modified-tags) tag) (not (fs/exists? tag-filename)))
       (write-page! opts tag-filename template
-                   {:skip-archive true
+                   {:page-type :tag
+                    :skip-archive true
                     :title (str blog-title " - Tag - " tag)
                     :relative-path "../"
                     :body (post-links (str "Tag - " tag) posts
