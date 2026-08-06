@@ -395,7 +395,9 @@ Tags: %s
                 templates-dir
                 cache-dir
                 out-dir]
-      (let [render #(api/render {:assets-dir assets-dir
+      (let [blog-description "Blogging quickly since 2022"
+            render #(api/render {:blog-description blog-description
+                                 :assets-dir assets-dir
                                  :posts-dir posts-dir
                                  :templates-dir templates-dir
                                  :cache-dir cache-dir
@@ -419,7 +421,13 @@ Tags: %s
                                            (map (comp #(str/replace % #".+/" "")
                                                       first
                                                       :content)))))
-                            set))]
+                            set))
+            feed-subtitle (fn [filename]
+                            (->> (xml/parse-str (slurp filename))
+                                 :content
+                                 (filter (partial elem-tagged? :subtitle))
+                                 (mapcat :content)
+                                 first))]
         (write-test-post posts-dir {:file "clojure1.md"
                                     :tags #{"clojure" "something"}})
         (write-test-post posts-dir {:file "clojurescript1.md"
@@ -434,6 +442,8 @@ Tags: %s
         (is (= #{"clojure1.html"
                  "clojurescript1.html"}
                (post-ids (fs/file out-dir "planetclojure.xml"))))
+        (doseq [filename ["atom.xml" "planetclojure.xml"]]
+          (is (= blog-description (feed-subtitle (fs/file out-dir filename)))))
         (Thread/sleep 5)
         (write-test-post posts-dir {:file "clojure2.md"
                                     :tags #{"clojure"}})
