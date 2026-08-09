@@ -6,6 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
+- Set the Atom feeds' `<subtitle>` from `:blog-description`, which that option's own description already promised
 - Add `page-type` template variable
 - Fixed `:serve false` option to `api/watch`
 - Fixed new-post.md example in README.md

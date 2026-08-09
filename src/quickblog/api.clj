@@ -431,11 +431,12 @@
 
 (defn- atom-feed
   ;; validate at https://validator.w3.org/feed/check.cgi
-  [{:keys [blog-title blog-author blog-root page-suffix] :as opts} posts]
+  [{:keys [blog-title blog-description blog-author blog-root page-suffix] :as opts} posts]
   (-> (xml/sexp-as-element
        [::atom/feed
         {:xmlns "http://www.w3.org/2005/Atom"}
         [::atom/title blog-title]
+        [::atom/subtitle blog-description]
         [::atom/link {:href (lib/blog-link opts "atom.xml") :rel "self"}]
         [::atom/link {:href blog-root}]
         [::atom/updated (rfc-3339-now)]
