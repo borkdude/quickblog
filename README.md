@@ -47,18 +47,29 @@ library.
 Quickblog is intended to be used as a library from your babashka project. The
 easiest way to use it is to add a task to your project's `bb.edn`.
 
-This example assumes a basic `bb.edn` like this:
+With babashka v1.13.219 or newer, list the commands under `:cmd` and give each
+one an `:exec-fn`. Babashka then provides `--help` and shell completion for
+every command and its options, see [this
+post](https://blog.michielborkent.nl/babashka-tasks-cli.html). Options that
+apply to all of them go in `:cli`:
 
 ``` clojure
-{:deps {io.github.borkdude/quickblog
+{:min-bb-version "1.13.219"
+ :deps {io.github.borkdude/quickblog
         #_"You use the newest SHA here:"
         {:git/sha "3a1d6aff07f692f6e62606317f3d9e981b1df702"}}
  :tasks
- {:requires ([quickblog.cli :as cli])
-  :init (def opts {:blog-title "REPL adventures"
-                   :blog-description "A blog about blogging quickly"})
-  quickblog {:doc "Start blogging quickly! Run `bb quickblog help` for details."
-             :task (cli/dispatch opts)}}}
+ {:cli {:exec-args {:blog-title "REPL adventures"
+                    :blog-description "A blog about blogging quickly"}}
+  quickblog
+  {:doc "Start blogging quickly! Run `bb quickblog --help` for details."
+   :cmd {"new" {:exec-fn quickblog.api/new}
+         "render" {:exec-fn quickblog.api/render}
+         "watch" {:exec-fn quickblog.api/watch}
+         "serve" {:exec-fn quickblog.api/serve}
+         "clean" {:exec-fn quickblog.api/clean}
+         "refresh-templates" {:exec-fn quickblog.api/refresh-templates}
+         "migrate" {:exec-fn quickblog.api/migrate}}}}}
 ```
 
 To create a new blog post:
@@ -71,6 +82,34 @@ To start an HTTP server and re-render on changes to files:
 
 ```
 $ bb quickblog watch
+```
+
+`bb quickblog --help` lists the commands and `bb quickblog new --help` lists
+the options that one takes.
+
+To type `bb new` instead of `bb quickblog new`, make each command a task of its
+own, at the cost of names that may clash with the other tasks in your project:
+
+``` clojure
+ :tasks
+ {:cli {:exec-args {:blog-title "REPL adventures"}}
+  new {:exec-fn quickblog.api/new}
+  render {:exec-fn quickblog.api/render}}
+```
+
+On babashka older than v1.13.219, dispatch from a single task instead. This
+gives you `bb quickblog help`, but no completion:
+
+``` clojure
+{:deps {io.github.borkdude/quickblog
+        #_"You use the newest SHA here:"
+        {:git/sha "3a1d6aff07f692f6e62606317f3d9e981b1df702"}}
+ :tasks
+ {:requires ([quickblog.cli :as cli])
+  :init (def opts {:blog-title "REPL adventures"
+                   :blog-description "A blog about blogging quickly"})
+  quickblog {:doc "Start blogging quickly! Run `bb quickblog help` for details."
+             :task (cli/dispatch opts)}}}
 ```
 
 ### Clojure
