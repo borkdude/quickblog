@@ -245,35 +245,65 @@ Tags: %s
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
                          "<a href=\"www.example.org\">a \n\n multiline \n\n link</a>"))))
 
-  (testing "images with attributes"
+  (testing "reference links without blank lines"
     (with-dirs [posts-dir
                 templates-dir
                 cache-dir
                 out-dir]
-      (write-test-post posts-dir {:file "image.md"
+      (write-test-post posts-dir {:file "refs.md"
                                   :content "
-If we now connect to [http://localhost:1341/](http://localhost:1341/), we'll be
-rewarded with a simple webpage:
+[Some text][linkref]
+[linkref]: /url \"Some title\"
 
-![Some alt text][ref]
-[ref]: image.png \"Some title\" width=800 border=1
+![Some alt text][imgref]
+[imgref]: image.png \"Some title\"
 "})
       (api/render {:posts-dir posts-dir
                    :templates-dir templates-dir
                    :cache-dir cache-dir
                    :out-dir out-dir})
-      (let [img (->> (slurp (fs/file out-dir "image.html"))
-                     (re-find #"<img [^>]+>"))]
-        (is (not-empty img))
-        (when-not (empty? img)
-          (is (= (->> img
-                      (re-seq #"\w+=(?:\"[^\"]+\"|\w+)")
-                      sort)
-                 ["alt=\"Some alt text\""
-                  "border=1"
-                  "src=\"image.png\""
-                  "title=\"Some title\""
-                  "width=800"]))))))
+      (let [html (slurp (fs/file out-dir "refs.html"))]
+        (is (str/includes? html
+                           "<a href=\"/url\" title=\"Some title\">Some text</a>"))
+        (is (str/includes? html
+                           "<img alt=\"Some alt text\" src=\"image.png\" title=\"Some title\" />")))))
+
+  (testing "pre- and post-process-markdown functions"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "pre-post.md"
+                                  :content "
+[Some text][linkref]
+[linkref]: /url \"Some title\"
+
+![Some alt text][imgref]
+[imgref]: image.png \"Some title\" border=1 width=800 class=\"fun\"
+"})
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir
+                   :pre-process-markdown-fns
+                   [(fn [md]
+                      (str/replace md #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
+                                   (fn [[match title attrs]]
+                                     (str/replace match (format "\"%s\"%s" title attrs)
+                                                  (format "\"%s{ATTRS:%s}\"" title
+                                                          (str/replace attrs "\"" "&quot;"))))))]
+                   :post-process-markdown-fns
+                   [(fn [html]
+                      (str/replace html #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
+                                   (fn [[match title attrs]]
+                                     (format "title=\"%s\"%s"
+                                             title (str/replace attrs "&quot;" "\"")))))]})
+      (let [html (slurp (fs/file out-dir "pre-post.html"))]
+        (spit "/tmp/pre-post.html" html)
+        (is (str/includes? html
+                           "<a href=\"/url\" title=\"Some title\">Some text</a>"))
+        (is (str/includes? html
+                           "<img alt=\"Some alt text\" src=\"image.png\" title=\"Some title\" border=1 width=800 class=\"fun\" />")))))
 
   (testing "tag with capitals"
     (with-dirs [assets-dir

@@ -163,50 +163,78 @@
 
 (def RET "^RET^")
 
-(defn pre-process-markdown [markdown]
-    (-> markdown
-        ;; allow multiline link title
-        (str/replace #"\[[^\]]+\n"
-                     (fn [match]
-                       (str/replace match "\n" RET)))
-        ;; allow reference links without a blank line between the label and the
-        ;; reference definition; see:
-        ;; https://spec.commonmark.org/0.30/#shortcut-reference-link
-        ;;
-        ;; For example:
-        ;;
-        ;;   ![Some alt text][ref]
-        ;;   [ref]: image.png "Some title"
-        ;;
-        ;; should be the same as:
-        ;;
-        ;;   ![Some alt text][ref]
-        ;;
-        ;;   [ref]: image.png "Some title"
-        (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+\n"
-                     (fn [match]
-                       (str/replace-first match "\n" "\n\n")))))
+(defn pre-process-markdown
+  "Performs basic transformations on raw markdown before it's rendered to HTML.
 
-(defn post-process-markdown [html]
-    (-> html
-        ;; restore newline in multiline link titles
-        (str/replace RET "\n")))
+   Accepted `opts`:
+     - `:pre-process-markdown-fns`: list of single-arity transformer functions
+       that will be applied to the markdown after the default transformations,
+       in the order they appear in the list."
+  ([markdown]
+   (pre-process-markdown {} markdown))
+  ([{fns :pre-process-markdown-fns, :or {fns [identity]}} markdown]
+   (let [fn (apply comp (reverse fns))]
+     (-> markdown
+         ;; allow multiline link title
+         (str/replace #"\[[^\]]+\n"
+                      #(str/replace % "\n" RET))
+         ;; allow reference links without a blank line between the label and the
+         ;; reference definition; see:
+         ;; https://spec.commonmark.org/0.30/#shortcut-reference-link
+         ;;
+         ;; For example:
+         ;;
+         ;;   ![Some alt text][ref]
+         ;;   [ref]: image.png "Some title"
+         ;;
+         ;; should be the same as:
+         ;;
+         ;;   ![Some alt text][ref]
+         ;;
+         ;;   [ref]: image.png "Some title"
+         (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
+                      #(str/replace-first % "\n" "\n\n"))
+         fn))))
 
-(defn markdown->html [file]
-  (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)]
-      (println "Processing markdown for file:" (str file))
-      (let [[_metadata n] (fm/parse-metadata-headers lines)
-            lines (drop n lines)
-            markdown-text (str/join \newline lines)]
-        (->> markdown-text
-             pre-process-markdown
-             (md/->hiccup (assoc md/default-hiccup-renderers
-                                 :html-inline (comp hiccup/raw md/node->text)
-                                 :html-block (comp hiccup/raw md/node->text)))
-             (hiccup/html)
-             str
-             post-process-markdown)))))
+(defn post-process-markdown
+  "Performs basic transformations on the HTML rendered from the markdown.
+
+   Accepted `opts`:
+     - `:post-process-markdown-fns`: list of single-arity transformer functions
+       that will be applied to the HTML after the default transformations,
+       in the order they appear in the list."
+  ([html]
+   (post-process-markdown {} html))
+  ([{fns :post-process-markdown-fns, :or {fns [identity]}} html]
+   (let [fn (apply comp (reverse fns))]
+     (-> html
+         ;; restore newline in multiline link titles
+         (str/replace RET "\n")
+         fn))))
+
+(defn markdown->html
+  "Reads a markdown file and returns the rendered HTML as a string.
+
+   Accepted `opts`:
+     - `:pre-process-markdown-fns`: see docstring for `pre-process-markdown`.
+     - `:post-process-markdown-fns`: see docstring for `post-process-markdown`."
+  ([file]
+   (markdown->html {} file))
+  ([opts file]
+   (with-open [rdr (io/reader file)]
+     (let [lines (line-seq rdr)]
+       (println "Processing markdown for file:" (str file))
+       (let [[_metadata n] (fm/parse-metadata-headers lines)
+             lines (drop n lines)
+             markdown-text (str/join \newline lines)]
+         (->> markdown-text
+              (pre-process-markdown opts)
+              (md/->hiccup (assoc md/default-hiccup-renderers
+                                  :html-inline (comp hiccup/raw md/node->text)
+                                  :html-block (comp hiccup/raw md/node->text)))
+              (hiccup/html)
+              str
+              (post-process-markdown opts)))))))
 
 (defn remove-previews [posts]
   (->> posts
@@ -267,7 +295,7 @@
                    :html (if stale?
                            (delay
                              (println "Parsing Markdown for post:" (str file))
-                             (let [html (markdown->html path)]
+                             (let [html (markdown->html opts path)]
                                (println "Caching post to file:" (str cached-file))
                                (spit cached-file html)
                                html))
