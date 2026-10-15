@@ -245,6 +245,36 @@ Tags: %s
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
                          "<a href=\"www.example.org\">a \n\n multiline \n\n link</a>"))))
 
+  (testing "images with attributes"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "image.md"
+                                  :content "
+If we now connect to [http://localhost:1341/](http://localhost:1341/), we'll be
+rewarded with a simple webpage:
+
+![Some alt text][ref]
+[ref]: image.png \"Some title\" width=800 border=1
+"})
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir})
+      (let [img (->> (slurp (fs/file out-dir "image.html"))
+                     (re-find #"<img [^>]+>"))]
+        (is (not-empty img))
+        (when-not (empty? img)
+          (is (= (->> img
+                      (re-seq #"\w+=(?:\"[^\"]+\"|\w+)")
+                      sort)
+                 ["alt=\"Some alt text\""
+                  "border=1"
+                  "src=\"image.png\""
+                  "title=\"Some title\""
+                  "width=800"]))))))
+
   (testing "tag with capitals"
     (with-dirs [assets-dir
                 posts-dir
