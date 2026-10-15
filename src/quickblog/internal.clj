@@ -168,7 +168,24 @@
         ;; allow multiline link title
         (str/replace #"\[[^\]]+\n"
                      (fn [match]
-                       (str/replace match "\n" RET)))))
+                       (str/replace match "\n" RET)))
+        ;; allow reference links without a blank line between the label and the
+        ;; reference definition; see:
+        ;; https://spec.commonmark.org/0.30/#shortcut-reference-link
+        ;;
+        ;; For example:
+        ;;
+        ;;   ![Some alt text][ref]
+        ;;   [ref]: image.png "Some title"
+        ;;
+        ;; should be the same as:
+        ;;
+        ;;   ![Some alt text][ref]
+        ;;
+        ;;   [ref]: image.png "Some title"
+        (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+\n"
+                     (fn [match]
+                       (str/replace-first match "\n" "\n\n")))))
 
 (defn post-process-markdown [html]
     (-> html
