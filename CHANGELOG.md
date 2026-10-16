@@ -6,6 +6,13 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
+- Add `:pre-process-markdown-fns` and `:post-process-markdown-fns` extensions
+  for handling non-standard Markdown; see
+  [Handling non-standard Markdown](https://github.com/borkdude/quickblog/README.md#handling-non-standard-markdown)
+  in README.  ([@jmglov](https://github.com/jmglov))
+- Handle Markdown [shortcut reference
+  links](https://github.github.com/gfm/#shortcut-reference-link) without blank
+  line between the link label and the link reference definition.  ([@jmglov](https://github.com/jmglov))
 - Upgrade nextjournal/markdown to 0.7.228
 - Set the Atom feeds' `<subtitle>` from `:blog-description`, which that option's own description already promised
 - Add `page-type` template variable
