@@ -273,7 +273,7 @@ Tags: %s
                 templates-dir
                 cache-dir
                 out-dir]
-      (write-test-post posts-dir {:file "pre-post.md"
+      (write-test-post posts-dir {:file "prepost.md"
                                   :content "
 [Some text][linkref]
 [linkref]: /url \"Some title\"
@@ -298,8 +298,7 @@ Tags: %s
                                    (fn [[match title attrs]]
                                      (format "title=\"%s\"%s"
                                              title (str/replace attrs "&quot;" "\"")))))]})
-      (let [html (slurp (fs/file out-dir "pre-post.html"))]
-        (spit "/tmp/pre-post.html" html)
+      (let [html (slurp (fs/file out-dir "prepost.html"))]
         (is (str/includes? html
                            "<a href=\"/url\" title=\"Some title\">Some text</a>"))
         (is (str/includes? html
