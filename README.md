@@ -353,22 +353,37 @@ For example, if you have Markdown like this:
 
 ``` markdown
 ![Sunset in a snowy wood][preview]
-[preview]: assets/walk-on.png "Sunset over snow" width=800px class="cool-stuff"
+[preview]: assets/walk-on.png "Title" width=800px class="cool-stuff"
 ```
 
 you can handle this with opts like this:
 
 ``` clojure
 {:pre-process-markdown-fns
- [(fn [md]
-    (str/replace md #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
+ [
+  ;; Insert blank line between link label and link reference definition
+  (fn [md]
+    (str/replace md
+                 #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
+                 #(str/replace-first % "\n" "\n\n")))
+  ;; Fold attrs into title as:
+  ;; title="Title{ATTRS: width=800px class=&quot;cool-stuff&quot;}"
+  (fn [md]
+    (str/replace md
+                 #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
                  (fn [[match title attrs]]
                    (str/replace match (format "\"%s\"%s" title attrs)
                                 (format "\"%s{ATTRS:%s}\"" title
                                         (str/replace attrs "\"" "&quot;"))))))]
  :post-process-markdown-fns
- [(fn [html]
-    (str/replace html #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
+ [
+  ;; Transform:
+  ;;   <img ... title="Title{ATTRS: width=800px class=&quot;cool-stuff&quot;}"
+  ;; into:
+  ;;   <img ... title="Title" width=800px class="cool-stuff"
+  (fn [html]
+    (str/replace html
+                 #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
                  (fn [[match title attrs]]
                    (format "title=\"%s\"%s"
                            title (str/replace attrs "&quot;" "\"")))))]}

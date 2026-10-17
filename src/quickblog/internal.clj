@@ -172,29 +172,13 @@
        in the order they appear in the list."
   ([markdown]
    (pre-process-markdown {} markdown))
-  ([{fns :pre-process-markdown-fns, :or {fns [identity]}} markdown]
-   (let [fn (apply comp (reverse fns))]
+  ([{:keys [pre-process-markdown-fns]} markdown]
+   (let [f (apply comp (reverse pre-process-markdown-fns))]
      (-> markdown
          ;; allow multiline link title
          (str/replace #"\[[^\]]+\n"
                       #(str/replace % "\n" RET))
-         ;; allow reference links without a blank line between the label and the
-         ;; reference definition; see:
-         ;; https://spec.commonmark.org/0.30/#shortcut-reference-link
-         ;;
-         ;; For example:
-         ;;
-         ;;   ![Some alt text][ref]
-         ;;   [ref]: image.png "Some title"
-         ;;
-         ;; should be the same as:
-         ;;
-         ;;   ![Some alt text][ref]
-         ;;
-         ;;   [ref]: image.png "Some title"
-         (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
-                      #(str/replace-first % "\n" "\n\n"))
-         fn))))
+         f))))
 
 (defn post-process-markdown
   "Performs basic transformations on the HTML rendered from the markdown.
@@ -205,12 +189,12 @@
        in the order they appear in the list."
   ([html]
    (post-process-markdown {} html))
-  ([{fns :post-process-markdown-fns, :or {fns [identity]}} html]
-   (let [fn (apply comp (reverse fns))]
+  ([{:keys [post-process-markdown-fns]} html]
+   (let [f (apply comp (reverse post-process-markdown-fns))]
      (-> html
          ;; restore newline in multiline link titles
          (str/replace RET "\n")
-         fn))))
+         f))))
 
 (defn markdown->html
   "Reads a markdown file and returns the rendered HTML as a string.
