@@ -166,14 +166,9 @@
       :group :favicon}
 
      ;; Text processing
-     :pre-process-markdown-fn
-     {:desc "Function to apply to raw Markdown before rendering"
-      :ref "<fn>"
-      :group :text-processing}
-
-     :post-process-markdown-fn
-     {:desc "Function to apply to HTML after rendering Markdown"
-      :ref "<fn>"
+     :markdown-pipeline
+     {:desc "Steps to render the Markdown of each post (default default-markdown-pipeline)"
+      :ref "[step1 step2...]"
       :group :text-processing}
 
      ;; Command-specific opts
@@ -192,6 +187,34 @@
 ;; Add filter for tag page links; see:
 ;; https://github.com/yogthos/Selmer#filters
 (filters/add-filter! :escape-tag lib/escape-tag)
+
+(def escape-multiline-link-titles
+  "Replaces newlines in link titles in :markdown with a marker.
+  restore-multiline-link-titles restores them in :html."
+  lib/escape-multiline-link-titles)
+
+(def parse-markdown
+  "Parses :markdown into :ast."
+  lib/parse-markdown)
+
+(def ast->hiccup
+  "Renders :ast into :hiccup."
+  lib/ast->hiccup)
+
+(def hiccup->html
+  "Renders :hiccup into :html."
+  lib/hiccup->html)
+
+(def restore-multiline-link-titles
+  "Restores the newlines replaced by escape-multiline-link-titles in :html."
+  lib/restore-multiline-link-titles)
+
+(def default-markdown-pipeline
+  "Default value of :markdown-pipeline.
+  Each step takes a map and returns it updated.
+  The map starts with :file, :metadata, :opts and :markdown.
+  The steps add :ast, :hiccup and :html."
+  lib/default-markdown-pipeline)
 
 (defn- update-out-dirs
   [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]

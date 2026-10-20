@@ -6,9 +6,9 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
-- Add `:pre-process-markdown-fn` and `:post-process-markdown-fn` options to
-  transform each post's Markdown and HTML
-  ([README](https://github.com/borkdude/quickblog#pre--and-post-processing-markdown))  ([@jmglov](https://github.com/jmglov))
+- Add `:markdown-pipeline` option to customize how posts are rendered from
+  Markdown to HTML
+  ([README](https://github.com/borkdude/quickblog#customizing-markdown-rendering))  ([@jmglov](https://github.com/jmglov))
 - Upgrade nextjournal/markdown to 0.7.228
 - Set the Atom feeds' `<subtitle>` from `:blog-description`, which that option's own description already promised
 - Add `page-type` template variable

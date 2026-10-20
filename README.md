@@ -332,26 +332,44 @@ Write a blog post here!
 any changes to the new post template will cause all of your existing posts to be
 re-rendered, which is probably not what you want!**
 
-### Pre- and post-processing Markdown
+### Customizing Markdown rendering
 
-Use `:pre-process-markdown-fn` to transform the Markdown of each post before
-rendering. The function takes the Markdown as a string and returns a string.
+Use `:markdown-pipeline` to change how the Markdown of each post is rendered.
+It is a vector of steps. Each step takes a map and returns it updated. quickblog
+writes the `:html` of the last map.
 
-``` clojure
-{:pre-process-markdown-fn
- (fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))}
-```
-
-Use `:post-process-markdown-fn` to transform the rendered HTML of each post. The
-function takes the HTML as a string and returns a string.
+The map starts with `:file`, `:metadata`, `:opts` and `:markdown`.
+`quickblog.api/default-markdown-pipeline` adds `:ast`, `:hiccup` and `:html`:
 
 ``` clojure
-{:post-process-markdown-fn
- (fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))}
+[escape-multiline-link-titles   ; :markdown
+ parse-markdown                 ; :markdown -> :ast
+ ast->hiccup                    ; :ast -> :hiccup
+ hiccup->html                   ; :hiccup -> :html
+ restore-multiline-link-titles] ; :html
 ```
 
-Render with `:force-render true` after changing these functions to update
-cached posts.
+Add a step before the default steps to change the Markdown:
+
+``` clojure
+{:markdown-pipeline
+ (into [(fn [ctx] (update ctx :markdown str/replace #"(?m)^TODO:.*\n" ""))]
+       quickblog.api/default-markdown-pipeline)}
+```
+
+Add a step after the default steps to change the HTML:
+
+``` clojure
+{:markdown-pipeline
+ (conj quickblog.api/default-markdown-pipeline
+       (fn [ctx] (update ctx :html str/replace "<img " "<img loading=\"lazy\" ")))}
+```
+
+Keep both `escape-multiline-link-titles` and `restore-multiline-link-titles`, or
+neither.
+
+Render with `:force-render true` after changing the pipeline to update cached
+posts.
 
 ## Serving an alternate content root
 
