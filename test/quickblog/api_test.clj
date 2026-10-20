@@ -245,6 +245,61 @@ Tags: %s
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
                          "<a href=\"www.example.org\">a \n\n multiline \n\n link</a>"))))
 
+  (testing "pre- and post-process-markdown functions"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "prepost.md"
+                                  :content "
+[Some text][linkref]
+[linkref]: /url \"Some title\"
+
+![Some alt text][imgref]
+[imgref]: image.png \"Some title\" border=1 width=800 class=\"fun\"
+"})
+      (api/render {:posts-dir posts-dir
+                   :templates-dir templates-dir
+                   :cache-dir cache-dir
+                   :out-dir out-dir
+                   :pre-process-markdown-fn
+                   (fn [md]
+                     (-> md
+                         (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
+                                      #(str/replace-first % "\n" "\n\n"))
+                         (str/replace #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
+                                      (fn [[match title attrs]]
+                                        (str/replace match (format "\"%s\"%s" title attrs)
+                                                     (format "\"%s{ATTRS:%s}\"" title
+                                                             (str/replace attrs "\"" "&quot;")))))))
+                   :post-process-html-fn
+                   (fn [html]
+                     (str/replace html
+                                  #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
+                                  (fn [[match title attrs]]
+                                    (format "title=\"%s\"%s"
+                                            title (str/replace attrs "&quot;" "\"")))))})
+      (let [html (slurp (fs/file out-dir "prepost.html"))]
+        (is (str/includes? html
+                           "<a href=\"/url\" title=\"Some title\">Some text</a>"))
+        (is (str/includes? html
+                           "<img alt=\"Some alt text\" src=\"image.png\" title=\"Some title\" border=1 width=800 class=\"fun\" />")))))
+
+  (testing ":pre-process-markdown-fn receives multiline link text with newlines"
+    (with-dirs [posts-dir
+                templates-dir
+                cache-dir
+                out-dir]
+      (write-test-post posts-dir {:file "multiline-pre.md"
+                                  :content "[a\nmultiline\nlink](www.example.org)"})
+      (let [seen (atom nil)]
+        (api/render {:posts-dir posts-dir
+                     :templates-dir templates-dir
+                     :cache-dir cache-dir
+                     :out-dir out-dir
+                     :pre-process-markdown-fn (fn [md] (reset! seen md) md)})
+        (is (str/includes? @seen "[a\nmultiline\nlink]")))))
+
   (testing "tag with capitals"
     (with-dirs [assets-dir
                 posts-dir

@@ -163,33 +163,58 @@
 
 (def RET "^RET^")
 
-(defn pre-process-markdown [markdown]
-    (-> markdown
-        ;; allow multiline link title
-        (str/replace #"\[[^\]]+\n"
-                     (fn [match]
-                       (str/replace match "\n" RET)))))
+(defn pre-process-markdown
+  "Performs basic transformations on raw markdown before it's rendered to HTML.
 
-(defn post-process-markdown [html]
-    (-> html
-        ;; restore newline in multiline link titles
-        (str/replace RET "\n")))
+   Accepted `opts`:
+     - `:pre-process-markdown-fn`: function from markdown string to markdown
+       string, applied before the default transformations."
+  ([markdown]
+   (pre-process-markdown {} markdown))
+  ([{f :pre-process-markdown-fn :or {f identity}} markdown]
+   (-> markdown
+       f
+       ;; allow multiline link title
+       (str/replace #"\[[^\]]+\n"
+                    #(str/replace % "\n" RET)))))
 
-(defn markdown->html [file]
-  (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)]
-      (println "Processing markdown for file:" (str file))
-      (let [[_metadata n] (fm/parse-metadata-headers lines)
-            lines (drop n lines)
-            markdown-text (str/join \newline lines)]
-        (->> markdown-text
-             pre-process-markdown
-             (md/->hiccup (assoc md/default-hiccup-renderers
-                                 :html-inline (comp hiccup/raw md/node->text)
-                                 :html-block (comp hiccup/raw md/node->text)))
-             (hiccup/html)
-             str
-             post-process-markdown)))))
+(defn post-process-markdown
+  "Performs basic transformations on the HTML rendered from the markdown.
+
+   Accepted `opts`:
+     - `:post-process-html-fn`: function from HTML string to HTML string,
+       applied after the default transformations."
+  ([html]
+   (post-process-markdown {} html))
+  ([{f :post-process-html-fn :or {f identity}} html]
+   (-> html
+       ;; restore newline in multiline link titles
+       (str/replace RET "\n")
+       f)))
+
+(defn markdown->html
+  "Reads a markdown file and returns the rendered HTML as a string.
+
+   Accepted `opts`:
+     - `:pre-process-markdown-fn`: see docstring for `pre-process-markdown`.
+     - `:post-process-html-fn`: see docstring for `post-process-markdown`."
+  ([file]
+   (markdown->html {} file))
+  ([opts file]
+   (with-open [rdr (io/reader file)]
+     (let [lines (line-seq rdr)]
+       (println "Processing markdown for file:" (str file))
+       (let [[_metadata n] (fm/parse-metadata-headers lines)
+             lines (drop n lines)
+             markdown-text (str/join \newline lines)]
+         (->> markdown-text
+              (pre-process-markdown opts)
+              (md/->hiccup (assoc md/default-hiccup-renderers
+                                  :html-inline (comp hiccup/raw md/node->text)
+                                  :html-block (comp hiccup/raw md/node->text)))
+              (hiccup/html)
+              str
+              (post-process-markdown opts)))))))
 
 (defn remove-previews [posts]
   (->> posts
@@ -250,7 +275,7 @@
                    :html (if stale?
                            (delay
                              (println "Parsing Markdown for post:" (str file))
-                             (let [html (markdown->html path)]
+                             (let [html (markdown->html opts path)]
                                (println "Caching post to file:" (str cached-file))
                                (spit cached-file html)
                                html))

@@ -332,6 +332,27 @@ Write a blog post here!
 any changes to the new post template will cause all of your existing posts to be
 re-rendered, which is probably not what you want!**
 
+### Pre- and post-processing Markdown
+
+Use `:pre-process-markdown-fn` to transform the Markdown of each post before
+rendering. The function takes the Markdown as a string and returns a string.
+
+``` clojure
+{:pre-process-markdown-fn
+ (fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))}
+```
+
+Use `:post-process-html-fn` to transform the rendered HTML of each post. The
+function takes the HTML as a string and returns a string.
+
+``` clojure
+{:post-process-html-fn
+ (fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))}
+```
+
+Render with `:force-render true` after changing these functions to update
+cached posts.
+
 ## Serving an alternate content root
 
 If your website contains a blog not at the content root of the webserver (for

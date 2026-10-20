@@ -165,6 +165,17 @@
       :default "assets/favicon"
       :group :favicon}
 
+     ;; Text processing
+     :pre-process-markdown-fn
+     {:desc "Function to apply to raw Markdown before rendering"
+      :ref "<fn>"
+      :group :text-processing}
+
+     :post-process-html-fn
+     {:desc "Function to apply to HTML after rendering Markdown"
+      :ref "<fn>"
+      :group :text-processing}
+
      ;; Command-specific opts
 
      }}}
