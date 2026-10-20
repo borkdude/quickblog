@@ -6,7 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
-- Add `:markdown-pipeline` option to customize how posts are rendered from
+- Add `:markdown-interceptors` option to customize how posts are rendered from
   Markdown to HTML
   ([README](https://github.com/borkdude/quickblog#customizing-markdown-rendering))  ([@jmglov](https://github.com/jmglov))
 - Upgrade nextjournal/markdown to 0.7.228

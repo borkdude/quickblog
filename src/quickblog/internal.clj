@@ -163,67 +163,62 @@
 
 (def RET "^RET^")
 
-(defn escape-multiline-link-titles
-  "Replaces newlines in link titles in :markdown with a marker.
-  restore-multiline-link-titles restores them in :html."
-  [ctx]
-  (update ctx :markdown str/replace #"\[[^\]]+\n"
-          #(str/replace % "\n" RET)))
+(def multiline-link-titles
+  {:name :quickblog/multiline-link-titles
+   :enter (fn [ctx]
+            (update ctx :markdown str/replace #"\[[^\]]+\n"
+                    #(str/replace % "\n" RET)))
+   :leave (fn [ctx]
+            (update ctx :html str/replace RET "\n"))})
 
-(defn parse-markdown
-  "Parses :markdown into :ast."
-  [ctx]
-  (assoc ctx :ast (md/parse (:markdown ctx))))
+(def parse
+  {:name :quickblog/parse
+   :enter (fn [ctx]
+            (assoc ctx :ast (md/parse (:markdown ctx))))})
 
-(defn ast->hiccup
-  "Renders :ast into :hiccup."
-  [ctx]
-  (assoc ctx :hiccup (md/->hiccup (assoc md/default-hiccup-renderers
-                                         :html-inline (comp hiccup/raw md/node->text)
-                                         :html-block (comp hiccup/raw md/node->text))
-                                  (:ast ctx))))
+(def render
+  {:name :quickblog/render
+   :enter (fn [ctx]
+            (assoc ctx :html
+                   (str (hiccup/html
+                         (md/->hiccup (assoc md/default-hiccup-renderers
+                                             :html-inline (comp hiccup/raw md/node->text)
+                                             :html-block (comp hiccup/raw md/node->text))
+                                      (:ast ctx))))))})
 
-(defn hiccup->html
-  "Renders :hiccup into :html."
-  [ctx]
-  (assoc ctx :html (str (hiccup/html (:hiccup ctx)))))
+(def default-markdown-interceptors
+  [multiline-link-titles
+   parse
+   render])
 
-(defn restore-multiline-link-titles
-  "Restores the newlines replaced by escape-multiline-link-titles in :html."
-  [ctx]
-  (update ctx :html str/replace RET "\n"))
+(defn- run-interceptor [ctx interceptor k]
+  (if-let [f (get interceptor k)]
+    (let [ret (f ctx)]
+      (when-not (map? ret)
+        (throw (ex-info (format "Markdown interceptor %s %s returned %s instead of a map"
+                                (:name interceptor) k (pr-str (type ret)))
+                        {:interceptor (:name interceptor) :phase k :file (:file ctx)})))
+      ret)
+    ctx))
 
-(def default-markdown-pipeline
-  [escape-multiline-link-titles
-   parse-markdown
-   ast->hiccup
-   hiccup->html
-   restore-multiline-link-titles])
-
-(defn run-markdown-pipeline
-  "Runs ctx through each step of pipeline and returns the resulting ctx.
-  Throws if a step does not return a map."
-  [pipeline ctx]
-  (reduce (fn [ctx step]
-            (let [ret (step ctx)]
-              (when-not (map? ret)
-                (throw (ex-info (str "Markdown pipeline step returned " (pr-str (type ret))
-                                     " instead of a map: " step)
-                                {:step step :file (:file ctx)})))
-              ret))
-          ctx
-          pipeline))
+(defn run-markdown-interceptors
+  "Runs the :enter fns of interceptors in order, then their :leave fns in reverse order.
+  Returns the resulting ctx.
+  Throws if a fn does not return a map."
+  [interceptors ctx]
+  (let [ctx (reduce #(run-interceptor %1 %2 :enter) ctx interceptors)]
+    (reduce #(run-interceptor %1 %2 :leave) ctx (reverse interceptors))))
 
 (defn markdown->html
   "Reads the markdown file and returns the :html of running it through
-  the :markdown-pipeline in opts, or default-markdown-pipeline if absent."
-  [{:keys [markdown-pipeline] :as opts} file metadata]
+  the :markdown-interceptors in opts, or default-markdown-interceptors if absent."
+  [{:keys [markdown-interceptors] :as opts} file metadata]
   (with-open [rdr (io/reader file)]
     (let [lines (line-seq rdr)]
       (println "Processing markdown for file:" (str file))
       (let [[_metadata n] (fm/parse-metadata-headers lines)
             markdown (str/join \newline (drop n lines))]
-        (:html (run-markdown-pipeline (or markdown-pipeline default-markdown-pipeline)
+        (:html (run-markdown-interceptors (or markdown-interceptors default-markdown-interceptors)
                                       {:file (str file)
                                        :metadata metadata
                                        :opts opts

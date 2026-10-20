@@ -334,42 +334,44 @@ re-rendered, which is probably not what you want!**
 
 ### Customizing Markdown rendering
 
-Use `:markdown-pipeline` to change how the Markdown of each post is rendered.
-It is a vector of steps. Each step takes a map and returns it updated. quickblog
-writes the `:html` of the last map.
+Use `:markdown-interceptors` to change how the Markdown of each post is
+rendered. An interceptor is a map with a `:name` and an `:enter` fn, a `:leave`
+fn or both. The `:enter` fns run in order, then the `:leave` fns run in reverse
+order. Each fn takes the context map and returns it updated. quickblog writes
+the `:html` of the last context map.
 
-The map starts with `:file`, `:metadata`, `:opts` and `:markdown`.
-`quickblog.api/default-markdown-pipeline` adds `:ast`, `:hiccup` and `:html`:
-
-``` clojure
-[escape-multiline-link-titles   ; :markdown
- parse-markdown                 ; :markdown -> :ast
- ast->hiccup                    ; :ast -> :hiccup
- hiccup->html                   ; :hiccup -> :html
- restore-multiline-link-titles] ; :html
-```
-
-Add a step before the default steps to change the Markdown:
+The context map starts with `:file`, `:metadata`, `:opts` and `:markdown`.
+`quickblog.api/default-markdown-interceptors` adds `:ast` and `:html`:
 
 ``` clojure
-{:markdown-pipeline
- (into [(fn [ctx] (update ctx :markdown str/replace #"(?m)^TODO:.*\n" ""))]
-       quickblog.api/default-markdown-pipeline)}
+[{:name :quickblog/multiline-link-titles ...}
+ {:name :quickblog/parse ...}   ; :markdown -> :ast
+ {:name :quickblog/render ...}] ; :ast -> :html
 ```
 
-Add a step after the default steps to change the HTML:
+Add an interceptor before the default interceptors to change the Markdown with
+`:enter` and the HTML with `:leave`:
 
 ``` clojure
-{:markdown-pipeline
- (conj quickblog.api/default-markdown-pipeline
-       (fn [ctx] (update ctx :html str/replace "<img " "<img loading=\"lazy\" ")))}
+{:markdown-interceptors
+ (into [{:name ::my-blog
+         :enter (fn [ctx] (update ctx :markdown str/replace #"(?m)^TODO:.*\n" ""))
+         :leave (fn [ctx] (update ctx :html str/replace "<img " "<img loading=\"lazy\" "))}]
+       quickblog.api/default-markdown-interceptors)}
 ```
 
-Keep both `escape-multiline-link-titles` and `restore-multiline-link-titles`, or
-neither.
+Add an interceptor after `:quickblog/parse` to change the
+[Nextjournal Markdown](https://github.com/nextjournal/markdown) AST in `:ast`:
 
-Render with `:force-render true` after changing the pipeline to update cached
-posts.
+``` clojure
+{:markdown-interceptors
+ (into []
+       (mapcat #(if (= :quickblog/parse (:name %)) [% my-ast-interceptor] [%]))
+       quickblog.api/default-markdown-interceptors)}
+```
+
+Render with `:force-render true` after changing the interceptors to update
+cached posts.
 
 ## Serving an alternate content root
 

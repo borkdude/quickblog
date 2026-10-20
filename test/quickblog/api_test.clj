@@ -245,7 +245,7 @@ Tags: %s
       (is (str/includes? (slurp (fs/file out-dir "multiline.html"))
                          "<a href=\"www.example.org\">a \n\n multiline \n\n link</a>"))))
 
-  (testing ":markdown-pipeline steps run before and after the default steps"
+  (testing ":markdown-interceptors :enter sees :markdown and :leave sees :html"
     (with-dirs [posts-dir
                 templates-dir
                 cache-dir
@@ -262,31 +262,32 @@ Tags: %s
                    :templates-dir templates-dir
                    :cache-dir cache-dir
                    :out-dir out-dir
-                   :markdown-pipeline
-                   (-> [(fn [ctx]
-                          (update ctx :markdown
-                                  #(-> %
-                                       (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
-                                                    (fn [match] (str/replace-first match "\n" "\n\n")))
-                                       (str/replace #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
-                                                    (fn [[match title attrs]]
-                                                      (str/replace match (format "\"%s\"%s" title attrs)
-                                                                   (format "\"%s{ATTRS:%s}\"" title
-                                                                           (str/replace attrs "\"" "&quot;"))))))))]
-                       (into api/default-markdown-pipeline)
-                       (conj (fn [ctx]
-                               (update ctx :html str/replace
-                                       #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
-                                       (fn [[_ title attrs]]
-                                         (format "title=\"%s\"%s"
-                                                 title (str/replace attrs "&quot;" "\"")))))))})
+                   :markdown-interceptors
+                   (into [{:name ::image-attrs
+                           :enter (fn [ctx]
+                                    (update ctx :markdown
+                                            #(-> %
+                                                 (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
+                                                              (fn [match] (str/replace-first match "\n" "\n\n")))
+                                                 (str/replace #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
+                                                              (fn [[match title attrs]]
+                                                                (str/replace match (format "\"%s\"%s" title attrs)
+                                                                             (format "\"%s{ATTRS:%s}\"" title
+                                                                                     (str/replace attrs "\"" "&quot;"))))))))
+                           :leave (fn [ctx]
+                                    (update ctx :html str/replace
+                                            #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
+                                            (fn [[_ title attrs]]
+                                              (format "title=\"%s\"%s"
+                                                      title (str/replace attrs "&quot;" "\"")))))}]
+                         api/default-markdown-interceptors)})
       (let [html (slurp (fs/file out-dir "prepost.html"))]
         (is (str/includes? html
                            "<a href=\"/url\" title=\"Some title\">Some text</a>"))
         (is (str/includes? html
                            "<img alt=\"Some alt text\" src=\"image.png\" title=\"Some title\" border=1 width=800 class=\"fun\" />")))))
 
-  (testing ":markdown-pipeline step after parse-markdown updates :ast from :metadata"
+  (testing ":markdown-interceptors interceptor after :quickblog/parse updates :ast from :metadata"
     (with-dirs [posts-dir
                 templates-dir
                 cache-dir
@@ -296,20 +297,21 @@ Tags: %s
                    :templates-dir templates-dir
                    :cache-dir cache-dir
                    :out-dir out-dir
-                   :markdown-pipeline
+                   :markdown-interceptors
                    (into []
-                         (mapcat #(if (= api/parse-markdown %)
-                                    [% (fn [ctx]
-                                         (update-in ctx [:ast :content] conj
-                                                    {:type :paragraph
-                                                     :content [{:type :text
-                                                                :text (str "From " (-> ctx :metadata :title))}]}))]
+                         (mapcat #(if (= :quickblog/parse (:name %))
+                                    [% {:name ::from-title
+                                        :enter (fn [ctx]
+                                                 (update-in ctx [:ast :content] conj
+                                                            {:type :paragraph
+                                                             :content [{:type :text
+                                                                        :text (str "From " (-> ctx :metadata :title))}]}))}]
                                     [%]))
-                         api/default-markdown-pipeline)})
+                         api/default-markdown-interceptors)})
       (is (str/includes? (slurp (fs/file out-dir "ast.html"))
                          "<p>From AST post</p>"))))
 
-  (testing ":markdown-pipeline step returning a string throws"
+  (testing ":markdown-interceptors :enter returning a string throws"
     (with-dirs [posts-dir
                 templates-dir
                 cache-dir
@@ -320,7 +322,7 @@ Tags: %s
                                          :templates-dir templates-dir
                                          :cache-dir cache-dir
                                          :out-dir out-dir
-                                         :markdown-pipeline [:markdown]})))))
+                                         :markdown-interceptors [{:name ::bad :enter :markdown}]})))))
 
   (testing "tag with capitals"
     (with-dirs [assets-dir
