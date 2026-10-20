@@ -166,9 +166,14 @@
       :group :favicon}
 
      ;; Text processing
-     :markdown-interceptors
-     {:desc "Interceptors to render the Markdown of each post (default default-markdown-interceptors)"
-      :ref "[interceptor1 interceptor2...]"
+     :pre-process-markdown-fn
+     {:desc "Function to apply to raw Markdown before rendering"
+      :ref "<fn>"
+      :group :text-processing}
+
+     :post-process-html-fn
+     {:desc "Function to apply to HTML after rendering Markdown"
+      :ref "<fn>"
       :group :text-processing}
 
      ;; Command-specific opts
@@ -187,12 +192,6 @@
 ;; Add filter for tag page links; see:
 ;; https://github.com/yogthos/Selmer#filters
 (filters/add-filter! :escape-tag lib/escape-tag)
-
-(def default-markdown-interceptors
-  "Default value of :markdown-interceptors.
-  The context map starts with :file, :metadata, :opts and :markdown.
-  :quickblog/parse adds :ast and :quickblog/render adds :html."
-  lib/default-markdown-interceptors)
 
 (defn- update-out-dirs
   [{:keys [out-dir assets-out-dir favicon-out-dir] :as opts}]

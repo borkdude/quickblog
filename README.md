@@ -332,45 +332,25 @@ Write a blog post here!
 any changes to the new post template will cause all of your existing posts to be
 re-rendered, which is probably not what you want!**
 
-### Customizing Markdown rendering
+### Pre- and post-processing Markdown
 
-Use `:markdown-interceptors` to change how the Markdown of each post is
-rendered. An interceptor is a map with a `:name` and an `:enter` fn, a `:leave`
-fn or both. The `:enter` fns run in order, then the `:leave` fns run in reverse
-order. Each fn takes the context map and returns it updated. quickblog writes
-the `:html` of the last context map.
-
-The context map starts with `:file`, `:metadata`, `:opts` and `:markdown`.
-`quickblog.api/default-markdown-interceptors` adds `:ast` and `:html`:
+Use `:pre-process-markdown-fn` to transform the Markdown of each post before
+rendering. The function takes the Markdown as a string and returns a string.
 
 ``` clojure
-[{:name :quickblog/multiline-link-titles ...}
- {:name :quickblog/parse ...}   ; :markdown -> :ast
- {:name :quickblog/render ...}] ; :ast -> :html
+{:pre-process-markdown-fn
+ (fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))}
 ```
 
-Add an interceptor before the default interceptors to change the Markdown with
-`:enter` and the HTML with `:leave`:
+Use `:post-process-html-fn` to transform the rendered HTML of each post. The
+function takes the HTML as a string and returns a string.
 
 ``` clojure
-{:markdown-interceptors
- (into [{:name ::my-blog
-         :enter (fn [ctx] (update ctx :markdown str/replace #"(?m)^TODO:.*\n" ""))
-         :leave (fn [ctx] (update ctx :html str/replace "<img " "<img loading=\"lazy\" "))}]
-       quickblog.api/default-markdown-interceptors)}
+{:post-process-html-fn
+ (fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))}
 ```
 
-Add an interceptor after `:quickblog/parse` to change the
-[Nextjournal Markdown](https://github.com/nextjournal/markdown) AST in `:ast`:
-
-``` clojure
-{:markdown-interceptors
- (into []
-       (mapcat #(if (= :quickblog/parse (:name %)) [% my-ast-interceptor] [%]))
-       quickblog.api/default-markdown-interceptors)}
-```
-
-Render with `:force-render true` after changing the interceptors to update
+Render with `:force-render true` after changing these functions to update
 cached posts.
 
 ## Serving an alternate content root

@@ -163,66 +163,58 @@
 
 (def RET "^RET^")
 
-(def multiline-link-titles
-  {:name :quickblog/multiline-link-titles
-   :enter (fn [ctx]
-            (update ctx :markdown str/replace #"\[[^\]]+\n"
-                    #(str/replace % "\n" RET)))
-   :leave (fn [ctx]
-            (update ctx :html str/replace RET "\n"))})
+(defn pre-process-markdown
+  "Performs basic transformations on raw markdown before it's rendered to HTML.
 
-(def parse
-  {:name :quickblog/parse
-   :enter (fn [ctx]
-            (assoc ctx :ast (md/parse (:markdown ctx))))})
+   Accepted `opts`:
+     - `:pre-process-markdown-fn`: function from markdown string to markdown
+       string, applied before the default transformations."
+  ([markdown]
+   (pre-process-markdown {} markdown))
+  ([{f :pre-process-markdown-fn :or {f identity}} markdown]
+   (-> markdown
+       f
+       ;; allow multiline link title
+       (str/replace #"\[[^\]]+\n"
+                    #(str/replace % "\n" RET)))))
 
-(def render
-  {:name :quickblog/render
-   :enter (fn [ctx]
-            (assoc ctx :html
-                   (str (hiccup/html
-                         (md/->hiccup (assoc md/default-hiccup-renderers
-                                             :html-inline (comp hiccup/raw md/node->text)
-                                             :html-block (comp hiccup/raw md/node->text))
-                                      (:ast ctx))))))})
+(defn post-process-markdown
+  "Performs basic transformations on the HTML rendered from the markdown.
 
-(def default-markdown-interceptors
-  [multiline-link-titles
-   parse
-   render])
-
-(defn- run-interceptor [ctx interceptor k]
-  (if-let [f (get interceptor k)]
-    (let [ret (f ctx)]
-      (when-not (map? ret)
-        (throw (ex-info (format "Markdown interceptor %s %s returned %s instead of a map"
-                                (:name interceptor) k (pr-str (type ret)))
-                        {:interceptor (:name interceptor) :phase k :file (:file ctx)})))
-      ret)
-    ctx))
-
-(defn run-markdown-interceptors
-  "Runs the :enter fns of interceptors in order, then their :leave fns in reverse order.
-  Returns the resulting ctx.
-  Throws if a fn does not return a map."
-  [interceptors ctx]
-  (let [ctx (reduce #(run-interceptor %1 %2 :enter) ctx interceptors)]
-    (reduce #(run-interceptor %1 %2 :leave) ctx (reverse interceptors))))
+   Accepted `opts`:
+     - `:post-process-html-fn`: function from HTML string to HTML string,
+       applied after the default transformations."
+  ([html]
+   (post-process-markdown {} html))
+  ([{f :post-process-html-fn :or {f identity}} html]
+   (-> html
+       ;; restore newline in multiline link titles
+       (str/replace RET "\n")
+       f)))
 
 (defn markdown->html
-  "Reads the markdown file and returns the :html of running it through
-  the :markdown-interceptors in opts, or default-markdown-interceptors if absent."
-  [{:keys [markdown-interceptors] :as opts} file metadata]
-  (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)]
-      (println "Processing markdown for file:" (str file))
-      (let [[_metadata n] (fm/parse-metadata-headers lines)
-            markdown (str/join \newline (drop n lines))]
-        (:html (run-markdown-interceptors (or markdown-interceptors default-markdown-interceptors)
-                                      {:file (str file)
-                                       :metadata metadata
-                                       :opts opts
-                                       :markdown markdown}))))))
+  "Reads a markdown file and returns the rendered HTML as a string.
+
+   Accepted `opts`:
+     - `:pre-process-markdown-fn`: see docstring for `pre-process-markdown`.
+     - `:post-process-html-fn`: see docstring for `post-process-markdown`."
+  ([file]
+   (markdown->html {} file))
+  ([opts file]
+   (with-open [rdr (io/reader file)]
+     (let [lines (line-seq rdr)]
+       (println "Processing markdown for file:" (str file))
+       (let [[_metadata n] (fm/parse-metadata-headers lines)
+             lines (drop n lines)
+             markdown-text (str/join \newline lines)]
+         (->> markdown-text
+              (pre-process-markdown opts)
+              (md/->hiccup (assoc md/default-hiccup-renderers
+                                  :html-inline (comp hiccup/raw md/node->text)
+                                  :html-block (comp hiccup/raw md/node->text)))
+              (hiccup/html)
+              str
+              (post-process-markdown opts)))))))
 
 (defn remove-previews [posts]
   (->> posts
@@ -276,13 +268,14 @@
                    (rendering-modified? cached-file (cons path rendering-system-files)))]
     (println "Reading metadata for post:" (str file))
     (try
-      (let [metadata (transform-metadata (read-metadata path) default-metadata)]
+      (let [metadata (read-metadata path)]
         (-> metadata
+            (transform-metadata default-metadata)
             (assoc :file (fs/file-name file)
                    :html (if stale?
                            (delay
                              (println "Parsing Markdown for post:" (str file))
-                             (let [html (markdown->html opts path metadata)]
+                             (let [html (markdown->html opts path)]
                                (println "Caching post to file:" (str cached-file))
                                (spit cached-file html)
                                html))
