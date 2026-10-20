@@ -332,62 +332,28 @@ Write a blog post here!
 any changes to the new post template will cause all of your existing posts to be
 re-rendered, which is probably not what you want!**
 
-### Handling non-standard Markdown
+### Pre- and post-processing Markdown
 
-If you have posts containing Markdown that doesn't comply with the [flavour
-supported by NextJournal
-Markdown](https://github.com/nextjournal/markdown/blob/main/README.md#flavor),
-you can use the `:pre-process-markdown-fns` and `:post-process-markdown-fns`
-options to hack around this.
-
-`:pre-process-markdown-fns` is a list of single-arity functions that will be
-applied to the raw Markdown before it is rendered to HTML. The functions are
-called in the order specified, and receive as their argument a string containing
-the full Markdown.
-
-`:post-process-markdown-fns` is a list of single-arity functions that will be
-applied to the rendered HTML. The functions are called in the order specified,
-and receive as their argument a string containing the full HTML.
-
-For example, if you have Markdown like this:
-
-``` markdown
-![Sunset in a snowy wood][preview]
-[preview]: assets/walk-on.png "Title" width=800px class="cool-stuff"
-```
-
-you can handle this with opts like this:
+Use `:pre-process-markdown-fns` to transform the Markdown of each post before
+rendering. Each function takes the Markdown as a string and returns a string.
+The functions run in order.
 
 ``` clojure
 {:pre-process-markdown-fns
- [
-  ;; Insert blank line between link label and link reference definition
-  (fn [md]
-    (str/replace md
-                 #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
-                 #(str/replace-first % "\n" "\n\n")))
-  ;; Fold attrs into title as:
-  ;; title="Title{ATTRS: width=800px class=&quot;cool-stuff&quot;}"
-  (fn [md]
-    (str/replace md
-                 #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
-                 (fn [[match title attrs]]
-                   (str/replace match (format "\"%s\"%s" title attrs)
-                                (format "\"%s{ATTRS:%s}\"" title
-                                        (str/replace attrs "\"" "&quot;"))))))]
- :post-process-markdown-fns
- [
-  ;; Transform:
-  ;;   <img ... title="Title{ATTRS: width=800px class=&quot;cool-stuff&quot;}"
-  ;; into:
-  ;;   <img ... title="Title" width=800px class="cool-stuff"
-  (fn [html]
-    (str/replace html
-                 #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
-                 (fn [[match title attrs]]
-                   (format "title=\"%s\"%s"
-                           title (str/replace attrs "&quot;" "\"")))))]}
+ [(fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))]}
 ```
+
+Use `:post-process-markdown-fns` to transform the rendered HTML of each post.
+Each function takes the HTML as a string and returns a string. The functions run
+in order.
+
+``` clojure
+{:post-process-markdown-fns
+ [(fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))]}
+```
+
+Render with `:force-render true` after changing these functions to update
+cached posts.
 
 ## Serving an alternate content root
 
