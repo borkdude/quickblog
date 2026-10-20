@@ -6,7 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
-- Add `:pre-process-markdown-fns` and `:post-process-markdown-fns` options to
+- Add `:pre-process-markdown-fn` and `:post-process-markdown-fn` options to
   transform each post's Markdown and HTML
   ([README](https://github.com/borkdude/quickblog#pre--and-post-processing-markdown))  ([@jmglov](https://github.com/jmglov))
 - Upgrade nextjournal/markdown to 0.7.228

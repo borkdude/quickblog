@@ -262,25 +262,23 @@ Tags: %s
                    :templates-dir templates-dir
                    :cache-dir cache-dir
                    :out-dir out-dir
-                   :pre-process-markdown-fns
-                   [(fn [md]
-                      (str/replace md
-                                   #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
-                                   #(str/replace-first % "\n" "\n\n")))
-                    (fn [md]
-                      (str/replace md
-                                   #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
-                                   (fn [[match title attrs]]
-                                     (str/replace match (format "\"%s\"%s" title attrs)
-                                                  (format "\"%s{ATTRS:%s}\"" title
-                                                          (str/replace attrs "\"" "&quot;"))))))]
-                   :post-process-markdown-fns
-                   [(fn [html]
-                      (str/replace html
-                                   #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
-                                   (fn [[match title attrs]]
-                                     (format "title=\"%s\"%s"
-                                             title (str/replace attrs "&quot;" "\"")))))]})
+                   :pre-process-markdown-fn
+                   (fn [md]
+                     (-> md
+                         (str/replace #"!?\[.+\]\[.+\]\n\[.+\]: .+(?:\n|$)"
+                                      #(str/replace-first % "\n" "\n\n"))
+                         (str/replace #"!\[.+\]\[.+\]\n\n\[.+\]:\s+\S+\s+\"([^\"]+)\"(\s.+)(?:\n|$)"
+                                      (fn [[match title attrs]]
+                                        (str/replace match (format "\"%s\"%s" title attrs)
+                                                     (format "\"%s{ATTRS:%s}\"" title
+                                                             (str/replace attrs "\"" "&quot;")))))))
+                   :post-process-markdown-fn
+                   (fn [html]
+                     (str/replace html
+                                  #"title=\"([^{\"]+)[{]ATTRS:([^}]+)[}]\""
+                                  (fn [[match title attrs]]
+                                    (format "title=\"%s\"%s"
+                                            title (str/replace attrs "&quot;" "\"")))))})
       (let [html (slurp (fs/file out-dir "prepost.html"))]
         (is (str/includes? html
                            "<a href=\"/url\" title=\"Some title\">Some text</a>"))

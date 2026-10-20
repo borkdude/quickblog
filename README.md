@@ -334,22 +334,20 @@ re-rendered, which is probably not what you want!**
 
 ### Pre- and post-processing Markdown
 
-Use `:pre-process-markdown-fns` to transform the Markdown of each post before
-rendering. Each function takes the Markdown as a string and returns a string.
-The functions run in order.
+Use `:pre-process-markdown-fn` to transform the Markdown of each post before
+rendering. The function takes the Markdown as a string and returns a string.
 
 ``` clojure
-{:pre-process-markdown-fns
- [(fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))]}
+{:pre-process-markdown-fn
+ (fn [md] (str/replace md #"(?m)^TODO:.*\n" ""))}
 ```
 
-Use `:post-process-markdown-fns` to transform the rendered HTML of each post.
-Each function takes the HTML as a string and returns a string. The functions run
-in order.
+Use `:post-process-markdown-fn` to transform the rendered HTML of each post. The
+function takes the HTML as a string and returns a string.
 
 ``` clojure
-{:post-process-markdown-fns
- [(fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))]}
+{:post-process-markdown-fn
+ (fn [html] (str/replace html "<img " "<img loading=\"lazy\" "))}
 ```
 
 Render with `:force-render true` after changing these functions to update

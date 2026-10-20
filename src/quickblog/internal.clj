@@ -167,41 +167,37 @@
   "Performs basic transformations on raw markdown before it's rendered to HTML.
 
    Accepted `opts`:
-     - `:pre-process-markdown-fns`: list of single-arity transformer functions
-       that will be applied to the markdown after the default transformations,
-       in the order they appear in the list."
+     - `:pre-process-markdown-fn`: function from markdown string to markdown
+       string, applied after the default transformations."
   ([markdown]
    (pre-process-markdown {} markdown))
-  ([{:keys [pre-process-markdown-fns]} markdown]
-   (let [f (apply comp (reverse pre-process-markdown-fns))]
-     (-> markdown
-         ;; allow multiline link title
-         (str/replace #"\[[^\]]+\n"
-                      #(str/replace % "\n" RET))
-         f))))
+  ([{f :pre-process-markdown-fn :or {f identity}} markdown]
+   (-> markdown
+       ;; allow multiline link title
+       (str/replace #"\[[^\]]+\n"
+                    #(str/replace % "\n" RET))
+       f)))
 
 (defn post-process-markdown
   "Performs basic transformations on the HTML rendered from the markdown.
 
    Accepted `opts`:
-     - `:post-process-markdown-fns`: list of single-arity transformer functions
-       that will be applied to the HTML after the default transformations,
-       in the order they appear in the list."
+     - `:post-process-markdown-fn`: function from HTML string to HTML string,
+       applied after the default transformations."
   ([html]
    (post-process-markdown {} html))
-  ([{:keys [post-process-markdown-fns]} html]
-   (let [f (apply comp (reverse post-process-markdown-fns))]
-     (-> html
-         ;; restore newline in multiline link titles
-         (str/replace RET "\n")
-         f))))
+  ([{f :post-process-markdown-fn :or {f identity}} html]
+   (-> html
+       ;; restore newline in multiline link titles
+       (str/replace RET "\n")
+       f)))
 
 (defn markdown->html
   "Reads a markdown file and returns the rendered HTML as a string.
 
    Accepted `opts`:
-     - `:pre-process-markdown-fns`: see docstring for `pre-process-markdown`.
-     - `:post-process-markdown-fns`: see docstring for `post-process-markdown`."
+     - `:pre-process-markdown-fn`: see docstring for `pre-process-markdown`.
+     - `:post-process-markdown-fn`: see docstring for `post-process-markdown`."
   ([file]
    (markdown->html {} file))
   ([opts file]

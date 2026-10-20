@@ -166,18 +166,14 @@
       :group :favicon}
 
      ;; Text processing
-     :pre-process-markdown-fns
-     {:desc "List of functions to apply to raw Markdown before rendering"
-      :ref "[fn1 fn2...]"
-      :default []
-      :coerce []
+     :pre-process-markdown-fn
+     {:desc "Function to apply to raw Markdown before rendering"
+      :ref "<fn>"
       :group :text-processing}
 
-     :post-process-markdown-fns
-     {:desc "List of functions to apply to HTML after rendering Markdown"
-      :ref "[fn1 fn2...]"
-      :default []
-      :coerce []
+     :post-process-markdown-fn
+     {:desc "Function to apply to HTML after rendering Markdown"
+      :ref "<fn>"
       :group :text-processing}
 
      ;; Command-specific opts
