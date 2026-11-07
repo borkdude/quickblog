@@ -59,6 +59,11 @@
       :default {:tags ["clojure"]}
       :group :post-config}
 
+     :link-prev-next-posts
+     {:desc "Add `prev` and `next` metadata to link to previous and next post by date"
+      :default false
+      :group :post-config}
+
      :num-index-posts
      {:desc "Number of most recent posts to show on the index page"
       :ref "<num>"

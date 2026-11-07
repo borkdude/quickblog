@@ -6,6 +6,7 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 
 ## Unreleased
 
+- Fixed `:link-prev-next-posts` option ([@jmglov](https://github.com/jmglov))
 - Add `:pre-process-markdown-fn` and `:post-process-html-fn` options to
   transform each post's Markdown and HTML
   ([README](https://github.com/borkdude/quickblog#pre--and-post-processing-markdown))  ([@jmglov](https://github.com/jmglov))
