@@ -668,7 +668,7 @@
      {:desc "Block until interrupted"
       :default true}}}}
   [opts]
-  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir
+  (let [{:keys [assets-dir assets-out-dir posts-dir templates-dir rendering-system-files
                 block]
          :as opts}
         (-> opts
@@ -682,55 +682,68 @@
     (let [load-pod (requiring-resolve 'babashka.pods/load-pod)]
       (load-pod 'org.babashka/fswatcher "0.0.7")
       (let [watch (requiring-resolve 'pod.babashka.fswatcher/watch)
+            render-all! (fn []
+                          (let [opts (-> opts
+                                         (dissoc :cached-posts :posts)
+                                         render)]
+                            (reset! posts-cache (:posts opts))))
             watchers
-            [(watch posts-dir
-                    (fn [{:keys [path type]}]
-                      (println "Change detected:" (name type) (str path))
-                      (when (#{:create :remove :rename :write :write|chmod :chmod} type)
-                        (let [post-filename (-> (fs/file path) fs/file-name)]
-                          ;; skip Emacs backup files and the like
-                          (when (and (str/ends-with? post-filename ".md")
-                                     ;; emacs backup file
-                                     (not (str/starts-with? post-filename ".#")))
-                            (println "Re-rendering" post-filename)
-                            (let [post (lib/load-post opts path)
-                                  deleted? (not (fs/exists? path))
-                                  posts (cond
-                                          deleted?
-                                          (dissoc @posts-cache post-filename)
-
-                                          (:quickblog/error post)
-                                          (do
-                                            (println (:quickblog/error post))
-                                            (dissoc @posts-cache post-filename))
-
-                                          :else
-                                          (assoc @posts-cache post-filename post))
-                                  opts (-> opts
-                                           (assoc :cached-posts @posts-cache
-                                                  :posts posts)
-                                           render)]
-                              (reset! posts-cache (:posts opts))))))))
-
-             (watch templates-dir
-                    (fn [{:keys [path type]}]
-                      (println "Template change detected; re-rendering all posts:"
-                               (name type) (str path))
-                      (let [opts (-> opts
-                                     (dissoc :cached-posts :posts)
-                                     render)]
-                        (reset! posts-cache (:posts opts)))))
-
-             (when (fs/exists? assets-dir)
-               (watch assets-dir
+            (doall
+             (concat
+              [(watch posts-dir
                       (fn [{:keys [path type]}]
-                        (println "Asset change detected:"
+                        (println "Change detected:" (name type) (str path))
+                        (when (#{:create :remove :rename :write :write|chmod :chmod} type)
+                          (let [post-filename (-> (fs/file path) fs/file-name)]
+                            ;; skip Emacs backup files and the like
+                            (when (and (str/ends-with? post-filename ".md")
+                                       ;; emacs backup file
+                                       (not (str/starts-with? post-filename ".#")))
+                              (println "Re-rendering" post-filename)
+                              (let [post (lib/load-post opts path)
+                                    deleted? (not (fs/exists? path))
+                                    posts (cond
+                                            deleted?
+                                            (dissoc @posts-cache post-filename)
+
+                                            (:quickblog/error post)
+                                            (do
+                                              (println (:quickblog/error post))
+                                              (dissoc @posts-cache post-filename))
+
+                                            :else
+                                            (assoc @posts-cache post-filename post))
+                                    opts (-> opts
+                                             (assoc :cached-posts @posts-cache
+                                                    :posts posts)
+                                             render)]
+                                (reset! posts-cache (:posts opts))))))))
+
+               (watch templates-dir
+                      (fn [{:keys [path type]}]
+                        (println "Template change detected; re-rendering all posts:"
                                  (name type) (str path))
-                        (when (contains? #{:remove :rename} type)
-                          (let [file (fs/file assets-out-dir (fs/file-name path))]
-                            (println "Removing deleted asset:" (str file))
-                            (fs/delete-if-exists file)))
-                        (lib/copy-tree-modified assets-dir assets-out-dir))))]]
+                        (render-all!)))
+
+               (when (fs/exists? assets-dir)
+                 (watch assets-dir
+                        (fn [{:keys [path type]}]
+                          (println "Asset change detected:"
+                                   (name type) (str path))
+                          (when (contains? #{:remove :rename} type)
+                            (let [file (fs/file assets-out-dir (fs/file-name path))]
+                              (println "Removing deleted asset:" (str file))
+                              (fs/delete-if-exists file)))
+                          (lib/copy-tree-modified assets-dir assets-out-dir))))]
+
+              (map (fn [file]
+                     (when-not (= templates-dir (str file))
+                       (watch (str file)
+                              (fn [{:keys [path type]}]
+                                (println "Rendering system change detected; re-rendering all posts:"
+                                         (name type) (str path))
+                                (render-all!)))))
+                   (set rendering-system-files))))]
         (if (not (false? block))
           @(promise)
           watchers)))))
