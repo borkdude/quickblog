@@ -7,7 +7,8 @@ Instances of quickblog can be seen [here](https://github.com/borkdude/quickblog?
 ## Unreleased
 
 - Watch rendering system for changes in `bb quickblog watch`
-  ([@jmglov](https://github.com/jmglov))
+  ([README](https://github.com/borkdude/quickblog#extending-the-rendering-system))([@jmglov]
+  (https://github.com/jmglov))
 - Fixed `:link-prev-next-posts` option ([@jmglov](https://github.com/jmglov))
 - Add `:pre-process-markdown-fn` and `:post-process-html-fn` options to
   transform each post's Markdown and HTML
