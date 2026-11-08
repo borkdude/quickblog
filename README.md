@@ -387,6 +387,40 @@ the following to accomplish this:
   }}
 ```
 
+## Extending the rendering system
+
+The `:rendering-system-files` option instructs quickblog which files can affect
+the rendering of your posts. If any of those those files are newer than a given
+post, the post will be re-rendered. **Overriding this option is not recommended
+unless you understand quickblog's caching system extremely well.**
+
+There are some cases in which it can be useful to override it, though. For
+example, if your blog has a lot of Clojure machinery around quickblog, you might
+want to re-render your posts when you make changes to any of those Clojure
+files:
+
+``` clojure
+(assoc opts :rendering-system-files
+       (->> (fs/glob (fs/cwd) "*.clj")
+            (map fs/file)))
+```
+
+Or if you use a `:local/root` dependency for quickblog because you have a local
+checkout of the repo, you might want to re-render your posts when you make
+changes to the local quickblog:
+
+``` clojure
+(let [quickblog-dir (-> (slurp "bb.edn")
+                        edn/read-string
+                        :deps
+                        (get 'io.github.borkdude/quickblog)
+                        :local/root)]
+  (assoc opts :rendering-system-files
+         (when quickblog-dir
+           (fs/glob (fs/file quickblog-dir "src")
+                    "**/*.clj"))))
+```
+
 ## Breaking changes
 
 ### posts.edn removed
